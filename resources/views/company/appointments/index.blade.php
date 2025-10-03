@@ -237,7 +237,7 @@
                             @php
                                 $firstCategory = $appointment->first_category;
                                 $firstTest = $appointment->first_test;
-                                $testCount = count($appointment->medical_test_id ?: []);
+                                $testCount = $appointment->selected_tests->count();
                             @endphp
                             {{ $firstCategory->name ?? 'Medical Examination' }}
                             @if($firstTest)

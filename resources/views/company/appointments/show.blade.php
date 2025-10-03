@@ -77,9 +77,7 @@
                             <div class="p-4 bg-indigo-50 rounded-lg border-l-4 border-indigo-600">
                                 <label class="block text-sm font-medium text-indigo-700 mb-2">Medical Tests</label>
                                 @php
-                                    // Get test IDs (now handled as array by model casting)
-                                    $testIds = $appointment->medical_test_id ?: [];
-                                    $testCount = is_array($testIds) ? count($testIds) : 0;
+                                    $testCount = $appointment->selected_tests->count();
                                 @endphp
                                 <p class="text-lg font-semibold text-indigo-900">
                                     {{ $testCount }} test{{ $testCount !== 1 ? 's' : '' }} selected
@@ -102,16 +100,8 @@
 
             <!-- Medical Tests Card -->
             @php
-                // Get all selected tests (now handled as arrays by model casting)
-                $categoryIds = $appointment->medical_test_categories_id ?: [];
-                $testIds = $appointment->medical_test_id ?: [];
-                
-                // Get the actual test objects
-                $selectedTests = collect([]);
-                if (!empty($testIds) && is_array($testIds)) {
-                    $selectedTests = \App\Models\MedicalTest::whereIn('id', $testIds)->with('category')->get();
-                }
-                
+                // Use the model's accessor methods to get selected tests
+                $selectedTests = $appointment->selected_tests;
                 $totalPrice = 0;
             @endphp
             
@@ -402,20 +392,13 @@
                         <div class="bg-emerald-50 rounded-lg p-4 border-l-4 border-emerald-600">
                             <p class="text-emerald-700 text-sm font-medium">Medical Tests</p>
                             @php
-                                // Get test IDs (now handled as array by model casting)
-                                $testIds = $appointment->medical_test_id ?: [];
-                                $testCount = is_array($testIds) ? count($testIds) : 0;
+                                $testCount = $appointment->selected_tests->count();
                             @endphp
                             <p class="text-2xl font-bold text-emerald-900">{{ $testCount }}</p>
                         </div>
                         @php
-                            // Calculate total price from all selected tests (now handled as array by model casting)
-                            $testIds = $appointment->medical_test_id ?: [];
-                            
-                            $selectedTestsForPrice = collect([]);
-                            if (!empty($testIds) && is_array($testIds)) {
-                                $selectedTestsForPrice = \App\Models\MedicalTest::whereIn('id', $testIds)->get();
-                            }
+                            // Calculate total price from all selected tests using model accessor
+                            $selectedTestsForPrice = $appointment->selected_tests;
                             $totalTestPrice = $selectedTestsForPrice->sum('price');
                             $patientCount = $appointment->patients->count();
                             $grandTotal = $totalTestPrice * $patientCount;

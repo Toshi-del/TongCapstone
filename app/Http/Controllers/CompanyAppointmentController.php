@@ -178,12 +178,12 @@ class CompanyAppointmentController extends Controller
                 $totalPrice += $selectedTest->price ?? 0;
             }
 
-            // Store all selected category and test IDs as arrays
+            // Store all selected category and test IDs as JSON strings
             $appointment = Appointment::create([
                 'appointment_date' => $appointmentDate,
                 'time_slot' => $request->time_slot,
-                'medical_test_categories_id' => $categoryIds,
-                'medical_test_id' => $testIds,
+                'medical_test_categories_id' => json_encode($categoryIds),
+                'medical_test_id' => json_encode($testIds),
                 'total_price' => $totalPrice,
                 'notes' => $request->notes,
                 'patients_data' => [], // Will be populated when Excel is processed
@@ -527,12 +527,12 @@ class CompanyAppointmentController extends Controller
             $totalPrice += $selectedTest->price ?? 0;
         }
 
-        // Store all selected category and test IDs as arrays
+        // Store all selected category and test IDs as JSON strings
         $appointment->update([
             'appointment_date' => $request->appointment_date,
             'time_slot' => $request->time_slot,
-            'medical_test_categories_id' => $categoryIds,
-            'medical_test_id' => $testIds,
+            'medical_test_categories_id' => json_encode($categoryIds),
+            'medical_test_id' => json_encode($testIds),
             'total_price' => $totalPrice,
             'notes' => $request->notes,
         ]);

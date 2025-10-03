@@ -177,8 +177,20 @@
                 </div>
 
                 @php
-                    $currentCategoryIds = $appointment->medical_test_categories_id ?: [];
-                    $currentTestIds = $appointment->medical_test_id ?: [];
+                    // Decode JSON strings to arrays for form handling
+                    $currentCategoryIds = $appointment->medical_test_categories_id;
+                    if (is_string($currentCategoryIds)) {
+                        $currentCategoryIds = json_decode($currentCategoryIds, true) ?: [];
+                    } elseif (!is_array($currentCategoryIds)) {
+                        $currentCategoryIds = [];
+                    }
+                    
+                    $currentTestIds = $appointment->medical_test_id;
+                    if (is_string($currentTestIds)) {
+                        $currentTestIds = json_decode($currentTestIds, true) ?: [];
+                    } elseif (!is_array($currentTestIds)) {
+                        $currentTestIds = [];
+                    }
                 @endphp
                 <input type="hidden" name="medical_test_categories_id" id="medical_test_categories_id" value="{{ is_array(old('medical_test_categories_id')) ? json_encode(old('medical_test_categories_id')) : (old('medical_test_categories_id') ?: json_encode($currentCategoryIds)) }}">
                 <input type="hidden" name="medical_test_id" id="medical_test_id" value="{{ is_array(old('medical_test_id')) ? json_encode(old('medical_test_id')) : (old('medical_test_id') ?: json_encode($currentTestIds)) }}">
@@ -199,8 +211,7 @@
 
                 @php
                     $uniqueCategories = $medicalTestCategories->unique(function($c){ return strtolower($c->name ?? ''); });
-                    $currentTestIds = $appointment->medical_test_id ?: [];
-                    $currentCategoryIds = $appointment->medical_test_categories_id ?: [];
+                    // Use the already decoded arrays from above
                 @endphp
                 @foreach($uniqueCategories as $category)
                     @php 

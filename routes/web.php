@@ -87,6 +87,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/messages/fetch', [AdminController::class, 'fetchMessages']);
     Route::post('/admin/messages/send', [AdminController::class, 'sendMessage']);
     Route::post('/admin/messages/mark-read', [AdminController::class, 'markAsRead']);
+    Route::get('/admin/messages/count', [AdminController::class, 'getUnreadMessageCount']);
     Route::get('/admin/chat-users', [AdminController::class, 'chatUsers']);
     
     // Admin Notifications Routes

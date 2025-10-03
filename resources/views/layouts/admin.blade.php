@@ -198,7 +198,7 @@
                     <i class="fas fa-comments text-lg mr-4"></i>
                     <span>Messages</span>
                     <div class="ml-auto flex items-center space-x-2">
-                        <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">3</span>
+                        <span id="message-count" class="bg-red-500 text-white text-xs px-2 py-1 rounded-full hidden">0</span>
                         <i class="fas fa-chevron-right text-xs opacity-60"></i>
                     </div>
                 </a>
@@ -384,6 +384,9 @@
             
             // Notifications functionality
             initializeNotifications();
+            
+            // Messages functionality
+            initializeMessages();
         });
         
         function initializeNotifications() {
@@ -571,6 +574,38 @@
                 'low': 'text-green-500'
             };
             return colors[priority] || 'text-gray-500';
+        }
+        
+        function initializeMessages() {
+            // Load initial message count
+            loadMessageCount();
+            
+            // Refresh message count every 30 seconds
+            setInterval(loadMessageCount, 30000);
+        }
+        
+        function loadMessageCount() {
+            fetch('/admin/messages/count')
+                .then(response => response.json())
+                .then(data => {
+                    updateMessageCount(data.count);
+                })
+                .catch(error => {
+                    console.log('Error loading message count:', error);
+                });
+        }
+        
+        function updateMessageCount(count) {
+            const messageCount = document.getElementById('message-count');
+            
+            if (count > 0) {
+                if (messageCount) {
+                    messageCount.textContent = count > 99 ? '99+' : count;
+                    messageCount.classList.remove('hidden');
+                }
+            } else {
+                if (messageCount) messageCount.classList.add('hidden');
+            }
         }
         
         

@@ -519,7 +519,7 @@
 
 	function loadMessages(forceScroll) {
 		if (!selectedUserId) return;
-		fetch('/admin/messages/fetch')
+		fetch(`/admin/messages/fetch?user_id=${selectedUserId}`)
 			.then(response => response.json())
 			.then(data => {
 				const chatBox = document.getElementById('chat-box');
@@ -610,7 +610,8 @@
 	});
 
 	// Check for new messages and show notifications
-	function checkForNewMessages(messages) {
+	function checkForNewMessages(data) {
+		const messages = data.messages || [];
 		const currentMessageCount = messages.length;
 		if (currentMessageCount > lastMessageCount && lastMessageCount > 0) {
 			// New messages arrived
@@ -655,6 +656,11 @@
 				'X-CSRF-TOKEN': '{{ csrf_token() }}'
 			},
 			body: JSON.stringify({ sender_id: selectedUserId })
+		}).then(() => {
+			// Update message count in sidebar if function exists
+			if (typeof loadMessageCount === 'function') {
+				loadMessageCount();
+			}
 		});
 	}
 
