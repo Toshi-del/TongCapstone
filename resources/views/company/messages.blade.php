@@ -401,6 +401,8 @@
 	let userIndex = new Map();
 	let lastMessageCount = 0;
 	let notificationSound = null;
+	let currentMessages = []; // Track current messages to avoid rebuilding
+	let currentConversationUserId = null; // Track which conversation we're currently viewing
 
 	function renderUserList(users) {
 		console.log('Rendering user list with', users.length, 'users');
@@ -481,7 +483,12 @@
 	});
 
 	function selectUser(userId) {
+		console.log('Switching to user:', userId, 'from:', currentConversationUserId);
+		
 		selectedUserId = userId;
+		currentMessages = []; // Reset current messages when switching conversations
+		currentConversationUserId = userId; // Track current conversation
+		
 		document.getElementById('receiver_id').value = userId;
 		updateSendButtonState();
 		document.querySelectorAll('.chat-user-item').forEach(el => el.classList.remove('active'));
@@ -489,6 +496,20 @@
 		if (selectedLi) selectedLi.classList.add('active');
 		const u = userIndex.get(userId);
 		document.getElementById('chat-title').textContent = u ? `${u.fname} ${u.lname}`.trim() : 'Conversation';
+		
+		// Clear chat box immediately when switching users
+		const chatBox = document.getElementById('chat-box');
+		const empty = document.getElementById('chat-empty');
+		if (chatBox) {
+			chatBox.innerHTML = '';
+			// Show loading state briefly
+			if (empty) {
+				empty.style.display = 'flex';
+				chatBox.appendChild(empty);
+			}
+		}
+		
+		// Force load messages for new conversation
 		loadMessages(true);
 	}
 
@@ -518,57 +539,160 @@
 		} catch (_) { return ''; }
 	}
 
+	// Helper function to create a message element
+	function createMessageElement(msg) {
+		const messageDiv = document.createElement('div');
+		messageDiv.className = 'chat-message' + (msg.sender_id == {!! auth()->id() !!} ? ' sent' : '');
+		messageDiv.setAttribute('data-message-id', msg.id || 'temp-' + Date.now());
+		
+		const avatar = document.createElement('div');
+		avatar.className = 'chat-message-avatar';
+		const senderUser = userIndex.get(msg.sender_id) || {};
+		const initials = `${(senderUser.fname?.[0]||'').toUpperCase()}${(senderUser.lname?.[0]||'').toUpperCase()}`;
+		avatar.textContent = initials || 'U';
+		
+		const content = document.createElement('div');
+		content.className = 'chat-message-content';
+		
+		const bubble = document.createElement('div');
+		bubble.className = 'chat-message-bubble';
+		bubble.textContent = msg.message;
+		
+		const time = document.createElement('div');
+		time.className = 'chat-message-time';
+		time.textContent = formatTime(msg.created_at) || 'Just now';
+		
+		content.appendChild(bubble);
+		content.appendChild(time);
+		messageDiv.appendChild(avatar);
+		messageDiv.appendChild(content);
+		
+		return messageDiv;
+	}
+
 	function loadMessages(forceScroll) {
 		if (!selectedUserId) return;
-		fetch('/company/messages/fetch')
-			.then(response => response.json())
+		
+		const requestUserId = selectedUserId; // Capture the current user ID for this request
+		console.log('Loading messages for user:', requestUserId);
+		
+		fetch(`/company/messages/fetch?user_id=${requestUserId}`)
+			.then(response => {
+				if (!response.ok) {
+					throw new Error('Failed to fetch messages');
+				}
+				return response.json();
+			})
 			.then(data => {
+				console.log('Messages loaded for user:', requestUserId, 'Current selected:', selectedUserId);
+				
+				// Check if this response is still relevant (user might have switched)
+				if (requestUserId !== selectedUserId) {
+					console.log('Ignoring stale response for user:', requestUserId);
+					return;
+				}
+				
 				const chatBox = document.getElementById('chat-box');
 				const empty = document.getElementById('chat-empty');
+				
+				// Check if elements exist
+				if (!chatBox) {
+					console.error('Chat box element not found');
+					return;
+				}
 				
 				// Check for new messages and show notifications
 				checkForNewMessages(data);
 				
 				if (data.messages && data.messages.length > 0) {
-					empty.style.display = 'none';
-					chatBox.innerHTML = '';
-					data.messages.forEach(msg => {
-						const messageDiv = document.createElement('div');
-						messageDiv.className = 'chat-message' + (msg.sender_id == {{ auth()->id() }} ? ' sent' : '');
-						
-						const avatar = document.createElement('div');
-						avatar.className = 'chat-message-avatar';
-						const senderUser = userIndex.get(msg.sender_id) || {};
-						const initials = `${(senderUser.fname?.[0]||'').toUpperCase()}${(senderUser.lname?.[0]||'').toUpperCase()}`;
-						avatar.textContent = initials || 'U';
-						
-						const content = document.createElement('div');
-						content.className = 'chat-message-content';
-						
-						const bubble = document.createElement('div');
-						bubble.className = 'chat-message-bubble';
-						bubble.textContent = msg.message;
-						
-						const time = document.createElement('div');
-						time.className = 'chat-message-time';
-						time.textContent = formatTime(msg.created_at);
-						
-						content.appendChild(bubble);
-						content.appendChild(time);
-						messageDiv.appendChild(avatar);
-						messageDiv.appendChild(content);
-						chatBox.appendChild(messageDiv);
-					});
+					if (empty) empty.style.display = 'none';
 					
-					if (forceScroll || chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 50) {
-						chatBox.scrollTop = chatBox.scrollHeight;
+					// Always rebuild if conversation changed or forced
+					const conversationChanged = currentConversationUserId !== requestUserId;
+					const newMessageIds = data.messages.map(m => m.id).join(',');
+					const currentMessageIds = currentMessages.map(m => m.id).join(',');
+					
+					if (forceScroll || conversationChanged || newMessageIds !== currentMessageIds) {
+						console.log('Rebuilding messages - force:', forceScroll, 'conversation changed:', conversationChanged);
+						chatBox.innerHTML = '';
+						data.messages.forEach(msg => {
+							chatBox.appendChild(createMessageElement(msg));
+						});
+						currentMessages = data.messages;
+						currentConversationUserId = requestUserId;
+						
+						if (forceScroll || chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 50) {
+							chatBox.scrollTop = chatBox.scrollHeight;
+						}
 					}
 				} else {
-					empty.style.display = 'flex';
-					chatBox.innerHTML = '';
-					chatBox.appendChild(empty);
+					if (empty) {
+						empty.style.display = 'flex';
+						chatBox.innerHTML = '';
+						chatBox.appendChild(empty);
+					}
+					currentMessages = [];
+					currentConversationUserId = requestUserId;
 				}
+			})
+			.catch(error => {
+				console.error('Error loading messages:', error);
 			});
+	}
+
+	// Function to add message to chat immediately (optimistic UI)
+	function addMessageToChat(message, isOwn = true) {
+		const chatBox = document.getElementById('chat-box');
+		const empty = document.getElementById('chat-empty');
+		
+		// Check if elements exist
+		if (!chatBox) {
+			console.error('Chat box element not found');
+			return;
+		}
+		
+		// Hide empty state if visible
+		if (empty && empty.style.display !== 'none') {
+			empty.style.display = 'none';
+		}
+		
+		const messageDiv = document.createElement('div');
+		messageDiv.className = 'chat-message' + (isOwn ? ' sent' : '');
+		
+		const avatar = document.createElement('div');
+		avatar.className = 'chat-message-avatar';
+		
+		if (isOwn) {
+			// For own messages, use current user initials
+			const currentUser = {!! auth()->user() ? json_encode(['fname' => auth()->user()->fname, 'lname' => auth()->user()->lname]) : '{}' !!};
+			const initials = `${(currentUser.fname?.[0]||'').toUpperCase()}${(currentUser.lname?.[0]||'').toUpperCase()}`;
+			avatar.textContent = initials || 'U';
+		} else {
+			// For other user messages, use their initials
+			const senderUser = userIndex.get(selectedUserId) || {};
+			const initials = `${(senderUser.fname?.[0]||'').toUpperCase()}${(senderUser.lname?.[0]||'').toUpperCase()}`;
+			avatar.textContent = initials || 'U';
+		}
+		
+		const content = document.createElement('div');
+		content.className = 'chat-message-content';
+		
+		const bubble = document.createElement('div');
+		bubble.className = 'chat-message-bubble';
+		bubble.textContent = message;
+		
+		const time = document.createElement('div');
+		time.className = 'chat-message-time';
+		time.textContent = 'Just now';
+		
+		content.appendChild(bubble);
+		content.appendChild(time);
+		messageDiv.appendChild(avatar);
+		messageDiv.appendChild(content);
+		chatBox.appendChild(messageDiv);
+		
+		// Auto scroll to bottom
+		chatBox.scrollTop = chatBox.scrollHeight;
 	}
 
 	document.getElementById('chat-form').addEventListener('submit', function(e) {
@@ -577,6 +701,19 @@
 		const messageEl = document.getElementById('message');
 		const text = messageEl.value.trim();
 		if (!text) return;
+		
+		console.log('Sending message:', text);
+		
+		// Immediately show the message in the chat (optimistic UI)
+		addMessageToChat(text, true);
+		
+		// Clear the input
+		messageEl.value = '';
+		
+		// Temporarily disable send button during request (but NOT the input)
+		const sendBtn = document.getElementById('send-btn');
+		sendBtn.disabled = true;
+		
 		fetch('/company/messages/send', {
 			method: 'POST',
 			headers: {
@@ -587,16 +724,75 @@
 				receiver_id: selectedUserId,
 				message: text
 			})
-		}).then(() => {
-			messageEl.value = '';
-			updateSendButtonState();
+		})
+		.then(response => {
+			if (!response.ok) {
+				throw new Error('Failed to send message');
+			}
+			return response.json();
+		})
+		.then(data => {
+			console.log('Message sent successfully:', data);
+			
+			// Refresh messages after a short delay to get the official version with proper timestamps
+			setTimeout(() => {
+				loadMessages(true);
+				// Also refresh user list to update last message
+				loadUsers();
+			}, 500);
+		})
+		.catch(error => {
+			console.error('Error sending message:', error);
+			alert('Failed to send message. Please try again.');
+			// Restore the message text on error
+			messageEl.value = text;
+			// Reload messages to remove the optimistic message on error
 			loadMessages(true);
+		})
+		.finally(() => {
+			console.log('Message send completed, restoring form state');
+			
+			// Re-enable send button properly
+			sendBtn.disabled = false;
+			
+			// Ensure the input field is visible and functional
+			const messageEl = document.getElementById('message');
+			const chatForm = document.getElementById('chat-form');
+			
+			console.log('Form elements check:', {
+				messageEl: !!messageEl,
+				sendBtn: !!sendBtn,
+				chatForm: !!chatForm,
+				messageElVisible: messageEl ? messageEl.style.display : 'N/A',
+				messageElDisabled: messageEl ? messageEl.disabled : 'N/A'
+			});
+			
+			if (messageEl) {
+				messageEl.style.display = '';
+				messageEl.disabled = false;
+				messageEl.readOnly = false;
+				// Don't auto-focus as it might be annoying
+			}
+			
+			if (chatForm) {
+				chatForm.style.display = '';
+			}
+			
+			updateSendButtonState();
 		});
 	});
 
 	function updateSendButtonState() {
-		const text = document.getElementById('message').value.trim();
-		document.getElementById('send-btn').disabled = !selectedUserId || text.length === 0;
+		const messageEl = document.getElementById('message');
+		const sendBtn = document.getElementById('send-btn');
+		
+		if (!messageEl || !sendBtn) {
+			console.error('Message input or send button not found');
+			return;
+		}
+		
+		const text = messageEl.value.trim();
+		sendBtn.disabled = !selectedUserId || text.length === 0;
 	}
 
 	document.getElementById('message').addEventListener('input', updateSendButtonState);
@@ -612,7 +808,8 @@
 	});
 
 	// Check for new messages and show notifications
-	function checkForNewMessages(messages) {
+	function checkForNewMessages(data) {
+		const messages = data.messages || [];
 		const currentMessageCount = messages.length;
 		if (currentMessageCount > lastMessageCount && lastMessageCount > 0) {
 			// New messages arrived
@@ -657,6 +854,11 @@
 				'X-CSRF-TOKEN': '{{ csrf_token() }}'
 			},
 			body: JSON.stringify({ sender_id: selectedUserId })
+		}).then(() => {
+			// Update message count in sidebar if function exists
+			if (typeof loadMessageCount === 'function') {
+				loadMessageCount();
+			}
 		});
 	}
 
@@ -675,7 +877,19 @@
 		}
 	});
 
-	setInterval(() => { loadMessages(); markAsRead(); }, 2000);
+	// More frequent polling for real-time updates
+	setInterval(() => { 
+		if (selectedUserId) {
+			loadMessages(); 
+			markAsRead(); 
+		}
+	}, 1000);
+	
+	// Less frequent user list updates
+	setInterval(() => { 
+		loadUsers(); 
+	}, 5000);
+	
 	loadUsers();
 </script>
 @endsection

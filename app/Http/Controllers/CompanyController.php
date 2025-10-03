@@ -253,19 +253,33 @@ class CompanyController extends Controller
     /**
      * Fetch chat messages for the company user.
      */
-    public function fetchMessages()
+    public function fetchMessages(Request $request)
     {
         $userId = Auth::id();
+        $otherUserId = $request->get('user_id');
+        
+        // If no specific user is selected, return empty messages
+        if (!$otherUserId) {
+            return response()->json(['messages' => []]);
+        }
+        
         // Mark messages to this user as delivered
         Message::whereNull('delivered_at')
             ->where('receiver_id', $userId)
+            ->where('sender_id', $otherUserId)
             ->update(['delivered_at' => now()]);
 
-        $messages = Message::where('sender_id', $userId)
-            ->orWhere('receiver_id', $userId)
+        // Get messages between company user and the specific user
+        $messages = Message::where(function($query) use ($userId, $otherUserId) {
+                $query->where('sender_id', $userId)->where('receiver_id', $otherUserId);
+            })
+            ->orWhere(function($query) use ($userId, $otherUserId) {
+                $query->where('sender_id', $otherUserId)->where('receiver_id', $userId);
+            })
             ->orderBy('created_at', 'asc')
             ->get();
-        return response()->json($messages);
+            
+        return response()->json(['messages' => $messages]);
     }
 
     /**
@@ -282,6 +296,19 @@ class CompanyController extends Controller
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
         return response()->json(['status' => 'ok']);
+    }
+
+    /**
+     * Get unread message count for the current company user.
+     */
+    public function getUnreadMessageCount()
+    {
+        $userId = Auth::id();
+        $count = Message::where('receiver_id', $userId)
+            ->whereNull('read_at')
+            ->count();
+        
+        return response()->json(['count' => $count]);
     }
 
     /**
@@ -306,7 +333,55 @@ class CompanyController extends Controller
      */
     public function chatUsers()
     {
-        $users = User::where('id', '!=', auth()->id())->get(['id', 'fname', 'lname', 'role', 'company']);
+        $currentUserId = Auth::id();
+        
+        $users = User::select('id', 'fname', 'lname', 'role', 'company')
+            ->where('id', '!=', $currentUserId)
+            ->orderBy('fname')
+            ->orderBy('lname')
+            ->get();
+        
+        // Add last message information for each user
+        $users = $users->map(function($user) use ($currentUserId) {
+            // Get the last message between company user and this user
+            $lastMessage = Message::where(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $currentUserId)->where('receiver_id', $user->id);
+                })
+                ->orWhere(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $user->id)->where('receiver_id', $currentUserId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            // Convert company enum values to strings for frontend compatibility
+            $user->company = $user->company ? (string) $user->company : null;
+            
+            // Add last message info
+            if ($lastMessage) {
+                $user->last_message = \Str::limit($lastMessage->message, 50);
+                $user->last_message_time = $lastMessage->created_at->diffForHumans();
+            } else {
+                $user->last_message = 'No messages yet';
+                $user->last_message_time = '';
+            }
+            
+            return $user;
+        });
+        
+        // Sort by last message time (most recent first)
+        $users = $users->sortByDesc(function($user) use ($currentUserId) {
+            $lastMessage = Message::where(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $currentUserId)->where('receiver_id', $user->id);
+                })
+                ->orWhere(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $user->id)->where('receiver_id', $currentUserId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            return $lastMessage ? $lastMessage->created_at : '1970-01-01';
+        })->values();
+        
         return response()->json($users);
     }
 }

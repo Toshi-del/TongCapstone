@@ -210,6 +210,7 @@ Route::middleware(['auth', 'role:company'])->group(function () {
     Route::get('/company/messages/fetch', [CompanyController::class, 'fetchMessages']);
     Route::post('/company/messages/send', [CompanyController::class, 'sendMessage']);
     Route::post('/company/messages/mark-read', [CompanyController::class, 'markAsRead']);
+    Route::get('/company/messages/count', [CompanyController::class, 'getUnreadMessageCount']);
     Route::get('/company/chat-users', [CompanyController::class, 'chatUsers']);
 });
 
@@ -266,6 +267,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::get('/doctor/messages/fetch', [DoctorController::class, 'fetchMessages']);
     Route::post('/doctor/messages/send', [DoctorController::class, 'sendMessage']);
     Route::post('/doctor/messages/mark-read', [DoctorController::class, 'markAsRead']);
+    Route::get('/doctor/messages/count', [DoctorController::class, 'getUnreadMessageCount']);
     Route::get('/doctor/chat-users', [DoctorController::class, 'chatUsers']);
 });
 
@@ -349,6 +351,7 @@ Route::middleware(['auth', 'role:nurse'])->group(function () {
     Route::get('/nurse/messages/fetch', [NurseController::class, 'fetchMessages']);
     Route::post('/nurse/messages/send', [NurseController::class, 'sendMessage']);
     Route::post('/nurse/messages/mark-read', [NurseController::class, 'markAsRead']);
+    Route::get('/nurse/messages/count', [NurseController::class, 'getUnreadMessageCount']);
     Route::get('/nurse/chat-users', [NurseController::class, 'chatUsers']);
 });
 
@@ -364,6 +367,14 @@ Route::middleware(['auth', 'role:radtech'])->group(function () {
     Route::get('/radtech/medical-checklist/annual-physical/{patientId}', [RadtechController::class, 'showMedicalChecklistAnnualPhysical'])->name('radtech.medical-checklist.annual-physical');
     Route::post('/radtech/medical-checklist', [RadtechController::class, 'storeMedicalChecklist'])->name('radtech.medical-checklist.store');
     Route::patch('/radtech/medical-checklist/{id}', [RadtechController::class, 'updateMedicalChecklist'])->name('radtech.medical-checklist.update');
+
+    // Radtech Messaging Routes
+    Route::get('/radtech/messages', [RadtechController::class, 'messages'])->name('radtech.messages');
+    Route::get('/radtech/messages/fetch', [RadtechController::class, 'fetchMessages']);
+    Route::post('/radtech/messages/send', [RadtechController::class, 'sendMessage']);
+    Route::post('/radtech/messages/mark-read', [RadtechController::class, 'markAsRead']);
+    Route::get('/radtech/messages/count', [RadtechController::class, 'getUnreadMessageCount']);
+    Route::get('/radtech/chat-users', [RadtechController::class, 'chatUsers']);
 });
 
 Route::middleware(['auth', 'role:plebo'])->group(function () {
@@ -378,6 +389,14 @@ Route::middleware(['auth', 'role:plebo'])->group(function () {
     Route::patch('/plebo/medical-checklist/{id}', [PleboController::class, 'updateMedicalChecklist'])->name('plebo.medical-checklist.update');
     Route::get('/plebo/test-assignments', [PleboController::class, 'testAssignments'])->name('plebo.test-assignments');
     Route::post('/plebo/test-assignments/{id}/update-status', [PleboController::class, 'updateTestAssignmentStatus'])->name('plebo.test-assignments.update-status');
+
+    // Plebo Messaging Routes
+    Route::get('/plebo/messages', [PleboController::class, 'messages'])->name('plebo.messages');
+    Route::get('/plebo/messages/fetch', [PleboController::class, 'fetchMessages']);
+    Route::post('/plebo/messages/send', [PleboController::class, 'sendMessage']);
+    Route::post('/plebo/messages/mark-read', [PleboController::class, 'markAsRead']);
+    Route::get('/plebo/messages/count', [PleboController::class, 'getUnreadMessageCount']);
+    Route::get('/plebo/chat-users', [PleboController::class, 'chatUsers']);
 });
 
 Route::middleware(['auth', 'role:radiologist'])->group(function () {
@@ -393,6 +412,14 @@ Route::middleware(['auth', 'role:radiologist'])->group(function () {
     Route::patch('/radiologist/pre-employment/{id}', [RadiologistController::class, 'updatePreEmployment'])->name('radiologist.pre-employment.update');
     Route::get('/radiologist/annual-physical/{id}', [RadiologistController::class, 'showAnnualPhysical'])->name('radiologist.annual-physical.show');
     Route::patch('/radiologist/annual-physical/{id}', [RadiologistController::class, 'updateAnnualPhysical'])->name('radiologist.annual-physical.update');
+
+    // Radiologist Messaging Routes
+    Route::get('/radiologist/messages', [RadiologistController::class, 'messages'])->name('radiologist.messages');
+    Route::get('/radiologist/messages/fetch', [RadiologistController::class, 'fetchMessages']);
+    Route::post('/radiologist/messages/send', [RadiologistController::class, 'sendMessage']);
+    Route::post('/radiologist/messages/mark-read', [RadiologistController::class, 'markAsRead']);
+    Route::get('/radiologist/messages/count', [RadiologistController::class, 'getUnreadMessageCount']);
+    Route::get('/radiologist/chat-users', [RadiologistController::class, 'chatUsers']);
 });
 
 Route::middleware(['auth', 'role:ecgtech'])->group(function () {
@@ -424,12 +451,13 @@ Route::middleware(['auth', 'role:ecgtech'])->group(function () {
     Route::post('/ecgtech/medical-checklist', [EcgtechController::class, 'storeMedicalChecklist'])->name('ecgtech.medical-checklist.store');
     Route::patch('/ecgtech/medical-checklist/{id}', [EcgtechController::class, 'updateMedicalChecklist'])->name('ecgtech.medical-checklist.update');
     
-    // Messages
+    // Ecgtech Messaging Routes
     Route::get('/ecgtech/messages', [EcgtechController::class, 'messages'])->name('ecgtech.messages');
-    Route::get('/ecgtech/chat-users', [EcgtechController::class, 'chatUsers'])->name('ecgtech.chat-users');
-    Route::get('/ecgtech/fetch-messages', [EcgtechController::class, 'fetchMessages'])->name('ecgtech.fetch-messages');
-    Route::post('/ecgtech/send-message', [EcgtechController::class, 'sendMessage'])->name('ecgtech.send-message');
-    Route::post('/ecgtech/mark-as-read', [EcgtechController::class, 'markAsRead'])->name('ecgtech.mark-as-read');
+    Route::get('/ecgtech/messages/fetch', [EcgtechController::class, 'fetchMessages']);
+    Route::post('/ecgtech/messages/send', [EcgtechController::class, 'sendMessage']);
+    Route::post('/ecgtech/messages/mark-read', [EcgtechController::class, 'markAsRead']);
+    Route::get('/ecgtech/messages/count', [EcgtechController::class, 'getUnreadMessageCount']);
+    Route::get('/ecgtech/chat-users', [EcgtechController::class, 'chatUsers']);
     
     // Test route
     Route::get('/ecgtech/test-contacts', [EcgtechController::class, 'testContacts']);

@@ -187,6 +187,18 @@
                         </a>
                     </div>
                 </div>
+
+                <!-- Communication Section -->
+                <div class="mb-8">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 px-3">Communication</h3>
+                    <div class="space-y-1">
+                        <a href="{{ route('radiologist.messages') }}" class="nav-item flex items-center px-4 py-3 text-gray-700 hover:text-gray-900 rounded-xl transition-all duration-200 {{ request()->routeIs('radiologist.messages*') ? 'active text-white' : '' }}">
+                            <i class="fas fa-comments mr-4 text-lg"></i>
+                            <span class="font-medium">Messages</span>
+                            <span id="message-count" class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full hidden">0</span>
+                        </a>
+                    </div>
+                </div>
             </nav>
 
             <!-- User Profile Section - Sticky Bottom -->
@@ -227,6 +239,14 @@
                                 <i class="fas fa-bell text-lg"></i>
                                 <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full notification-badge"></span>
                             </button>
+                        </div>
+                        
+                        <!-- Messages -->
+                        <div class="relative">
+                            <a href="{{ route('radiologist.messages') }}" class="p-3 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all duration-200 inline-block">
+                                <i class="fas fa-envelope text-lg"></i>
+                                <span id="header-message-count" class="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full notification-badge hidden"></span>
+                            </a>
                         </div>
                         
                         <!-- X-Ray Queue -->
@@ -422,7 +442,47 @@
             if (mainContent) {
                 mainContent.style.scrollBehavior = 'smooth';
             }
+            
+            // Initialize messages functionality
+            initializeMessages();
         });
+        
+        function initializeMessages() {
+            // Load initial message count
+            loadMessageCount();
+            
+            // Refresh message count every 30 seconds
+            setInterval(loadMessageCount, 30000);
+        }
+        
+        function loadMessageCount() {
+            fetch('/radiologist/messages/count')
+                .then(response => response.json())
+                .then(data => {
+                    updateMessageCount(data.count);
+                })
+                .catch(error => {
+                    console.log('Error loading message count:', error);
+                });
+        }
+        
+        function updateMessageCount(count) {
+            const messageCount = document.getElementById('message-count');
+            const headerMessageCount = document.getElementById('header-message-count');
+            
+            if (count > 0) {
+                if (messageCount) {
+                    messageCount.textContent = count > 99 ? '99+' : count;
+                    messageCount.classList.remove('hidden');
+                }
+                if (headerMessageCount) {
+                    headerMessageCount.classList.remove('hidden');
+                }
+            } else {
+                if (messageCount) messageCount.classList.add('hidden');
+                if (headerMessageCount) headerMessageCount.classList.add('hidden');
+            }
+        }
     </script>
 </body>
 </html>

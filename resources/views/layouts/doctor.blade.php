@@ -87,7 +87,7 @@
                     <a href="{{ route('doctor.messages') }}" class="nav-item flex items-center px-4 py-3 text-gray-700 {{ request()->routeIs('doctor.messages*') ? 'nav-item-active text-white' : '' }}">
                         <i class="fas fa-comments mr-3 text-lg"></i>
                         <span class="font-medium">Messages</span>
-                        <span class="ml-auto notification-badge text-white text-xs px-2 py-1 rounded-full font-medium">2</span>
+                        <span id="message-count" class="ml-auto notification-badge text-white text-xs px-2 py-1 rounded-full font-medium hidden">0</span>
                     </a>
                 </div>
             </nav>
@@ -221,6 +221,43 @@
                 profileModal.classList.add('hidden');
             }
         });
+
+        // Initialize messages functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMessages();
+        });
+        
+        function initializeMessages() {
+            // Load initial message count
+            loadMessageCount();
+            
+            // Refresh message count every 30 seconds
+            setInterval(loadMessageCount, 30000);
+        }
+        
+        function loadMessageCount() {
+            fetch('/doctor/messages/count')
+                .then(response => response.json())
+                .then(data => {
+                    updateMessageCount(data.count);
+                })
+                .catch(error => {
+                    console.log('Error loading message count:', error);
+                });
+        }
+        
+        function updateMessageCount(count) {
+            const messageCount = document.getElementById('message-count');
+            
+            if (count > 0) {
+                if (messageCount) {
+                    messageCount.textContent = count > 99 ? '99+' : count;
+                    messageCount.classList.remove('hidden');
+                }
+            } else {
+                if (messageCount) messageCount.classList.add('hidden');
+            }
+        }
     </script>
 </body>
 </html> 

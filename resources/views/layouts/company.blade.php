@@ -258,7 +258,7 @@
                         <a href="{{ route('company.messages') }}" class="nav-item flex items-center px-4 py-3 text-gray-700 hover:text-gray-900 rounded-xl transition-all duration-200 {{ request()->routeIs('company.messages') ? 'active text-white' : '' }}">
                             <i class="fas fa-comments mr-4 text-lg"></i>
                             <span class="font-medium">Messages</span>
-                            <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">3</span>
+                            <span id="message-count" class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full hidden">0</span>
                         </a>
                         <a href="{{ route('company.settings') }}" class="nav-item flex items-center px-4 py-3 text-gray-700 hover:text-gray-900 rounded-xl transition-all duration-200 {{ request()->routeIs('company.settings*') ? 'active text-white' : '' }}">
                             <i class="fas fa-cog mr-4 text-lg"></i>
@@ -484,6 +484,9 @@
             updateTime();
             setInterval(updateTime, 60000);
             
+            // Initialize messages functionality
+            initializeMessages();
+            
             // Search functionality
             const searchInput = document.querySelector('.search-bar');
             if (searchInput) {
@@ -503,6 +506,38 @@
                 });
             }
         });
+        
+        function initializeMessages() {
+            // Load initial message count
+            loadMessageCount();
+            
+            // Refresh message count every 30 seconds
+            setInterval(loadMessageCount, 30000);
+        }
+        
+        function loadMessageCount() {
+            fetch('/company/messages/count')
+                .then(response => response.json())
+                .then(data => {
+                    updateMessageCount(data.count);
+                })
+                .catch(error => {
+                    console.log('Error loading message count:', error);
+                });
+        }
+        
+        function updateMessageCount(count) {
+            const messageCount = document.getElementById('message-count');
+            
+            if (count > 0) {
+                if (messageCount) {
+                    messageCount.textContent = count > 99 ? '99+' : count;
+                    messageCount.classList.remove('hidden');
+                }
+            } else {
+                if (messageCount) messageCount.classList.add('hidden');
+            }
+        }
     </script>
 </body>
 </html> 

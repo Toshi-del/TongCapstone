@@ -184,7 +184,7 @@
                         <a href="{{ route('ecgtech.messages') }}" class="nav-item flex items-center px-4 py-3 text-gray-700 hover:text-gray-900 rounded-xl transition-all duration-200 {{ request()->routeIs('ecgtech.messages*') ? 'active text-white' : '' }}">
                             <i class="fas fa-comments mr-4 text-lg"></i>
                             <span class="font-medium">Messages</span>
-                            <span class="ml-auto notification-badge w-2 h-2 bg-red-500 rounded-full"></span>
+                            <span id="message-count" class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full hidden">0</span>
                         </a>
                     </div>
                 </div>
@@ -232,10 +232,10 @@
                         
                         <!-- Messages -->
                         <div class="relative">
-                            <button class="p-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200">
+                            <a href="{{ route('ecgtech.messages') }}" class="p-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-200 inline-block">
                                 <i class="fas fa-envelope text-lg"></i>
-                                <span class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full notification-badge"></span>
-                            </button>
+                                <span id="header-message-count" class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full notification-badge hidden"></span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -422,7 +422,47 @@
             if (mainContent) {
                 mainContent.style.scrollBehavior = 'smooth';
             }
+            
+            // Initialize messages functionality
+            initializeMessages();
         });
+        
+        function initializeMessages() {
+            // Load initial message count
+            loadMessageCount();
+            
+            // Refresh message count every 30 seconds
+            setInterval(loadMessageCount, 30000);
+        }
+        
+        function loadMessageCount() {
+            fetch('/ecgtech/messages/count')
+                .then(response => response.json())
+                .then(data => {
+                    updateMessageCount(data.count);
+                })
+                .catch(error => {
+                    console.log('Error loading message count:', error);
+                });
+        }
+        
+        function updateMessageCount(count) {
+            const messageCount = document.getElementById('message-count');
+            const headerMessageCount = document.getElementById('header-message-count');
+            
+            if (count > 0) {
+                if (messageCount) {
+                    messageCount.textContent = count > 99 ? '99+' : count;
+                    messageCount.classList.remove('hidden');
+                }
+                if (headerMessageCount) {
+                    headerMessageCount.classList.remove('hidden');
+                }
+            } else {
+                if (messageCount) messageCount.classList.add('hidden');
+                if (headerMessageCount) headerMessageCount.classList.add('hidden');
+            }
+        }
     </script>
 </body>
 </html>

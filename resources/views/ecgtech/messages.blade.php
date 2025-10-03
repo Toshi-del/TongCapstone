@@ -16,12 +16,12 @@
                     </div>
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">ECG Tech Messages</h1>
-                        <p class="text-sm text-gray-600 mt-1">Communicate with doctors and medical staff</p>
+                        <p class="text-sm text-gray-600 mt-1">Communicate with admin and doctors</p>
                     </div>
                 </div>
                 <div class="hidden md:flex items-center space-x-2 text-sm text-gray-500">
-                    <i class="fas fa-heartbeat text-green-600"></i>
-                    <span>Real-time cardiac communication</span>
+                    <i class="fas fa-bell"></i>
+                    <span>Real-time notifications enabled</span>
                 </div>
             </div>
         </div>
@@ -36,7 +36,7 @@
                             <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                                 <i class="fas fa-users text-green-600 text-sm"></i>
                             </div>
-                            <h3 class="font-semibold text-gray-900">Medical Contacts</h3>
+                            <h3 class="font-semibold text-gray-900">Conversations</h3>
                         </div>
                     </div>
                     <div class="chat-search">
@@ -44,7 +44,7 @@
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <i class="fas fa-search text-gray-400 text-sm"></i>
                             </div>
-                            <input id="user-search" type="text" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-150" placeholder="Search contacts..." autocomplete="off">
+                            <input id="user-search" type="text" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-150" placeholder="Search users..." autocomplete="off">
                         </div>
                     </div>
                     <ul id="user-list" class="chat-user-list"></ul>
@@ -60,7 +60,7 @@
                                 </div>
                                 <div>
                                     <div class="chat-header-title font-semibold text-gray-900" id="chat-title">Select a conversation</div>
-                                    <div class="text-sm text-gray-500">Click on a contact to start messaging</div>
+                                    <div class="text-sm text-gray-500">Click on a user to start messaging</div>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2">
@@ -77,7 +77,7 @@
                                     <i class="fas fa-comment-dots text-green-600 text-2xl"></i>
                                 </div>
                                 <h3 class="text-lg font-semibold text-gray-900 mb-2">Start a conversation</h3>
-                                <p class="text-gray-600">Select a contact from the sidebar to begin messaging</p>
+                                <p class="text-gray-600">Select a user from the sidebar to begin messaging</p>
                             </div>
                         </div>
                     </div>
@@ -85,7 +85,7 @@
                         <input type="hidden" id="receiver_id" name="receiver_id">
                         <div class="flex items-end space-x-3">
                             <div class="flex-1 relative">
-                                <textarea id="message" name="message" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-150 resize-none" rows="1" placeholder="Type a message..." required></textarea>
+                                <textarea id="message" name="message" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-150 resize-none" rows="1" placeholder="Type a message..." required></textarea>
                             </div>
                             <button type="submit" class="inline-flex items-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-all duration-150 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" id="send-btn" disabled>
                                 <i class="fas fa-paper-plane text-sm"></i>
@@ -123,7 +123,7 @@
 	.chat-search {
 		padding: 16px 20px;
 		border-bottom: 1px solid #e5e7eb;
-		background-color: #f9fafb;
+		background-color: #f0fdf4;
 		flex-shrink: 0;
 	}
 	
@@ -137,7 +137,7 @@
 		background-color: #ffffff;
 		min-height: 0;
 		scrollbar-width: thin;
-		scrollbar-color: #cbd5e1 #f8fafc;
+		scrollbar-color: #16a34a #f0fdf4;
 	}
 	
 	.chat-user-list::-webkit-scrollbar {
@@ -145,18 +145,18 @@
 	}
 	
 	.chat-user-list::-webkit-scrollbar-track {
-		background: #f8fafc;
+		background: #f0fdf4;
 		border-radius: 3px;
 	}
 	
 	.chat-user-list::-webkit-scrollbar-thumb {
-		background: #cbd5e1;
+		background: #16a34a;
 		border-radius: 3px;
 		transition: background-color 0.2s ease;
 	}
 	
 	.chat-user-list::-webkit-scrollbar-thumb:hover {
-		background: #94a3b8;
+		background: #15803d;
 	}
 	
 	.chat-user-item {
@@ -178,7 +178,8 @@
 	.chat-user-item.active {
 		background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
 		color: white;
-		box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+		box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+		transform: translateX(2px);
 	}
 	
 	.chat-user-item.active::before {
@@ -206,7 +207,7 @@
 	}
 	
 	.chat-user-item.active .chat-user-avatar {
-		background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+		background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
 		color: #16a34a;
 		box-shadow: 0 2px 12px rgba(255, 255, 255, 0.3);
 	}
@@ -263,7 +264,7 @@
 	.chat-header {
 		padding: 20px 24px;
 		border-bottom: 1px solid #e5e7eb;
-		background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+		background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
 	}
 	
 	.chat-messages {
@@ -273,7 +274,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 16px;
-		background: linear-gradient(135deg, #fafbfc 0%, #f8fafc 100%);
+		background: linear-gradient(135deg, #fafbfc 0%, #f0fdf4 100%);
 	}
 	
 	.chat-empty {
@@ -322,7 +323,7 @@
 	}
 	
 	.chat-message.sent .chat-message-avatar {
-		background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+		background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 	}
 	
 	.chat-message-content {
@@ -330,7 +331,7 @@
 	}
 	
 	.chat-message-bubble {
-		background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+		background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
 		padding: 12px 16px;
 		border-radius: 16px;
 		word-wrap: break-word;
@@ -340,10 +341,10 @@
 	}
 	
 	.chat-message.sent .chat-message-bubble {
-		background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+		background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 		color: white;
-		border: 1px solid #15803d;
-		box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+		border: 1px solid #059669;
+		box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 	}
 	
 	.chat-message-time {
@@ -361,7 +362,7 @@
 	.chat-input {
 		padding: 20px 24px;
 		border-top: 1px solid #e5e7eb;
-		background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+		background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
 	}
 	
 	@media (max-width: 768px) {
@@ -400,6 +401,8 @@
 	let userIndex = new Map();
 	let lastMessageCount = 0;
 	let notificationSound = null;
+	let currentConversationUserId = null;
+	let currentMessages = [];
 
 	function renderUserList(users) {
 		console.log('Rendering user list with', users.length, 'users');
@@ -439,7 +442,7 @@
 			// Create time element
 			const time = document.createElement('div');
 			time.className = 'chat-user-time';
-			time.textContent = user.last_message_time || '';
+			time.textContent = formatTime(user.last_message_time) || '';
 			
 			li.appendChild(avatar);
 			li.appendChild(userInfo);
@@ -460,8 +463,21 @@
 				return response.json();
 			})
 			.then(data => {
-				console.log('Users received:', data);
-				const users = data.filtered_users || [];
+				console.log('Response data:', data);
+				// Handle different response formats
+				let users = [];
+				if (Array.isArray(data)) {
+					users = data;
+				} else if (data.filtered_users && Array.isArray(data.filtered_users)) {
+					users = data.filtered_users;
+				} else if (data.users && Array.isArray(data.users)) {
+					users = data.users;
+				} else {
+					console.error('Unexpected data format:', data);
+					users = [];
+				}
+				
+				console.log('Processed users:', users);
 				allUsers = users;
 				userIndex = new Map(users.map(u => [u.id, u]));
 				renderUserList(users);
@@ -487,9 +503,68 @@
 		document.querySelectorAll('.chat-user-item').forEach(el => el.classList.remove('active'));
 		const selectedLi = document.getElementById('user-' + userId);
 		if (selectedLi) selectedLi.classList.add('active');
+		
+		// Remove unread badge when user is selected
+		const unreadBadge = selectedLi?.querySelector('.unread-badge');
+		if (unreadBadge) {
+			unreadBadge.remove();
+		}
+		
+		// Clear chat immediately when switching users
+		const chatBox = document.getElementById('chat-box');
+		const empty = document.getElementById('chat-empty');
+		if (chatBox) {
+			chatBox.innerHTML = '';
+			if (empty) {
+				empty.style.display = 'flex';
+				chatBox.appendChild(empty);
+			}
+		}
+		
 		const u = userIndex.get(userId);
-		document.getElementById('chat-title').textContent = u ? `${u.fname} ${u.lname}`.trim() : 'Conversation';
+		const chatTitle = document.getElementById('chat-title');
+		const chatSubtitle = chatTitle.nextElementSibling;
+		
+		if (u) {
+			chatTitle.textContent = `${u.fname} ${u.lname}`.trim();
+			chatSubtitle.textContent = `${u.role || 'Staff Member'}${u.company ? ' • ' + u.company : ''}`;
+		} else {
+			chatTitle.textContent = 'Conversation';
+			chatSubtitle.textContent = 'Choose a contact to start messaging';
+		}
+		
 		loadMessages(true);
+	}
+
+	// Helper function to create a message element
+	function createMessageElement(msg) {
+		const messageDiv = document.createElement('div');
+		messageDiv.className = 'chat-message' + (msg.sender_id == {!! auth()->id() !!} ? ' sent' : '');
+		messageDiv.setAttribute('data-message-id', msg.id || 'temp-' + Date.now());
+		
+		const avatar = document.createElement('div');
+		avatar.className = 'chat-message-avatar';
+		const senderUser = userIndex.get(msg.sender_id) || {};
+		const initials = `${(senderUser.fname?.[0]||'').toUpperCase()}${(senderUser.lname?.[0]||'').toUpperCase()}`;
+		avatar.textContent = initials || 'U';
+		
+		const content = document.createElement('div');
+		content.className = 'chat-message-content';
+		
+		const bubble = document.createElement('div');
+		bubble.className = 'chat-message-bubble';
+		bubble.textContent = msg.message;
+		
+		const time = document.createElement('div');
+		time.className = 'chat-message-time';
+		time.textContent = formatTime(msg.created_at) || 'Just now';
+		
+		content.appendChild(bubble);
+		content.appendChild(time);
+		messageDiv.appendChild(avatar);
+		messageDiv.appendChild(content);
+		
+		return messageDiv;
 	}
 
 	function formatTime(ts) {
@@ -520,60 +595,72 @@
 
 	function loadMessages(forceScroll) {
 		if (!selectedUserId) return;
-		fetch('/ecgtech/fetch-messages')
-			.then(response => response.json())
-			.then(messages => {
+		
+		const requestUserId = selectedUserId; // Capture the current user ID for this request
+		console.log('Loading messages for user:', requestUserId);
+		
+		fetch(`/ecgtech/messages/fetch?user_id=${requestUserId}`)
+			.then(response => {
+				if (!response.ok) {
+					throw new Error('Failed to fetch messages');
+				}
+				return response.json();
+			})
+			.then(data => {
+				console.log('Messages loaded for user:', requestUserId, 'Current selected:', selectedUserId);
+				
+				// Check if this response is still relevant (user might have switched)
+				if (requestUserId !== selectedUserId) {
+					console.log('Ignoring stale response for user:', requestUserId);
+					return;
+				}
+				
 				const chatBox = document.getElementById('chat-box');
 				const empty = document.getElementById('chat-empty');
 				
-				// Filter messages between current user and selected contact
-				const filteredMessages = messages.filter(msg => 
-					(msg.sender_id == selectedUserId && msg.receiver_id == {{ Auth::id() }}) ||
-					(msg.sender_id == {{ Auth::id() }} && msg.receiver_id == selectedUserId)
-				);
+				// Check if elements exist
+				if (!chatBox) {
+					console.error('Chat box element not found');
+					return;
+				}
 				
 				// Check for new messages and show notifications
-				checkForNewMessages(filteredMessages);
+				checkForNewMessages(data);
 				
-				if (filteredMessages && filteredMessages.length > 0) {
-					empty.style.display = 'none';
-					chatBox.innerHTML = '';
-					filteredMessages.forEach(msg => {
-						const messageDiv = document.createElement('div');
-						messageDiv.className = 'chat-message' + (msg.sender_id == {{ auth()->id() }} ? ' sent' : '');
+				if (data.messages && data.messages.length > 0) {
+					if (empty) empty.style.display = 'none';
+					
+					// Always rebuild if conversation changed or forced
+					const conversationChanged = currentConversationUserId !== requestUserId;
+					const newMessageIds = data.messages.map(m => m.id).join(',');
+					const currentMessageIds = currentMessages.map(m => m.id).join(',');
+					
+					if (forceScroll || conversationChanged || newMessageIds !== currentMessageIds) {
+						console.log('Rebuilding messages - force:', forceScroll, 'conversation changed:', conversationChanged);
+						chatBox.innerHTML = '';
+						data.messages.forEach(msg => {
+							chatBox.appendChild(createMessageElement(msg));
+						});
 						
-						const avatar = document.createElement('div');
-						avatar.className = 'chat-message-avatar';
-						const senderUser = userIndex.get(msg.sender_id) || {};
-						const initials = `${(senderUser.fname?.[0]||'').toUpperCase()}${(senderUser.lname?.[0]||'').toUpperCase()}`;
-						avatar.textContent = initials || 'U';
-						
-						const content = document.createElement('div');
-						content.className = 'chat-message-content';
-						
-						const bubble = document.createElement('div');
-						bubble.className = 'chat-message-bubble';
-						bubble.textContent = msg.message;
-						
-						const time = document.createElement('div');
-						time.className = 'chat-message-time';
-						time.textContent = formatTime(msg.created_at);
-						
-						content.appendChild(bubble);
-						content.appendChild(time);
-						messageDiv.appendChild(avatar);
-						messageDiv.appendChild(content);
-						chatBox.appendChild(messageDiv);
-					});
+						currentMessages = data.messages;
+						currentConversationUserId = requestUserId;
+					}
 					
 					if (forceScroll || chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 50) {
 						chatBox.scrollTop = chatBox.scrollHeight;
 					}
 				} else {
-					empty.style.display = 'flex';
-					chatBox.innerHTML = '';
-					chatBox.appendChild(empty);
+					if (empty) {
+						empty.style.display = 'flex';
+						chatBox.innerHTML = '';
+						chatBox.appendChild(empty);
+					}
+					currentMessages = [];
+					currentConversationUserId = requestUserId;
 				}
+			})
+			.catch(error => {
+				console.error('Error loading messages:', error);
 			});
 	}
 
@@ -583,7 +670,7 @@
 		const messageEl = document.getElementById('message');
 		const text = messageEl.value.trim();
 		if (!text) return;
-		fetch('/ecgtech/send-message', {
+		fetch('/ecgtech/messages/send', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -611,6 +698,7 @@
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
 			if (!document.getElementById('send-btn').disabled) {
+				// Trigger the existing submit handler
 				document.getElementById('chat-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
 			}
 		}
@@ -618,13 +706,26 @@
 
 	// Check for new messages and show notifications
 	function checkForNewMessages(messages) {
-		const currentMessageCount = messages.length;
+		// Handle different response formats - check if data is array or has messages property
+		let messageArray = [];
+		if (Array.isArray(messages)) {
+			messageArray = messages;
+		} else if (messages.messages && Array.isArray(messages.messages)) {
+			messageArray = messages.messages;
+		}
+		
+		const currentMessageCount = messageArray.length;
 		if (currentMessageCount > lastMessageCount && lastMessageCount > 0) {
 			// New messages arrived
 			showNotification('New message received');
 			playNotificationSound();
 		}
 		lastMessageCount = currentMessageCount;
+	}
+
+	// Check for new messages and show notifications (old version)
+	function checkForNewMessagesOld(messages) {
+		// This is handled by the new checkForNewMessages function above
 	}
 
 	// Show browser notification
@@ -653,9 +754,10 @@
 		}
 	}
 
+	// Mark messages as read shortly after viewing
 	function markAsRead() {
 		if (!selectedUserId) return;
-		fetch('/ecgtech/mark-as-read', {
+		fetch('/ecgtech/messages/mark-read', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -681,6 +783,9 @@
 	});
 
 	setInterval(() => { loadMessages(); markAsRead(); }, 2000);
+	// Refresh user list every 10 seconds to update unread counts
+	setInterval(() => { loadUsers(); }, 10000);
 	loadUsers();
 </script>
 @endsection
+

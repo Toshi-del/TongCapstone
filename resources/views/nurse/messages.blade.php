@@ -400,6 +400,8 @@
 	let userIndex = new Map();
 	let lastMessageCount = 0;
 	let notificationSound = null;
+	let currentConversationUserId = null;
+	let currentMessages = [];
 
 	function renderUserList(users) {
 		console.log('Rendering user list with', users.length, 'users');
@@ -439,7 +441,7 @@
 			// Create time element
 			const time = document.createElement('div');
 			time.className = 'chat-user-time';
-			time.textContent = user.last_message_time || '';
+			time.textContent = formatTime(user.last_message_time) || '';
 			
 			li.appendChild(avatar);
 			li.appendChild(userInfo);
@@ -507,6 +509,17 @@
 			unreadBadge.remove();
 		}
 		
+		// Clear chat immediately when switching users
+		const chatBox = document.getElementById('chat-box');
+		const empty = document.getElementById('chat-empty');
+		if (chatBox) {
+			chatBox.innerHTML = '';
+			if (empty) {
+				empty.style.display = 'flex';
+				chatBox.appendChild(empty);
+			}
+		}
+		
 		const u = userIndex.get(userId);
 		const chatTitle = document.getElementById('chat-title');
 		const chatSubtitle = chatTitle.nextElementSibling;
@@ -520,6 +533,37 @@
 		}
 		
 		loadMessages(true);
+	}
+
+	// Helper function to create a message element
+	function createMessageElement(msg) {
+		const messageDiv = document.createElement('div');
+		messageDiv.className = 'chat-message' + (msg.sender_id == {!! auth()->id() !!} ? ' sent' : '');
+		messageDiv.setAttribute('data-message-id', msg.id || 'temp-' + Date.now());
+		
+		const avatar = document.createElement('div');
+		avatar.className = 'chat-message-avatar';
+		const senderUser = userIndex.get(msg.sender_id) || {};
+		const initials = `${(senderUser.fname?.[0]||'').toUpperCase()}${(senderUser.lname?.[0]||'').toUpperCase()}`;
+		avatar.textContent = initials || 'U';
+		
+		const content = document.createElement('div');
+		content.className = 'chat-message-content';
+		
+		const bubble = document.createElement('div');
+		bubble.className = 'chat-message-bubble';
+		bubble.textContent = msg.message;
+		
+		const time = document.createElement('div');
+		time.className = 'chat-message-time';
+		time.textContent = formatTime(msg.created_at) || 'Just now';
+		
+		content.appendChild(bubble);
+		content.appendChild(time);
+		messageDiv.appendChild(avatar);
+		messageDiv.appendChild(content);
+		
+		return messageDiv;
 	}
 
 	function formatTime(ts) {
@@ -550,62 +594,72 @@
 
 	function loadMessages(forceScroll) {
 		if (!selectedUserId) return;
-		fetch('/nurse/messages/fetch')
-			.then(response => response.json())
+		
+		const requestUserId = selectedUserId; // Capture the current user ID for this request
+		console.log('Loading messages for user:', requestUserId);
+		
+		fetch(`/nurse/messages/fetch?user_id=${requestUserId}`)
+			.then(response => {
+				if (!response.ok) {
+					throw new Error('Failed to fetch messages');
+				}
+				return response.json();
+			})
 			.then(data => {
+				console.log('Messages loaded for user:', requestUserId, 'Current selected:', selectedUserId);
+				
+				// Check if this response is still relevant (user might have switched)
+				if (requestUserId !== selectedUserId) {
+					console.log('Ignoring stale response for user:', requestUserId);
+					return;
+				}
+				
 				const chatBox = document.getElementById('chat-box');
 				const empty = document.getElementById('chat-empty');
+				
+				// Check if elements exist
+				if (!chatBox) {
+					console.error('Chat box element not found');
+					return;
+				}
 				
 				// Check for new messages and show notifications
 				checkForNewMessages(data);
 				
-				// Handle different response formats - check if data is array or has messages property
-				let messages = [];
-				if (Array.isArray(data)) {
-					messages = data.filter(msg => (msg.sender_id == selectedUserId || msg.receiver_id == selectedUserId));
-				} else if (data.messages && Array.isArray(data.messages)) {
-					messages = data.messages;
-				}
-				
-				if (messages.length > 0) {
-					empty.style.display = 'none';
-					chatBox.innerHTML = '';
-					messages.forEach(msg => {
-						const messageDiv = document.createElement('div');
-						messageDiv.className = 'chat-message' + (msg.sender_id == {{ auth()->id() }} ? ' sent' : '');
+				if (data.messages && data.messages.length > 0) {
+					if (empty) empty.style.display = 'none';
+					
+					// Always rebuild if conversation changed or forced
+					const conversationChanged = currentConversationUserId !== requestUserId;
+					const newMessageIds = data.messages.map(m => m.id).join(',');
+					const currentMessageIds = currentMessages.map(m => m.id).join(',');
+					
+					if (forceScroll || conversationChanged || newMessageIds !== currentMessageIds) {
+						console.log('Rebuilding messages - force:', forceScroll, 'conversation changed:', conversationChanged);
+						chatBox.innerHTML = '';
+						data.messages.forEach(msg => {
+							chatBox.appendChild(createMessageElement(msg));
+						});
 						
-						const avatar = document.createElement('div');
-						avatar.className = 'chat-message-avatar';
-						const senderUser = userIndex.get(msg.sender_id) || {};
-						const initials = `${(senderUser.fname?.[0]||'').toUpperCase()}${(senderUser.lname?.[0]||'').toUpperCase()}`;
-						avatar.textContent = initials || 'U';
-						
-						const content = document.createElement('div');
-						content.className = 'chat-message-content';
-						
-						const bubble = document.createElement('div');
-						bubble.className = 'chat-message-bubble';
-						bubble.textContent = msg.message;
-						
-						const time = document.createElement('div');
-						time.className = 'chat-message-time';
-						time.textContent = formatTime(msg.created_at);
-						
-						content.appendChild(bubble);
-						content.appendChild(time);
-						messageDiv.appendChild(avatar);
-						messageDiv.appendChild(content);
-						chatBox.appendChild(messageDiv);
-					});
+						currentMessages = data.messages;
+						currentConversationUserId = requestUserId;
+					}
 					
 					if (forceScroll || chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 50) {
 						chatBox.scrollTop = chatBox.scrollHeight;
 					}
 				} else {
-					empty.style.display = 'flex';
-					chatBox.innerHTML = '';
-					chatBox.appendChild(empty);
+					if (empty) {
+						empty.style.display = 'flex';
+						chatBox.innerHTML = '';
+						chatBox.appendChild(empty);
+					}
+					currentMessages = [];
+					currentConversationUserId = requestUserId;
 				}
+			})
+			.catch(error => {
+				console.error('Error loading messages:', error);
 			});
 	}
 
@@ -651,13 +705,26 @@
 
 	// Check for new messages and show notifications
 	function checkForNewMessages(messages) {
-		const currentMessageCount = messages.length;
+		// Handle different response formats - check if data is array or has messages property
+		let messageArray = [];
+		if (Array.isArray(messages)) {
+			messageArray = messages;
+		} else if (messages.messages && Array.isArray(messages.messages)) {
+			messageArray = messages.messages;
+		}
+		
+		const currentMessageCount = messageArray.length;
 		if (currentMessageCount > lastMessageCount && lastMessageCount > 0) {
 			// New messages arrived
 			showNotification('New message received');
 			playNotificationSound();
 		}
 		lastMessageCount = currentMessageCount;
+	}
+
+	// Check for new messages and show notifications (old version)
+	function checkForNewMessagesOld(messages) {
+		// This is handled by the new checkForNewMessages function above
 	}
 
 	// Show browser notification

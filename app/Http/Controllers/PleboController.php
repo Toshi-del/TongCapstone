@@ -12,6 +12,7 @@ use App\Models\MedicalChecklist;
 use App\Models\User;
 use App\Models\AppointmentTestAssignment;
 use App\Models\Notification;
+use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -632,6 +633,165 @@ class PleboController extends Controller
         $assignment->update($updateData);
 
         return redirect()->route('plebo.test-assignments')->with('success', 'Test assignment status updated successfully.');
+    }
+
+    /**
+     * Show plebo messages view
+     */
+    public function messages()
+    {
+        return view('plebo.messages');
+    }
+
+    /**
+     * Get users that plebo can chat with (admin and doctor only)
+     */
+    public function chatUsers()
+    {
+        $currentUserId = Auth::id();
+        
+        $users = User::whereIn('role', ['admin', 'doctor'])
+            ->where('id', '!=', $currentUserId)
+            ->select('id', 'fname', 'lname', 'role', 'company')
+            ->orderBy('fname')
+            ->orderBy('lname')
+            ->get();
+        
+        // Add last message information for each user
+        $users = $users->map(function($user) use ($currentUserId) {
+            // Get the last message between plebo user and this user
+            $lastMessage = Message::where(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $currentUserId)->where('receiver_id', $user->id);
+                })
+                ->orWhere(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $user->id)->where('receiver_id', $currentUserId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            // Convert company enum values to strings for frontend compatibility
+            $user->company = $user->company ? (string) $user->company : null;
+            
+            // Add last message info
+            if ($lastMessage) {
+                $user->last_message = \Str::limit($lastMessage->message, 50);
+                $user->last_message_time = $lastMessage->created_at->diffForHumans();
+            } else {
+                $user->last_message = 'No messages yet';
+                $user->last_message_time = '';
+            }
+            
+            // Add unread message count
+            $unreadCount = Message::where('sender_id', $user->id)
+                ->where('receiver_id', $currentUserId)
+                ->whereNull('read_at')
+                ->count();
+            $user->unread_messages = $unreadCount;
+            
+            return $user;
+        });
+        
+        // Sort by last message time (most recent first)
+        $users = $users->sortByDesc(function($user) use ($currentUserId) {
+            $lastMessage = Message::where(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $currentUserId)->where('receiver_id', $user->id);
+                })
+                ->orWhere(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $user->id)->where('receiver_id', $currentUserId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            return $lastMessage ? $lastMessage->created_at : '1970-01-01';
+        })->values();
+        
+        return response()->json($users);
+    }
+
+    /**
+     * Fetch messages for the current plebo
+     */
+    public function fetchMessages(Request $request)
+    {
+        $userId = Auth::id();
+        $otherUserId = $request->get('user_id');
+        
+        // If no specific user is selected, return empty messages
+        if (!$otherUserId) {
+            return response()->json(['messages' => []]);
+        }
+        
+        // Mark messages to this user as delivered
+        Message::whereNull('delivered_at')
+            ->where('receiver_id', $userId)
+            ->where('sender_id', $otherUserId)
+            ->update(['delivered_at' => now()]);
+
+        // Get messages between plebo user and the specific user
+        $messages = Message::where(function($query) use ($userId, $otherUserId) {
+                $query->where('sender_id', $userId)->where('receiver_id', $otherUserId);
+            })
+            ->orWhere(function($query) use ($userId, $otherUserId) {
+                $query->where('sender_id', $otherUserId)->where('receiver_id', $userId);
+            })
+            ->orderBy('created_at', 'asc')
+            ->get();
+            
+        return response()->json(['messages' => $messages]);
+    }
+
+    /**
+     * Send a message (plebo can only send to admin or doctor)
+     */
+    public function sendMessage(Request $request)
+    {
+        $request->validate([
+            'receiver_id' => 'required|exists:users,id',
+            'message' => 'required|string|max:1000'
+        ]);
+        
+        $receiver = User::find($request->receiver_id);
+        if (!in_array($receiver->role, ['admin', 'doctor'])) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
+        $message = Message::create([
+            'sender_id' => Auth::id(),
+            'receiver_id' => $request->receiver_id,
+            'message' => $request->message
+        ]);
+        
+        return response()->json($message);
+    }
+
+    /**
+     * Mark messages as read
+     */
+    public function markAsRead(Request $request)
+    {
+        $request->validate([
+            'sender_id' => 'required|exists:users,id'
+        ]);
+        
+        Message::where('sender_id', $request->sender_id)
+            ->where('receiver_id', Auth::id())
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+            
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Get unread message count for the current plebo user.
+     */
+    public function getUnreadMessageCount()
+    {
+        $userId = Auth::id();
+        $count = Message::where('receiver_id', $userId)
+            ->whereNull('read_at')
+            ->count();
+        
+        return response()->json(['count' => $count]);
     }
 }
 

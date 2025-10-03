@@ -145,11 +145,11 @@
                 
                 <div class="text-gray-500 text-xs font-semibold uppercase tracking-wider px-4 mt-8 mb-4">Communication</div>
                 
-                <a href="#" class="nav-item flex items-center px-4 py-4 rounded-2xl font-medium">
+                <a href="{{ route('plebo.messages') }}" class="nav-item flex items-center px-4 py-4 rounded-2xl font-medium {{ request()->routeIs('plebo.messages*') ? 'active' : '' }}">
                     <i class="fas fa-comments text-lg mr-4"></i>
                     <span>Messages</span>
                     <div class="ml-auto flex items-center space-x-2">
-                        <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">3</span>
+                        <span id="message-count" class="bg-red-500 text-white text-xs px-2 py-1 rounded-full hidden">0</span>
                         <i class="fas fa-chevron-right text-xs opacity-60"></i>
                     </div>
                 </a>
@@ -219,6 +219,14 @@
                             <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold">3</span>
                         </button>
                         
+                        <!-- Messages -->
+                        <div class="relative">
+                            <a href="{{ route('plebo.messages') }}" class="bg-gray-50 hover:bg-gray-100 border border-gray-200 p-3 rounded-2xl text-gray-600 hover:text-gray-900 transition-all duration-300 inline-block">
+                                <i class="fas fa-envelope text-lg"></i>
+                                <span id="header-message-count" class="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full notification-badge hidden"></span>
+                            </a>
+                        </div>
+                        
                         <!-- Settings -->
                         <button class="bg-gray-50 hover:bg-gray-100 border border-gray-200 p-3 rounded-2xl text-gray-600 hover:text-gray-900 transition-all duration-300">
                             <i class="fas fa-cog text-lg"></i>
@@ -281,7 +289,47 @@
                     closeSidebar();
                 }
             });
+            
+            // Initialize messages functionality
+            initializeMessages();
         });
+        
+        function initializeMessages() {
+            // Load initial message count
+            loadMessageCount();
+            
+            // Refresh message count every 30 seconds
+            setInterval(loadMessageCount, 30000);
+        }
+        
+        function loadMessageCount() {
+            fetch('/plebo/messages/count')
+                .then(response => response.json())
+                .then(data => {
+                    updateMessageCount(data.count);
+                })
+                .catch(error => {
+                    console.log('Error loading message count:', error);
+                });
+        }
+        
+        function updateMessageCount(count) {
+            const messageCount = document.getElementById('message-count');
+            const headerMessageCount = document.getElementById('header-message-count');
+            
+            if (count > 0) {
+                if (messageCount) {
+                    messageCount.textContent = count > 99 ? '99+' : count;
+                    messageCount.classList.remove('hidden');
+                }
+                if (headerMessageCount) {
+                    headerMessageCount.classList.remove('hidden');
+                }
+            } else {
+                if (messageCount) messageCount.classList.add('hidden');
+                if (headerMessageCount) headerMessageCount.classList.add('hidden');
+            }
+        }
     </script>
     @yield('scripts')
 </body>

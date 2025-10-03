@@ -450,110 +450,100 @@ class EcgtechController extends Controller
     }
 
     /**
-     * Get chat users (doctors and admins)
+     * Get users that ecgtech can chat with (admin and doctor only)
      */
     public function chatUsers()
     {
-        try {
-            // First, let's check if we can query users at all
-            $users = User::whereIn('role', [
-                    'doctor', 
-                    'admin', 
-                    'nurse', 
-                    'radtech', 
-                    'radiologist', 
-                    'plebo', 
-                    'pathologist'
-                ])
-                ->where('id', '!=', Auth::id())
-                ->get();
-
-            $formattedUsers = [];
+        $currentUserId = Auth::id();
+        
+        $users = User::whereIn('role', ['admin', 'doctor'])
+            ->where('id', '!=', $currentUserId)
+            ->select('id', 'fname', 'lname', 'role', 'company')
+            ->orderBy('fname')
+            ->orderBy('lname')
+            ->get();
+        
+        // Add last message information for each user
+        $users = $users->map(function($user) use ($currentUserId) {
+            // Get the last message between ecgtech user and this user
+            $lastMessage = Message::where(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $currentUserId)->where('receiver_id', $user->id);
+                })
+                ->orWhere(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $user->id)->where('receiver_id', $currentUserId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
             
-            foreach ($users as $user) {
-                try {
-                    $unreadCount = Message::where('sender_id', $user->id)
-                        ->where('receiver_id', Auth::id())
-                        ->where('is_read', false)
-                        ->count();
-                } catch (\Exception $e) {
-                    $unreadCount = 0; // Default to 0 if there's an issue with messages
-                }
-                
-                // Format role names for display
-                $roleDisplayNames = [
-                    'doctor' => 'Doctor',
-                    'admin' => 'Admin',
-                    'nurse' => 'Nurse (Medtech)',
-                    'radtech' => 'Radtech',
-                    'radiologist' => 'Radiologist',
-                    'plebo' => 'Plebo',
-                    'pathologist' => 'Pathologist'
-                ];
-                
-                $formattedUsers[] = [
-                    'id' => $user->id ?? 0,
-                    'fname' => $user->fname ?? '',
-                    'lname' => $user->lname ?? '',
-                    'role' => $roleDisplayNames[$user->role] ?? ucfirst($user->role ?? 'Unknown'),
-                    'unread_count' => $unreadCount
-                ];
+            // Convert company enum values to strings for frontend compatibility
+            $user->company = $user->company ? (string) $user->company : null;
+            
+            // Add last message info
+            if ($lastMessage) {
+                $user->last_message = \Str::limit($lastMessage->message, 50);
+                $user->last_message_time = $lastMessage->created_at->diffForHumans();
+            } else {
+                $user->last_message = 'No messages yet';
+                $user->last_message_time = '';
             }
-
-            return response()->json(['filtered_users' => $formattedUsers]);
-        } catch (\Exception $e) {
-            \Log::error('Error in chatUsers: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-            return response()->json(['error' => 'Failed to load contacts: ' . $e->getMessage()], 500);
-        }
+            
+            // Add unread message count
+            $unreadCount = Message::where('sender_id', $user->id)
+                ->where('receiver_id', $currentUserId)
+                ->whereNull('read_at')
+                ->count();
+            $user->unread_messages = $unreadCount;
+            
+            return $user;
+        });
+        
+        // Sort by last message time (most recent first)
+        $users = $users->sortByDesc(function($user) use ($currentUserId) {
+            $lastMessage = Message::where(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $currentUserId)->where('receiver_id', $user->id);
+                })
+                ->orWhere(function($query) use ($currentUserId, $user) {
+                    $query->where('sender_id', $user->id)->where('receiver_id', $currentUserId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            return $lastMessage ? $lastMessage->created_at : '1970-01-01';
+        })->values();
+        
+        return response()->json($users);
     }
 
     /**
-     * Fetch messages
+     * Fetch messages for the current ecgtech
      */
-    public function fetchMessages()
+    public function fetchMessages(Request $request)
     {
-        try {
-            $messages = Message::where(function ($query) {
-                $query->where('sender_id', Auth::id())
-                      ->orWhere('receiver_id', Auth::id());
+        $userId = Auth::id();
+        $otherUserId = $request->get('user_id');
+        
+        // If no specific user is selected, return empty messages
+        if (!$otherUserId) {
+            return response()->json(['messages' => []]);
+        }
+        
+        // Mark messages to this user as delivered
+        Message::whereNull('delivered_at')
+            ->where('receiver_id', $userId)
+            ->where('sender_id', $otherUserId)
+            ->update(['delivered_at' => now()]);
+
+        // Get messages between ecgtech user and the specific user
+        $messages = Message::where(function($query) use ($userId, $otherUserId) {
+                $query->where('sender_id', $userId)->where('receiver_id', $otherUserId);
+            })
+            ->orWhere(function($query) use ($userId, $otherUserId) {
+                $query->where('sender_id', $otherUserId)->where('receiver_id', $userId);
             })
             ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($message) {
-                // Get sender and receiver info manually to avoid relationship issues
-                $sender = User::find($message->sender_id);
-                $receiver = User::find($message->receiver_id);
-                
-                return [
-                    'id' => $message->id,
-                    'sender_id' => $message->sender_id,
-                    'receiver_id' => $message->receiver_id,
-                    'message' => $message->message,
-                    'is_read' => $message->is_read,
-                    'created_at' => $message->created_at,
-                    'updated_at' => $message->updated_at,
-                    'sender' => $sender ? [
-                        'id' => $sender->id,
-                        'fname' => $sender->fname,
-                        'lname' => $sender->lname,
-                        'role' => $sender->role
-                    ] : null,
-                    'receiver' => $receiver ? [
-                        'id' => $receiver->id,
-                        'fname' => $receiver->fname,
-                        'lname' => $receiver->lname,
-                        'role' => $receiver->role
-                    ] : null
-                ];
-            });
-
-            return response()->json($messages);
-        } catch (\Exception $e) {
-            \Log::error('Error in fetchMessages: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-            return response()->json(['error' => 'Failed to fetch messages: ' . $e->getMessage()], 500);
-        }
+            ->get();
+            
+        return response()->json(['messages' => $messages]);
     }
 
     /**
@@ -564,17 +554,17 @@ class EcgtechController extends Controller
         try {
             // Get data from request (works for both JSON and form data)
             $receiverId = $request->input('receiver_id');
-            $message = $request->input('message');
+            $messageText = $request->input('message');
             
             if (!$receiverId) {
                 return response()->json(['error' => 'receiver_id is required'], 400);
             }
             
-            if (!$message) {
+            if (!$messageText) {
                 return response()->json(['error' => 'message is required'], 400);
             }
             
-            if (strlen($message) > 1000) {
+            if (strlen($messageText) > 1000) {
                 return response()->json(['error' => 'message is too long'], 400);
             }
             
@@ -584,14 +574,13 @@ class EcgtechController extends Controller
                 return response()->json(['error' => 'Invalid receiver_id'], 400);
             }
 
-            Message::create([
+            $message = Message::create([
                 'sender_id' => Auth::id(),
                 'receiver_id' => $receiverId,
-                'message' => $message,
-                'is_read' => false
+                'message' => $messageText
             ]);
 
-            return response()->json(['success' => true]);
+            return response()->json($message);
         } catch (\Exception $e) {
             \Log::error('Error in sendMessage: ' . $e->getMessage());
             \Log::error('Request data: ' . json_encode($request->all()));
@@ -620,7 +609,8 @@ class EcgtechController extends Controller
 
             Message::where('sender_id', $senderId)
                 ->where('receiver_id', Auth::id())
-                ->update(['is_read' => true]);
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -871,5 +861,18 @@ class EcgtechController extends Controller
             \Log::error('Error in updateOpd: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to update ECG examination results.')->withInput();
         }
+    }
+
+    /**
+     * Get unread message count for the current ecgtech user.
+     */
+    public function getUnreadMessageCount()
+    {
+        $userId = Auth::id();
+        $count = Message::where('receiver_id', $userId)
+            ->whereNull('read_at')
+            ->count();
+        
+        return response()->json(['count' => $count]);
     }
 }
