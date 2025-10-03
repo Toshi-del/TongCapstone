@@ -422,7 +422,7 @@ unset($__errorArgs, $__bag); ?>
                 'address' => $preEmploymentRecord->address ?? '',
                 'age' => $preEmploymentRecord->age ?? '',
                 'gender' => ucfirst($preEmploymentRecord->sex ?? '')
-            ],'isEdit' => false]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+            ],'isEdit' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('drug-test-form'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
@@ -434,7 +434,7 @@ unset($__errorArgs, $__bag); ?>
                 'address' => $preEmploymentRecord->address ?? '',
                 'age' => $preEmploymentRecord->age ?? '',
                 'gender' => ucfirst($preEmploymentRecord->sex ?? '')
-            ]),'is-edit' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(false)]); ?>
+            ]),'is-edit' => true]); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginala2bdae37886025e013e70a6920df9a26)): ?>
