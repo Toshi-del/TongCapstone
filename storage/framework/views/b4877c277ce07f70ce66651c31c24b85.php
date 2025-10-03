@@ -98,13 +98,16 @@
         
         <?php
             $medicalTestName = $preEmploymentRecord->medicalTest->name ?? '';
-            $isAudiometryIshiharaOnly = strtolower($medicalTestName) === 'audiometry and ishihara only';
-            $hasDrugTest = in_array(strtolower($medicalTestName), [
+            $lowerTestName = strtolower($medicalTestName);
+            $isAudiometryIshiharaOnly = $lowerTestName === 'audiometry and ishihara only';
+            
+            // Check for drug test in medical test name
+            $hasDrugTest = in_array($lowerTestName, [
                 'pre-employment with drug test',
                 'pre-employment with ecg and drug test',
                 'pre-employment with drug test and audio and ishihara',
                 'drug test only (bring valid i.d)'
-            ]);
+            ]) || str_contains($lowerTestName, 'drug test');
         ?>
 
         <?php if(!$isAudiometryIshiharaOnly): ?>
@@ -411,279 +414,37 @@ unset($__errorArgs, $__bag); ?>
         </div>
         
         <?php if($hasDrugTest): ?>
-        <!-- Drug Test Form Card -->
-        <div class="content-card rounded-xl p-8 shadow-lg border border-gray-200">
-            <div class="flex items-center space-x-3 mb-6">
-                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-pills text-red-600"></i>
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold text-gray-900">Drug Test Result (DT Form 2)</h3>
-                    <p class="text-gray-600 text-sm">Urine drug screening examination form</p>
-                </div>
-            </div>
-
-            <div class="space-y-6">
-                <!-- Patient Information Section -->
-                <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Patient Information</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-gray-700">
-                                Patient Name
-                            </label>
-                            <input type="text" name="drug_test[patient_name]" 
-                                   value="<?php echo e(old('drug_test.patient_name', ($preEmploymentRecord->full_name ?? ($preEmploymentRecord->first_name . ' ' . $preEmploymentRecord->last_name)))); ?>" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed" 
-                                   placeholder="Full name" readonly />
-                            <p class="text-xs text-gray-500 flex items-center">
-                                <i class="fas fa-info-circle mr-1"></i>
-                                Patient information is automatically loaded from records
-                            </p>
-                        </div>
-
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-gray-700">
-                                Address
-                            </label>
-                            <input type="text" name="drug_test[address]" 
-                                   value="<?php echo e(old('drug_test.address', $preEmploymentRecord->address ?? '')); ?>" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed" 
-                                   placeholder="Patient address" readonly />
-                        </div>
-
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-gray-700">
-                                Age
-                            </label>
-                            <input type="number" name="drug_test[age]" 
-                                   value="<?php echo e(old('drug_test.age', $preEmploymentRecord->age ?? '')); ?>" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed" 
-                                   placeholder="Age" readonly />
-                        </div>
-
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-gray-700">
-                                Gender
-                            </label>
-                            <input type="text" name="drug_test[gender]" 
-                                   value="<?php echo e(old('drug_test.gender', ucfirst($preEmploymentRecord->sex ?? ''))); ?>" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed" 
-                                   placeholder="Gender" readonly />
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Examination Details Section -->
-                <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Examination Details</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-gray-700">
-                                Date and Time of Examination <span class="text-red-500">*</span>
-                            </label>
-                            <input type="datetime-local" name="drug_test[examination_datetime]" 
-                                   value="<?php echo e(old('drug_test.examination_datetime', now()->format('Y-m-d\TH:i'))); ?>" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors <?php $__errorArgs = ['drug_test.examination_datetime'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> border-red-500 ring-2 ring-red-200 <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>" 
-                                   required />
-                            <?php $__errorArgs = ['drug_test.examination_datetime'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-                                <p class="mt-1 text-sm text-red-600 flex items-center">
-                                    <i class="fas fa-exclamation-circle mr-1"></i><?php echo e($message); ?>
-
-                                </p>
-                            <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
-                        </div>
-
-
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-gray-700">
-                                Date of Last Intake of Substance
-                            </label>
-                            <input type="date" name="drug_test[last_intake_date]" 
-                                   value="<?php echo e(old('drug_test.last_intake_date')); ?>" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors <?php $__errorArgs = ['drug_test.last_intake_date'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> border-red-500 ring-2 ring-red-200 <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>" />
-                            <?php $__errorArgs = ['drug_test.last_intake_date'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-                                <p class="mt-1 text-sm text-red-600 flex items-center">
-                                    <i class="fas fa-exclamation-circle mr-1"></i><?php echo e($message); ?>
-
-                                </p>
-                            <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
-                        </div>
-
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-gray-700">
-                                Test Method <span class="text-red-500">*</span>
-                            </label>
-                            <input type="text" name="drug_test[test_method]" 
-                                   value="<?php echo e(old('drug_test.test_method', 'URINE TEST KIT')); ?>" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors <?php $__errorArgs = ['drug_test.test_method'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> border-red-500 ring-2 ring-red-200 <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>" 
-                                   required />
-                            <?php $__errorArgs = ['drug_test.test_method'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-                                <p class="mt-1 text-sm text-red-600 flex items-center">
-                                    <i class="fas fa-exclamation-circle mr-1"></i><?php echo e($message); ?>
-
-                                </p>
-                            <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Drug Test Results Section -->
-                <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Drug Test Results</h4>
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse border border-gray-300">
-                            <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-900">Drug/Metabolites</th>
-                                    <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-900">Result</th>
-                                    <th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-900">Remarks</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-3 font-medium">METHAMPHETAMINE (Meth)</td>
-                                    <td class="border border-gray-300 px-4 py-3">
-                                        <select name="drug_test[methamphetamine_result]" 
-                                                class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 <?php $__errorArgs = ['drug_test.methamphetamine_result'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> border-red-500 ring-2 ring-red-200 <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>" 
-                                                required>
-                                            <option value="">Select Result</option>
-                                            <option value="Negative" <?php echo e(old('drug_test.methamphetamine_result') == 'Negative' ? 'selected' : ''); ?>>Negative</option>
-                                            <option value="Positive" <?php echo e(old('drug_test.methamphetamine_result') == 'Positive' ? 'selected' : ''); ?>>Positive</option>
-                                        </select>
-                                        <?php $__errorArgs = ['drug_test.methamphetamine_result'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-                                            <p class="mt-1 text-xs text-red-600"><?php echo e($message); ?></p>
-                                        <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
-                                    </td>
-                                    <td class="border border-gray-300 px-4 py-3">
-                                        <input type="text" name="drug_test[methamphetamine_remarks]" 
-                                               value="<?php echo e(old('drug_test.methamphetamine_remarks')); ?>" 
-                                               class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                               placeholder="Optional remarks" />
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-3 font-medium">TETRAHYDROCANNABINOL (Marijuana)</td>
-                                    <td class="border border-gray-300 px-4 py-3">
-                                        <select name="drug_test[marijuana_result]" 
-                                                class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 <?php $__errorArgs = ['drug_test.marijuana_result'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> border-red-500 ring-2 ring-red-200 <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>" 
-                                                required>
-                                            <option value="">Select Result</option>
-                                            <option value="Negative" <?php echo e(old('drug_test.marijuana_result') == 'Negative' ? 'selected' : ''); ?>>Negative</option>
-                                            <option value="Positive" <?php echo e(old('drug_test.marijuana_result') == 'Positive' ? 'selected' : ''); ?>>Positive</option>
-                                        </select>
-                                        <?php $__errorArgs = ['drug_test.marijuana_result'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-                                            <p class="mt-1 text-xs text-red-600"><?php echo e($message); ?></p>
-                                        <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
-                                    </td>
-                                    <td class="border border-gray-300 px-4 py-3">
-                                        <input type="text" name="drug_test[marijuana_remarks]" 
-                                               value="<?php echo e(old('drug_test.marijuana_remarks')); ?>" 
-                                               class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                               placeholder="Optional remarks" />
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Signatures Section -->
-                <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Signatures</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Test Conducted by:
-                            </label>
-                            <div class="border-b-2 border-gray-400 pb-2 mb-2">
-                                <p class="text-center font-medium"><?php echo e(Auth::user()->fname); ?> <?php echo e(Auth::user()->lname); ?></p>
-                            </div>
-                            <p class="text-xs text-gray-500 text-center">Signature over Printed Name of Staff</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Conforme:
-                            </label>
-                            <div class="border-b-2 border-gray-400 pb-2 mb-2 h-8">
-                                <!-- Empty space for patient signature -->
-                            </div>
-                            <p class="text-xs text-gray-500 text-center">Signature over Printed Name of Client</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Drug Test Form Component -->
+        <?php if (isset($component)) { $__componentOriginala2bdae37886025e013e70a6920df9a26 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginala2bdae37886025e013e70a6920df9a26 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.drug-test-form','data' => ['examType' => 'pre-employment','patientData' => [
+                'name' => $preEmploymentRecord->full_name ?? ($preEmploymentRecord->first_name . ' ' . $preEmploymentRecord->last_name),
+                'address' => $preEmploymentRecord->address ?? '',
+                'age' => $preEmploymentRecord->age ?? '',
+                'gender' => ucfirst($preEmploymentRecord->sex ?? '')
+            ],'isEdit' => false]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('drug-test-form'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['exam-type' => 'pre-employment','patient-data' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute([
+                'name' => $preEmploymentRecord->full_name ?? ($preEmploymentRecord->first_name . ' ' . $preEmploymentRecord->last_name),
+                'address' => $preEmploymentRecord->address ?? '',
+                'age' => $preEmploymentRecord->age ?? '',
+                'gender' => ucfirst($preEmploymentRecord->sex ?? '')
+            ]),'is-edit' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(false)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginala2bdae37886025e013e70a6920df9a26)): ?>
+<?php $attributes = $__attributesOriginala2bdae37886025e013e70a6920df9a26; ?>
+<?php unset($__attributesOriginala2bdae37886025e013e70a6920df9a26); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginala2bdae37886025e013e70a6920df9a26)): ?>
+<?php $component = $__componentOriginala2bdae37886025e013e70a6920df9a26; ?>
+<?php unset($__componentOriginala2bdae37886025e013e70a6920df9a26); ?>
+<?php endif; ?>
         <?php endif; ?>
 
         <!-- Signature Section -->

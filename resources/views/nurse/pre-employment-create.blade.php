@@ -319,7 +319,7 @@
                 'age' => $preEmploymentRecord->age ?? '',
                 'gender' => ucfirst($preEmploymentRecord->sex ?? '')
             ]"
-            :is-edit="false" />
+            :is-edit="true" />
         @endif
 
         <!-- Signature Section -->

@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('title', 'Create New Appointment - RSS Citi Health Services'); ?>
 <?php $__env->startSection('page-title', 'Create New Appointment'); ?>
 <?php $__env->startSection('page-description', 'Schedule a new medical examination appointment for your employees'); ?>
@@ -210,8 +208,8 @@ unset($__errorArgs, $__bag); ?>
                     </div>
                 </div>
 
-                <input type="hidden" name="medical_test_categories_id" id="medical_test_categories_id" value="<?php echo e(old('medical_test_categories_id')); ?>">
-                <input type="hidden" name="medical_test_id" id="medical_test_id" value="<?php echo e(old('medical_test_id')); ?>">
+                <input type="hidden" name="medical_test_categories_id" id="medical_test_categories_id" value="<?php echo e(is_array(old('medical_test_categories_id')) ? json_encode(old('medical_test_categories_id')) : old('medical_test_categories_id')); ?>">
+                <input type="hidden" name="medical_test_id" id="medical_test_id" value="<?php echo e(is_array(old('medical_test_id')) ? json_encode(old('medical_test_id')) : old('medical_test_id')); ?>">
                 <div id="selected_tests_container">
                     <!-- Selected tests will be added here as hidden inputs -->
                 </div>

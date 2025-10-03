@@ -308,7 +308,7 @@
                 'age' => $patient->age ?? '',
                 'gender' => ucfirst($patient->sex ?? '')
             ]"
-            :is-edit="false" />
+            :is-edit="true" />
         @endif
 
         <!-- Signature Section -->
