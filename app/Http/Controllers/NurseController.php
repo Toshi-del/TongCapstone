@@ -255,9 +255,17 @@ class NurseController extends Controller
             'physical_findings' => 'nullable|array',
             'lab_findings' => 'nullable|array',
             'ecg' => 'nullable|string',
+            'fitness_assessment' => 'nullable|string',
+            'drug_positive_count' => 'nullable|integer',
+            'medical_abnormal_count' => 'nullable|integer',
+            'physical_abnormal_count' => 'nullable|integer',
+            'assessment_details' => 'nullable|string',
         ]);
 
         $annualPhysical->update($validated);
+        
+        // Calculate and store fitness assessment automatically
+        $annualPhysical->calculateFitnessAssessment();
 
         return redirect()->route('nurse.annual-physical')->with('success', 'Annual physical examination updated successfully.');
     }

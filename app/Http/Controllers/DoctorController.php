@@ -51,16 +51,41 @@ class DoctorController extends Controller
     /**
      * Show pre-employment records
      */
-    public function preEmployment()
+    public function preEmployment(Request $request)
     {
-        // Show pre-employment examinations that are ready for doctor review
-        $preEmploymentExaminations = \App\Models\PreEmploymentExamination::with(['preEmploymentRecord.medicalTest', 'preEmploymentRecord.medicalTestCategory', 'user'])
-            ->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed']) // Show pending, completed, Approved, and collection_completed examinations
-            ->latest()
-            ->paginate(15);
+        $filter = $request->get('filter');
+        
+        // Base query for pre-employment examinations
+        $query = \App\Models\PreEmploymentExamination::with(['preEmploymentRecord.medicalTest', 'preEmploymentRecord.medicalTestCategory', 'user']);
+        
+        // Apply filtering based on the tab selected
+        switch ($filter) {
+            case 'needs_attention':
+                // Show examinations that need doctor's attention (pending status)
+                $query->whereIn('status', ['pending', 'collection_completed']);
+                break;
+                
+            case 'submitted':
+                // Show examinations that have been submitted to admin
+                $query->whereIn('status', ['sent_to_company', 'Approved']);
+                break;
+                
+            default:
+                // Show all examinations that are ready for doctor review
+                $query->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company']);
+                break;
+        }
+        
+        $preEmploymentExaminations = $query->latest()->paginate(15);
+        
+        // Get all examinations for tab counts (without pagination)
+        $allExaminations = \App\Models\PreEmploymentExamination::with(['preEmploymentRecord.medicalTest', 'preEmploymentRecord.medicalTestCategory', 'user'])
+            ->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company'])
+            ->get();
             
         // Log the count and statuses for debugging
         \Log::info('Pre-employment examinations count: ' . $preEmploymentExaminations->count());
+        \Log::info('Filter applied: ' . ($filter ?? 'none'));
         \Log::info('Pre-employment examinations statuses: ' . 
             \App\Models\PreEmploymentExamination::select('status', \DB::raw('count(*) as count'))
                 ->groupBy('status')
@@ -68,7 +93,7 @@ class DoctorController extends Controller
                 ->toJson(JSON_PRETTY_PRINT)
         );
             
-        return view('doctor.pre-employment', compact('preEmploymentExaminations'));
+        return view('doctor.pre-employment', compact('preEmploymentExaminations', 'allExaminations'));
     }
 
     /**
@@ -89,8 +114,8 @@ class DoctorController extends Controller
             ]
         );
 
-        // Mark as Approved (doctor submission)
-        $examination->update(['status' => 'Approved']);
+        // Mark as sent to company (doctor submission to admin)
+        $examination->update(['status' => 'sent_to_company']);
 
         return redirect()->route('doctor.pre-employment')->with('success', 'Pre-employment examination submitted to admin.');
     }
@@ -319,6 +344,7 @@ class DoctorController extends Controller
             'fitness_assessment' => 'nullable|string',
             'drug_positive_count' => 'nullable|integer',
             'medical_abnormal_count' => 'nullable|integer',
+            'physical_abnormal_count' => 'nullable|integer',
             'assessment_details' => 'nullable|string',
         ]);
         $preEmployment->update($data);
@@ -459,6 +485,12 @@ class DoctorController extends Controller
                 'physical_findings' => 'nullable|array',
                 'lab_findings' => 'nullable|array',
                 'ecg' => 'nullable|string',
+                'drug_test' => 'nullable|array',
+                'fitness_assessment' => 'nullable|string',
+                'drug_positive_count' => 'nullable|integer',
+                'medical_abnormal_count' => 'nullable|integer',
+                'physical_abnormal_count' => 'nullable|integer',
+                'assessment_details' => 'nullable|string',
             ]);
             
             // Recompose lab_findings from flat lab_report inputs so both result and findings persist
@@ -498,6 +530,9 @@ class DoctorController extends Controller
             }
             
             $result = $annualPhysical->update($data);
+            
+            // Calculate and store fitness assessment automatically
+            $annualPhysical->calculateFitnessAssessment();
             
             if ($result) {
                 return redirect()->route('doctor.annual-physical.edit', $annualPhysical->id)->with('success', 'Annual Physical Examination updated successfully.');

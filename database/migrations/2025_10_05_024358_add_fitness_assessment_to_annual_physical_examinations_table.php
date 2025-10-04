@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('pre_employment_examinations', function (Blueprint $table) {
+        Schema::table('annual_physical_examinations', function (Blueprint $table) {
             $table->string('fitness_assessment')->nullable()->after('drug_test');
             $table->integer('drug_positive_count')->default(0)->after('fitness_assessment');
             $table->integer('medical_abnormal_count')->default(0)->after('drug_positive_count');
@@ -25,7 +25,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('pre_employment_examinations', function (Blueprint $table) {
+        Schema::table('annual_physical_examinations', function (Blueprint $table) {
             $table->dropColumn([
                 'fitness_assessment',
                 'drug_positive_count', 

@@ -41,6 +41,38 @@
             </div>
         </div>
     </div>
+    <!-- Filter Tabs -->
+    <div class="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+        <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center space-x-1">
+                <a href="{{ route('doctor.pre-employment', ['filter' => 'needs_attention']) }}" 
+                   class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {{ request('filter') === 'needs_attention' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100' }}">
+                    <i class="fas fa-exclamation-triangle mr-2 text-xs"></i>
+                    Needs Attention
+                    <span class="ml-2 inline-flex items-center justify-center w-5 h-5 bg-yellow-500 text-white rounded-full text-xs font-bold">
+                        {{ isset($allExaminations) ? $allExaminations->whereIn('status', ['pending', 'collection_completed'])->count() : 0 }}
+                    </span>
+                </a>
+                <a href="{{ route('doctor.pre-employment', ['filter' => 'submitted']) }}" 
+                   class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {{ request('filter') === 'submitted' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100' }}">
+                    <i class="fas fa-paper-plane mr-2 text-xs"></i>
+                    Submitted to Admin
+                    <span class="ml-2 inline-flex items-center justify-center w-5 h-5 bg-blue-500 text-white rounded-full text-xs font-bold">
+                        {{ isset($allExaminations) ? $allExaminations->whereIn('status', ['sent_to_company', 'Approved'])->count() : 0 }}
+                    </span>
+                </a>
+                <a href="{{ route('doctor.pre-employment') }}" 
+                   class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {{ !request('filter') ? 'bg-green-100 text-green-800 border border-green-200' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100' }}">
+                    <i class="fas fa-list mr-2 text-xs"></i>
+                    All Records
+                    <span class="ml-2 inline-flex items-center justify-center w-5 h-5 bg-green-500 text-white rounded-full text-xs font-bold">
+                        {{ isset($allExaminations) ? $allExaminations->count() : $preEmploymentExaminations->total() }}
+                    </span>
+                </a>
+            </div>
+        </div>
+    </div>
+
     <!-- Applicant Management Section -->
     <div class="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
         <div class="px-8 py-6 bg-green-600">
@@ -219,15 +251,13 @@
                     <div class="flex flex-wrap items-center gap-3 mb-4">
                         @if($preEmployment)
                             <!-- Send to Admin -->
-                            <form action="{{ route('doctor.pre-employment.by-record.submit', $preEmployment->id) }}" method="POST" class="flex-1 min-w-0">
-                                @csrf
-                                <button type="submit" 
-                                        class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-medium flex items-center justify-center" 
-                                        title="Send to Admin">
-                                    <i class="fas fa-paper-plane mr-2"></i>
-                                    Submit to Admin
-                                </button>
-                            </form>
+                            <button type="button" 
+                                    onclick="openSubmitToAdminModal({{ $preEmployment->id }}, '{{ $fullName }}')"
+                                    class="flex-1 min-w-0 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-medium flex items-center justify-center" 
+                                    title="Send to Admin">
+                                <i class="fas fa-paper-plane mr-2"></i>
+                                Submit to Admin
+                            </button>
                         @endif
                         
                         <!-- Edit Examination -->
@@ -308,4 +338,91 @@
         @endif
     </div>
 </div>
+
+<!-- Submit to Admin Modal -->
+<div id="submitToAdminModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300">
+        <div class="bg-blue-600 px-6 py-4 rounded-t-xl">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-paper-plane text-white text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white">Submit to Admin</h3>
+                    <p class="text-blue-100 text-sm">Confirm submission of examination results</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <div class="mb-6">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-user text-blue-600 text-lg"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-900" id="modalPatientName">Patient Name</h4>
+                        <p class="text-sm text-gray-600">Pre-Employment Examination</p>
+                    </div>
+                </div>
+                
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-info-circle text-amber-600 text-lg mt-0.5"></i>
+                        <div>
+                            <h5 class="text-amber-800 font-medium mb-1">Submission Confirmation</h5>
+                            <p class="text-amber-700 text-sm">
+                                Are you sure you want to submit this examination to the admin? Once submitted, the examination status will be updated and the admin will be notified.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-end space-x-3">
+                <button type="button" 
+                        onclick="closeSubmitToAdminModal()" 
+                        class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-all duration-200">
+                    <i class="fas fa-times mr-2"></i>
+                    Cancel
+                </button>
+                <form id="submitToAdminForm" method="POST" class="inline">
+                    @csrf
+                    <button type="submit" 
+                            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all duration-200">
+                        <i class="fas fa-paper-plane mr-2"></i>
+                        Submit to Admin
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openSubmitToAdminModal(recordId, patientName) {
+    document.getElementById('modalPatientName').textContent = patientName;
+    document.getElementById('submitToAdminForm').action = `/doctor/pre-employment/by-record/${recordId}/submit`;
+    document.getElementById('submitToAdminModal').classList.remove('hidden');
+}
+
+function closeSubmitToAdminModal() {
+    document.getElementById('submitToAdminModal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('submitToAdminModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSubmitToAdminModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeSubmitToAdminModal();
+    }
+});
+</script>
+
 @endsection 

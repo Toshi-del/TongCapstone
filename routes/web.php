@@ -71,6 +71,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/pre-employment/{id}/details', [AdminController::class, 'preEmploymentDetails'])->name('admin.pre-employment.details');
     Route::get('/admin/tests', [AdminController::class, 'tests'])->name('admin.tests');
     
+    // Medical results view routes
+    Route::get('/admin/view-pre-employment-results/{id}', [AdminController::class, 'viewPreEmploymentResults'])->name('admin.view-pre-employment-results');
+    Route::get('/admin/view-annual-physical-results/{id}', [AdminController::class, 'viewAnnualPhysicalResults'])->name('admin.view-annual-physical-results');
+    Route::post('/admin/examinations/pre-employment/{id}/send', [AdminController::class, 'sendPreEmploymentToCompany'])->name('admin.examinations.pre-employment.send');
+    Route::post('/admin/examinations/annual-physical/{id}/send', [AdminController::class, 'sendAnnualPhysicalToCompany'])->name('admin.examinations.annual-physical.send');
+    
     // Examination view and send routes
     Route::get('/admin/view-pre-employment-examination/{id}', [AdminController::class, 'viewPreEmploymentExamination'])->name('admin.view-pre-employment-examination');
     Route::get('/admin/view-annual-physical-examination/{id}', [AdminController::class, 'viewAnnualPhysicalExamination'])->name('admin.view-annual-physical-examination');

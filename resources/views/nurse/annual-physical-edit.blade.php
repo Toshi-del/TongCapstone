@@ -270,7 +270,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
                         <span class="font-medium text-purple-800">Test Date:</span>
-                        <span class="text-purple-700">{{ $drugTestResults->examination_datetime ? $drugTestResults->examination_datetime->format('M d, Y H:i') : 'N/A' }}</span>
+                        <span class="text-purple-700">{{ $drugTestResults->examination_datetime ? $drugTestResults->examination_datetime->format('F j, Y \a\t g:i A') : 'N/A' }}</span>
                     </div>
                     <div>
                         <span class="font-medium text-purple-800">Conducted By:</span>

@@ -37,10 +37,10 @@
 
     <!-- Header Section -->
     <div class="content-card rounded-xl overflow-hidden shadow-xl border-2 border-gray-200">
-        <div class="bg-violet-600 px-10 py-8">
+        <div class="bg-indigo-800 px-10 py-8">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-6">
-                    <div class="w-20 h-20 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border-2 border-white/20">
+                    <div class="w-20 h-20 bg-indigo-700 rounded-xl flex items-center justify-center backdrop-blur-sm border-2 border-white/20">
                         <i class="fas fa-clipboard-check text-white text-3xl"></i>
                     </div>
                     <div>
@@ -243,7 +243,7 @@
                 </a>
                 
                 <button type="submit" 
-                        class="inline-flex items-center px-12 py-4 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl transition-all duration-200 shadow-xl border-2 border-violet-500 transform hover:scale-105">
+                        class="inline-flex items-center px-12 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all duration-200 shadow-xl border-2 border-violet-500 transform hover:scale-105">
                     <i class="fas fa-save mr-3"></i>
                     {{ isset($medicalChecklist) && $medicalChecklist->id ? 'Update Checklist' : 'Submit Checklist' }}
                 </button>

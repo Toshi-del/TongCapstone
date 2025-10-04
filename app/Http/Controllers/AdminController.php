@@ -1432,4 +1432,79 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * View pre-employment medical results (read-only)
+     */
+    public function viewPreEmploymentResults($id)
+    {
+        $examination = \App\Models\PreEmploymentExamination::with([
+            'preEmploymentRecord.medicalTest',
+            'preEmploymentRecord.medicalTestCategory',
+            'drugTestResults'
+        ])->findOrFail($id);
+        
+        return view('admin.view-pre-employment-results', compact('examination'));
+    }
+
+    /**
+     * View annual physical medical results (read-only)
+     */
+    public function viewAnnualPhysicalResults($id)
+    {
+        $examination = \App\Models\AnnualPhysicalExamination::with([
+            'patient.appointment.medicalTest',
+            'drugTestResults'
+        ])->findOrFail($id);
+        
+        return view('admin.view-annual-physical-results', compact('examination'));
+    }
+
+    /**
+     * Send pre-employment examination to company
+     */
+    public function sendPreEmploymentToCompany($id)
+    {
+        try {
+            $examination = \App\Models\PreEmploymentExamination::findOrFail($id);
+            
+            // Update status to indicate it's been sent to company
+            $examination->update(['status' => 'sent_to_company']);
+            
+            // Create notification for company if needed
+            // You can add notification logic here
+            
+            return redirect()->route('admin.tests')
+                ->with('success', 'Pre-employment examination sent to ' . $examination->company_name . ' successfully.');
+                
+        } catch (\Exception $e) {
+            \Log::error('Error sending pre-employment examination: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to send examination to company.');
+        }
+    }
+
+    /**
+     * Send annual physical examination to company
+     */
+    public function sendAnnualPhysicalToCompany($id)
+    {
+        try {
+            $examination = \App\Models\AnnualPhysicalExamination::findOrFail($id);
+            
+            // Update status to indicate it's been sent to company
+            $examination->update(['status' => 'sent_to_company']);
+            
+            // Create notification for company if needed
+            // You can add notification logic here
+            
+            $companyName = $examination->patient->appointment->company ?? 'the company';
+            
+            return redirect()->route('admin.tests')
+                ->with('success', 'Annual physical examination sent to ' . $companyName . ' successfully.');
+                
+        } catch (\Exception $e) {
+            \Log::error('Error sending annual physical examination: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to send examination to company.');
+        }
+    }
+
 }

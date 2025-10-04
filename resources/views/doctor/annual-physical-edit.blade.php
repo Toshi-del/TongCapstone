@@ -393,7 +393,14 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Result</label>
-                                    <input type="text" name="physical_findings[{{ $row }}][result]" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm" value="{{ old('physical_findings.'.$row.'.result', data_get($annualPhysical->physical_findings, $row.'.result', '')) }}" placeholder="Enter result">
+                                    @php
+                                        $currentResult = old('physical_findings.'.$row.'.result', data_get($annualPhysical->physical_findings, $row.'.result', ''));
+                                    @endphp
+                                    <select name="physical_findings[{{ $row }}][result]" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm bg-white">
+                                        <option value="">Select Result</option>
+                                        <option value="Normal" {{ $currentResult === 'Normal' ? 'selected' : '' }}>Normal</option>
+                                        <option value="Not Normal" {{ $currentResult === 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Findings</label>
@@ -647,32 +654,22 @@
                     </div>
                     
                     @php
-                        $lab = $annualPhysical->lab_report ?? [];
+                        // Use stored fitness assessment data from database
+                        $assessment = $annualPhysical->fitness_assessment ?? 'For evaluation';
+                        $drugPositiveCount = $annualPhysical->drug_positive_count ?? 0;
+                        $medicalNotNormalCount = $annualPhysical->medical_abnormal_count ?? 0;
+                        $physicalNotNormalCount = $annualPhysical->physical_abnormal_count ?? 0;
                         
-                        // Count "Not normal" results from lab tests
-                        $notNormalCount = 0;
-                        $labTests = ['xray', 'urinalysis', 'fecalysis', 'cbc', 'hbsag_screening', 'hepa_a_igg_igm', 'others'];
-                        
-                        foreach($labTests as $test) {
-                            $result = data_get($lab, $test, '');
-                            if (strtolower($result) === 'not normal' || strtolower($result) === 'abnormal' || strtolower($result) === 'positive') {
-                                $notNormalCount++;
-                            }
-                        }
-                        
-                        // Determine assessment based on lab results
-                        if ($notNormalCount >= 2) {
-                            $assessment = 'Not fit for work';
-                            $assessmentColor = 'red';
-                            $assessmentIcon = 'fas fa-times-circle';
-                        } elseif ($notNormalCount === 1) {
-                            $assessment = 'For evaluation';
-                            $assessmentColor = 'yellow';
-                            $assessmentIcon = 'fas fa-exclamation-triangle';
-                        } else {
-                            $assessment = 'Fit to work';
+                        // Set colors for display (though we use plain design)
+                        if ($assessment === 'Fit to work') {
                             $assessmentColor = 'green';
                             $assessmentIcon = 'fas fa-check-circle';
+                        } elseif ($assessment === 'Not fit for work') {
+                            $assessmentColor = 'red';
+                            $assessmentIcon = 'fas fa-times-circle';
+                        } else {
+                            $assessmentColor = 'yellow';
+                            $assessmentIcon = 'fas fa-exclamation-triangle';
                         }
                     @endphp
                     
@@ -680,17 +677,49 @@
                         
                         
                         <!-- Automatic Medical Assessment -->
-                        <div class="bg-white rounded-lg p-4 border-l-4 border-{{ $assessmentColor }}-500">
+                        <div class="bg-white rounded-lg p-4 border-l-4 border-gray-500">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-stethoscope text-{{ $assessmentColor }}-600 mr-2"></i>Medical Assessment
+                                <i class="fas fa-stethoscope text-gray-600 mr-2"></i>Medical Assessment
                             </label>
-                            <div class="bg-{{ $assessmentColor }}-50 p-3 rounded-lg border border-{{ $assessmentColor }}-200">
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                                 <div class="flex items-center">
-                                    <i class="{{ $assessmentIcon }} text-{{ $assessmentColor }}-600 mr-2"></i>
-                                    <span class="font-semibold text-{{ $assessmentColor }}-800">{{ $assessment }}</span>
+                                    <span class="font-semibold text-gray-800">{{ $assessment }}</span>
                                 </div>
-                                <div class="text-xs text-{{ $assessmentColor }}-600 mt-1">
-                                    Based on {{ $notNormalCount }} abnormal lab result(s)
+                                <div class="text-xs text-gray-600 mt-1">
+                                    Drug Test: {{ $drugPositiveCount }} positive | Medical Tests: {{ $medicalNotNormalCount }} abnormal | Physical Exam: {{ $physicalNotNormalCount }} abnormal
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Assessment Logic Breakdown -->
+                        <div class="bg-white rounded-lg p-4 border-l-4 border-blue-500">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-info-circle text-blue-600 mr-2"></i>Assessment Logic
+                            </label>
+                            <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                <div class="text-xs text-blue-600 space-y-1">
+                                    <div class="font-semibold">Current Results:</div>
+                                    <div>• Drug Tests: {{ $drugPositiveCount == 0 ? 'All Negative' : $drugPositiveCount . ' Positive' }}</div>
+                                    <div>• Medical Tests: {{ $medicalNotNormalCount == 0 ? 'All Normal' : $medicalNotNormalCount . ' Abnormal' }}</div>
+                                    <div>• Physical Exam: {{ $physicalNotNormalCount == 0 ? 'All Normal' : $physicalNotNormalCount . ' Abnormal' }}</div>
+                                    <div class="pt-1 font-semibold">Applied Rule:</div>
+                                    <div>
+                                        @if ($drugPositiveCount == 0 && $medicalNotNormalCount == 0 && $physicalNotNormalCount == 0)
+                                            All Negative, All Normal, No Physical Abnormalities → Fit to Work
+                                        @elseif ($drugPositiveCount >= 1)
+                                            Any Positive Drug Test → Not Fit
+                                        @elseif ($medicalNotNormalCount >= 2)
+                                            2+ Medical Abnormal → Not Fit
+                                        @elseif ($physicalNotNormalCount >= 2)
+                                            2+ Physical Abnormal → Not Fit
+                                        @elseif ($medicalNotNormalCount >= 1 && $physicalNotNormalCount >= 1)
+                                            1+ Medical + 1+ Physical Abnormal → Not Fit
+                                        @elseif ($medicalNotNormalCount == 1)
+                                            1 Medical Abnormal → For Evaluation
+                                        @elseif ($physicalNotNormalCount == 1)
+                                            1 Physical Abnormal → For Evaluation
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>

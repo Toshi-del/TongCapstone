@@ -66,7 +66,7 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
             <div>
                 <span class="font-medium {{ $colors['text'] }}">Test Date:</span>
-                <div class="{{ $colors['accent'] }}">{{ $connectedResult->examination_datetime ? $connectedResult->examination_datetime->format('M d, Y H:i') : 'N/A' }}</div>
+                <div class="{{ $colors['accent'] }}">{{ $connectedResult->examination_datetime ? $connectedResult->examination_datetime->format('F j, Y \a\t g:i A') : 'N/A' }}</div>
             </div>
             <div>
                 <span class="font-medium {{ $colors['text'] }}">Conducted By:</span>

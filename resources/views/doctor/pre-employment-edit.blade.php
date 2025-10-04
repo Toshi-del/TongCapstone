@@ -143,9 +143,9 @@
                                 @php
                                     $isChecked = is_array($family) && in_array($opt, $family, true);
                                 @endphp
-                                <label class="inline-flex items-center p-3 rounded-lg border transition-colors duration-200 {{ $isChecked ? 'bg-green-100 border-green-300 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-600' }}">
-                                    <input type="checkbox" name="family_history[]" value="{{ $opt }}" class="mr-3 text-green-600 focus:ring-green-500" {{ $isChecked ? 'checked' : '' }}>
-                                    <span class="text-sm font-medium">{{ str_replace('_', ' ', ucwords($opt)) }}</span>
+                                <label class="inline-flex items-center p-3 rounded-lg border transition-colors duration-200 cursor-pointer hover:bg-gray-100 {{ $isChecked ? 'bg-gray-100 border-gray-400' : 'bg-gray-50 border-gray-200' }}">
+                                    <input type="checkbox" name="family_history[]" value="{{ $opt }}" class="mr-3 text-blue-600 focus:ring-blue-500 focus:ring-2" {{ $isChecked ? 'checked' : '' }}>
+                                    <span class="text-sm font-medium text-gray-700">{{ str_replace('_', ' ', ucwords($opt)) }}</span>
                                 </label>
                             @endforeach
                         </div>
@@ -185,13 +185,12 @@
                                 @php
                                     $hasHabit = is_array($habits) && array_key_exists($habit, $habits) && $habits[$habit];
                                 @endphp
-                                <label class="flex items-center p-4 rounded-lg border transition-colors duration-200 {{ $hasHabit ? 'bg-blue-100 border-blue-300' : 'bg-gray-50 border-gray-200' }}">
+                                <label class="flex items-center p-4 rounded-lg border transition-colors duration-200 cursor-pointer hover:bg-gray-100 {{ $hasHabit ? 'bg-blue-100 border-blue-300' : 'bg-gray-50 border-gray-200' }}">
                                     <input type="hidden" name="personal_habits[{{ $habit }}]" value="0">
-                                    <input type="checkbox" name="personal_habits[{{ $habit }}]" value="1" class="hidden" {{ $hasHabit ? 'checked' : '' }}>
+                                    <input type="checkbox" name="personal_habits[{{ $habit }}]" value="1" class="mr-3 text-blue-600 focus:ring-blue-500 focus:ring-2" {{ $hasHabit ? 'checked' : '' }}>
                                     <span class="flex items-center">
                                         <i class="{{ $config['icon'] }} text-{{ $config['color'] }}-600 mr-3"></i>
-                                        <span class="text-sm font-medium text-gray-700 mr-3">{{ str_replace('_', ' ', ucwords($habit)) }}</span>
-                                        <i class="fas {{ $hasHabit ? 'fa-check-circle text-green-600' : 'fa-times-circle text-gray-400' }}"></i>
+                                        <span class="text-sm font-medium text-gray-700">{{ str_replace('_', ' ', ucwords($habit)) }}</span>
                                     </span>
                                 </label>
                             @endforeach
@@ -431,7 +430,14 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Result</label>
-                                    <input type="text" name="physical_findings[{{ $row }}][result]" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" value="{{ old('physical_findings.'.$row.'.result', data_get($preEmployment->physical_findings, $row.'.result', '')) }}" placeholder="Enter result">
+                                    @php
+                                        $currentResult = old('physical_findings.'.$row.'.result', data_get($preEmployment->physical_findings, $row.'.result', ''));
+                                    @endphp
+                                    <select name="physical_findings[{{ $row }}][result]" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white">
+                                        <option value="">Select Result</option>
+                                        <option value="Normal" {{ $currentResult === 'Normal' ? 'selected' : '' }}>Normal</option>
+                                        <option value="Not Normal" {{ $currentResult === 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Findings</label>
@@ -632,72 +638,23 @@
                     </div>
                     
                     @php
-                        $lab = $preEmployment->lab_report ?? [];
-                        $drugTest = $preEmployment->drug_test ?? [];
+                        // Use stored fitness assessment data from database
+                        $assessment = $preEmployment->fitness_assessment ?? 'For evaluation';
+                        $drugPositiveCount = $preEmployment->drug_positive_count ?? 0;
+                        $medicalNotNormalCount = $preEmployment->medical_abnormal_count ?? 0;
+                        $physicalNotNormalCount = $preEmployment->physical_abnormal_count ?? 0;
                         
-                        
-                        // Count drug test positive results
-                        $drugPositiveCount = 0;
-                        $methResult = $drugTest['methamphetamine_result'] ?? '';
-                        $mariResult = $drugTest['marijuana_result'] ?? '';
-                        
-                        if (strtolower(trim($methResult)) === 'positive') {
-                            $drugPositiveCount++;
-                        }
-                        if (strtolower(trim($mariResult)) === 'positive') {
-                            $drugPositiveCount++;
-                        }
-                        
-                        // Count "Not normal" results from medical tests (excluding drug test)
-                        $medicalNotNormalCount = 0;
-                        $medicalTests = ['chest_x_ray', 'urinalysis', 'fecalysis', 'cbc', 'hbsag_screening', 'hepa_a_igg_igm', 'others'];
-                        
-                        foreach($medicalTests as $test) {
-                            $result = data_get($lab, $test, '');
-                            if (strtolower($result) === 'not normal' || strtolower($result) === 'abnormal' || strtolower($result) === 'positive') {
-                                $medicalNotNormalCount++;
-                            }
-                        }
-                        
-                        // Determine assessment based on drug test and medical test combination
-                        // DRUG TEST - MEDICAL TEST
-                        // All Negative, All normal - Fit to Work
-                        // All Negative, 2 or more not normal - not fit
-                        // 2 Negative, 1 Not Normal - For Eval
-                        // 1 Positive, 1 Not Normal - Not Fit
-                        // 1 Positive, 2 Not Normal - Not Fit
-                        // 2 Positive, 2 Not Normal - Not Fit
-                        // 1 Positive, All Normal - Not Fit
-                        
-                        if ($drugPositiveCount == 0 && $medicalNotNormalCount == 0) {
-                            // All Negative, All normal - Fit to Work
-                            $assessment = 'Fit to work';
+                        // Set colors for display (though we use plain design)
+                        if ($assessment === 'Fit to work') {
                             $assessmentColor = 'green';
                             $assessmentIcon = 'fas fa-check-circle';
-                        } elseif ($drugPositiveCount == 0 && $medicalNotNormalCount >= 2) {
-                            // All Negative, 2 or more not normal - not fit
-                            $assessment = 'Not fit for work';
-                            $assessmentColor = 'red';
-                            $assessmentIcon = 'fas fa-times-circle';
-                        } elseif ($drugPositiveCount == 0 && $medicalNotNormalCount == 1) {
-                            // All Negative, 1 Not Normal - For Eval
-                            $assessment = 'For evaluation';
-                            $assessmentColor = 'yellow';
-                            $assessmentIcon = 'fas fa-exclamation-triangle';
-                        } elseif ($drugPositiveCount >= 1) {
-                            // Any positive drug test result - Not Fit
-                            $assessment = 'Not fit for work';
+                        } elseif ($assessment === 'Not fit for work') {
                             $assessmentColor = 'red';
                             $assessmentIcon = 'fas fa-times-circle';
                         } else {
-                            // Fallback
-                            $assessment = 'For evaluation';
                             $assessmentColor = 'yellow';
                             $assessmentIcon = 'fas fa-exclamation-triangle';
                         }
-                        
-                        // Total abnormal count for display
-                        $totalAbnormalCount = $drugPositiveCount + $medicalNotNormalCount;
                     @endphp
                     
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -711,7 +668,7 @@
                                     <span class="font-semibold text-gray-800">{{ $assessment }}</span>
                                 </div>
                                 <div class="text-xs text-gray-600 mt-1">
-                                    Drug Test: {{ $drugPositiveCount }} positive result(s) | Medical Tests: {{ $medicalNotNormalCount }} abnormal result(s)
+                                    Drug Test: {{ $drugPositiveCount }} positive | Medical Tests: {{ $medicalNotNormalCount }} abnormal | Physical Exam: {{ $physicalNotNormalCount }} abnormal
                                 </div>
                             </div>
                         </div>
@@ -726,16 +683,23 @@
                                     <div class="font-semibold">Current Results:</div>
                                     <div>• Drug Tests: {{ $drugPositiveCount == 0 ? 'All Negative' : $drugPositiveCount . ' Positive' }}</div>
                                     <div>• Medical Tests: {{ $medicalNotNormalCount == 0 ? 'All Normal' : $medicalNotNormalCount . ' Abnormal' }}</div>
+                                    <div>• Physical Exam: {{ $physicalNotNormalCount == 0 ? 'All Normal' : $physicalNotNormalCount . ' Abnormal' }}</div>
                                     <div class="pt-1 font-semibold">Applied Rule:</div>
                                     <div>
-                                        @if ($drugPositiveCount == 0 && $medicalNotNormalCount == 0)
-                                            All Negative, All Normal → Fit to Work
-                                        @elseif ($drugPositiveCount == 0 && $medicalNotNormalCount >= 2)
-                                            All Negative, 2+ Abnormal → Not Fit
-                                        @elseif ($drugPositiveCount == 0 && $medicalNotNormalCount == 1)
-                                            All Negative, 1 Abnormal → For Evaluation
+                                        @if ($drugPositiveCount == 0 && $medicalNotNormalCount == 0 && $physicalNotNormalCount == 0)
+                                            All Negative, All Normal, No Physical Abnormalities → Fit to Work
                                         @elseif ($drugPositiveCount >= 1)
                                             Any Positive Drug Test → Not Fit
+                                        @elseif ($medicalNotNormalCount >= 2)
+                                            2+ Medical Abnormal → Not Fit
+                                        @elseif ($physicalNotNormalCount >= 2)
+                                            2+ Physical Abnormal → Not Fit
+                                        @elseif ($medicalNotNormalCount >= 1 && $physicalNotNormalCount >= 1)
+                                            1+ Medical + 1+ Physical Abnormal → Not Fit
+                                        @elseif ($medicalNotNormalCount == 1)
+                                            1 Medical Abnormal → For Evaluation
+                                        @elseif ($physicalNotNormalCount == 1)
+                                            1 Physical Abnormal → For Evaluation
                                         @endif
                                     </div>
                                 </div>
@@ -817,6 +781,41 @@
             }
         });
     }
+
+    // Enhanced checkbox interactions for Personal History & Habits and Family History
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle personal habits checkboxes
+        const personalHabitsCheckboxes = document.querySelectorAll('input[name^="personal_habits["]');
+        personalHabitsCheckboxes.forEach(checkbox => {
+            if (checkbox.type === 'checkbox' && !checkbox.classList.contains('hidden')) {
+                checkbox.addEventListener('change', function() {
+                    const label = this.closest('label');
+                    if (this.checked) {
+                        label.classList.remove('bg-gray-50', 'border-gray-200');
+                        label.classList.add('bg-blue-100', 'border-blue-300');
+                    } else {
+                        label.classList.remove('bg-blue-100', 'border-blue-300');
+                        label.classList.add('bg-gray-50', 'border-gray-200');
+                    }
+                });
+            }
+        });
+
+        // Handle family history checkboxes
+        const familyHistoryCheckboxes = document.querySelectorAll('input[name="family_history[]"]');
+        familyHistoryCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const label = this.closest('label');
+                if (this.checked) {
+                    label.classList.remove('bg-gray-50', 'border-gray-200');
+                    label.classList.add('bg-gray-100', 'border-gray-400');
+                } else {
+                    label.classList.remove('bg-gray-100', 'border-gray-400');
+                    label.classList.add('bg-gray-50', 'border-gray-200');
+                }
+            });
+        });
+    });
 </script>
 @endsection
 
