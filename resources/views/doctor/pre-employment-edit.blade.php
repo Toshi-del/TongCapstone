@@ -530,19 +530,7 @@
                                         }
                                     @endphp
                                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700">
-                                        @if($labField['name'] === 'Chest X-Ray' && $resultValue)
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
-                                                {{ strtolower($resultValue) === 'normal' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-yellow-100 text-yellow-800 border border-yellow-200' }}">
-                                                @if(strtolower($resultValue) === 'normal')
-                                                    <i class="fas fa-check-circle mr-1"></i>
-                                                @else
-                                                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                                                @endif
-                                                {{ $resultValue }}
-                                            </span>
-                                        @else
-                                            {{ $resultValue ?: 'Not available' }}
-                                        @endif
+                                        {{ $resultValue ?: 'Not available' }}
                                     </div>
                                 </div>
                                 <div>
@@ -714,16 +702,15 @@
                     
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Automatic Medical Assessment -->
-                        <div class="bg-white rounded-lg p-4 border-l-4 border-{{ $assessmentColor }}-500">
+                        <div class="bg-white rounded-lg p-4 border-l-4 border-gray-500">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-stethoscope text-{{ $assessmentColor }}-600 mr-2"></i>Medical Assessment
+                                <i class="fas fa-stethoscope text-gray-600 mr-2"></i>Medical Assessment
                             </label>
-                            <div class="bg-{{ $assessmentColor }}-50 p-3 rounded-lg border border-{{ $assessmentColor }}-200">
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
                                 <div class="flex items-center">
-                                    <i class="{{ $assessmentIcon }} text-{{ $assessmentColor }}-600 mr-2"></i>
-                                    <span class="font-semibold text-{{ $assessmentColor }}-800">{{ $assessment }}</span>
+                                    <span class="font-semibold text-gray-800">{{ $assessment }}</span>
                                 </div>
-                                <div class="text-xs text-{{ $assessmentColor }}-600 mt-1">
+                                <div class="text-xs text-gray-600 mt-1">
                                     Drug Test: {{ $drugPositiveCount }} positive result(s) | Medical Tests: {{ $medicalNotNormalCount }} abnormal result(s)
                                 </div>
                             </div>
