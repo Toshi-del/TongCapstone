@@ -57,19 +57,24 @@
                         <i class="fas fa-exclamation-circle mr-2"></i>
                         Needs Review
                         @php
-                            $needsAttentionCount = \App\Models\Patient::where('status', 'approved')
-                                ->whereHas('medicalChecklists', function($q) {
-                                    $q->where('examination_type', 'annual-physical')
-                                      ->whereNotNull('chest_xray_done_by')
+                            $currentRadiologistId = auth()->id();
+                            $allPatients = \App\Models\Patient::where('status', 'approved')
+                                ->whereHas('medicalChecklist', function($q) {
+                                    $q->whereNotNull('chest_xray_done_by')
                                       ->where('chest_xray_done_by', '!=', '')
                                       ->whereNotNull('xray_image_path')
                                       ->where('xray_image_path', '!=', '');
                                 })
-                                ->whereDoesntHave('annualPhysicalExamination', function($q) {
-                                    $q->whereNotNull('findings')
-                                      ->where('findings', '!=', '');
-                                })
-                                ->count();
+                                ->with(['annualPhysicalExamination'])
+                                ->get();
+                            
+                            $needsAttentionCount = $allPatients->filter(function($patient) use ($currentRadiologistId) {
+                                $exam = $patient->annualPhysicalExamination;
+                                if (!$exam) return true; // No exam = needs attention
+                                
+                                $labFindings = $exam->lab_findings ?? [];
+                                return !isset($labFindings['chest_xray']['reviews'][$currentRadiologistId]);
+                            })->count();
                         @endphp
                         <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $currentTab === 'needs_attention' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600' }}">
                             {{ $needsAttentionCount }}
@@ -81,19 +86,13 @@
                         <i class="fas fa-check-circle mr-2"></i>
                         Review Completed
                         @php
-                            $completedCount = \App\Models\Patient::where('status', 'approved')
-                                ->whereHas('medicalChecklists', function($q) {
-                                    $q->where('examination_type', 'annual-physical')
-                                      ->whereNotNull('chest_xray_done_by')
-                                      ->where('chest_xray_done_by', '!=', '')
-                                      ->whereNotNull('xray_image_path')
-                                      ->where('xray_image_path', '!=', '');
-                                })
-                                ->whereHas('annualPhysicalExamination', function($q) {
-                                    $q->whereNotNull('findings')
-                                      ->where('findings', '!=', '');
-                                })
-                                ->count();
+                            $completedCount = $allPatients->filter(function($patient) use ($currentRadiologistId) {
+                                $exam = $patient->annualPhysicalExamination;
+                                if (!$exam) return false; // No exam = not completed
+                                
+                                $labFindings = $exam->lab_findings ?? [];
+                                return isset($labFindings['chest_xray']['reviews'][$currentRadiologistId]);
+                            })->count();
                         @endphp
                         <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $currentTab === 'review_completed' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600' }}">
                             {{ $completedCount }}

@@ -35,6 +35,24 @@
         </div>
     @endif
 
+    @if($errors->any())
+        <div class="bg-red-50 border-2 border-red-200 rounded-xl p-6 shadow-lg">
+            <div class="flex items-center space-x-4 mb-4">
+                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-lg"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="text-red-800 font-semibold text-lg">Please fix the following errors:</p>
+                </div>
+            </div>
+            <ul class="list-disc list-inside text-red-700 space-y-1">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <!-- Header Section -->
     <div class="content-card rounded-xl overflow-hidden shadow-xl border-2 border-gray-200">
         <div class="bg-gradient-to-r from-cyan-600 to-cyan-700 px-10 py-8">
@@ -56,9 +74,9 @@
         </div>
     </div>
 
-        <form action="{{ isset($medicalChecklist) && $medicalChecklist->id ? route('radtech.medical-checklist.update', $medicalChecklist->id) : route('radtech.medical-checklist.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
+        <form action="{{ isset($medicalChecklist) && $medicalChecklist && $medicalChecklist->id ? route('radtech.medical-checklist.update', $medicalChecklist->id) : route('radtech.medical-checklist.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
             @csrf
-            @if(isset($medicalChecklist) && $medicalChecklist->id)
+            @if(isset($medicalChecklist) && $medicalChecklist && $medicalChecklist->id)
                 @method('PATCH')
             @endif
             <input type="hidden" name="examination_type" value="{{ $examinationType }}">

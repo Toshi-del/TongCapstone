@@ -43,6 +43,10 @@
                         <p class="text-blue-200 text-sm font-medium">Exam ID</p>
                         <p class="text-white text-lg font-bold">#{{ $preEmployment->id }}</p>
                     </div>
+                    <a href="{{ route('doctor.pre-employment.examination.show', $preEmployment->id) }}" 
+                       class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                        <i class="fas fa-x-ray mr-2"></i>View X-Ray Results
+                    </a>
                 </div>
             </div>
         </div>
@@ -447,16 +451,58 @@
                     </div>
                     
                     @php
-                        // Standard laboratory tests for pre-employment (always show these)
-                        $labFields = [
-                            ['name' => 'Chest X-Ray', 'slug' => 'chest_x_ray', 'config' => ['icon' => 'fas fa-x-ray', 'color' => 'gray']],
-                            ['name' => 'Urinalysis', 'slug' => 'urinalysis', 'config' => ['icon' => 'fas fa-vial', 'color' => 'yellow']],
-                            ['name' => 'Fecalysis', 'slug' => 'fecalysis', 'config' => ['icon' => 'fas fa-microscope', 'color' => 'brown']],
-                            ['name' => 'CBC', 'slug' => 'cbc', 'config' => ['icon' => 'fas fa-tint', 'color' => 'red']],
-                            ['name' => 'HBsAg Screening', 'slug' => 'hbsag_screening', 'config' => ['icon' => 'fas fa-shield-virus', 'color' => 'purple']],
-                            ['name' => 'HEPA A IGG & IGM', 'slug' => 'hepa_a_igg_igm', 'config' => ['icon' => 'fas fa-virus', 'color' => 'pink']],
-                            ['name' => 'Others', 'slug' => 'others', 'config' => ['icon' => 'fas fa-plus-circle', 'color' => 'indigo']]
-                        ];
+                        // Get pathologist tests that were actually requested for this patient
+                        $pathologistTests = $preEmployment->preEmploymentRecord->pathologist_tests ?? collect();
+                        
+                        // Build dynamic lab fields based on requested tests
+                        $labFields = [];
+                        
+                        // Always include Chest X-Ray as it's standard
+                        $labFields[] = ['name' => 'Chest X-Ray', 'slug' => 'chest_x_ray', 'config' => ['icon' => 'fas fa-x-ray', 'color' => 'gray']];
+                        
+                        foreach($pathologistTests as $test) {
+                            $testName = $test['test_name'];
+                            
+                            // Skip Blood Chemistry Panel - we don't want to show this in the card view
+                            if (stripos($testName, 'blood chemistry panel') !== false) {
+                                continue;
+                            }
+                            
+                            $config = ['icon' => 'fas fa-flask', 'color' => 'teal'];
+                            $slug = strtolower(str_replace([' ', '-', '&'], '_', $testName));
+                            
+                            // Set appropriate icons/colors and slugs based on test type
+                            if (stripos($testName, 'complete blood count') !== false || stripos($testName, 'cbc') !== false) {
+                                $config = ['icon' => 'fas fa-tint', 'color' => 'red'];
+                                $slug = 'cbc';
+                            } elseif (stripos($testName, 'urinalysis') !== false) {
+                                $config = ['icon' => 'fas fa-vial', 'color' => 'yellow'];
+                                $slug = 'urinalysis';
+                            } elseif (stripos($testName, 'stool') !== false || stripos($testName, 'fecalysis') !== false) {
+                                $config = ['icon' => 'fas fa-microscope', 'color' => 'brown'];
+                                $slug = 'fecalysis';
+                            } elseif (stripos($testName, 'hbsag') !== false || stripos($testName, 'hepatitis b') !== false) {
+                                $config = ['icon' => 'fas fa-shield-virus', 'color' => 'purple'];
+                                $slug = 'hbsag_screening';
+                            } elseif (stripos($testName, 'hepa a') !== false || stripos($testName, 'hepatitis a') !== false) {
+                                $config = ['icon' => 'fas fa-virus', 'color' => 'pink'];
+                                $slug = 'hepa_a_igg_igm';
+                            } else {
+                                $config = ['icon' => 'fas fa-flask', 'color' => 'indigo'];
+                            }
+                            
+                            $labFields[] = ['name' => $testName, 'slug' => $slug, 'config' => $config];
+                        }
+                        
+                        // If no specific tests found besides X-ray, show basic tests
+                        if (count($labFields) <= 1) {
+                            $labFields = [
+                                ['name' => 'Chest X-Ray', 'slug' => 'chest_x_ray', 'config' => ['icon' => 'fas fa-x-ray', 'color' => 'gray']],
+                                ['name' => 'Urinalysis', 'slug' => 'urinalysis', 'config' => ['icon' => 'fas fa-vial', 'color' => 'yellow']],
+                                ['name' => 'Fecalysis', 'slug' => 'fecalysis', 'config' => ['icon' => 'fas fa-microscope', 'color' => 'brown']],
+                                ['name' => 'CBC', 'slug' => 'cbc', 'config' => ['icon' => 'fas fa-tint', 'color' => 'red']]
+                            ];
+                        }
                     @endphp
                     
                     <div class="space-y-4">
@@ -471,20 +517,53 @@
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Result</label>
                                     @php
                                         $testSlug = $labField['slug'];
-                                        // Check both {test} and {test}_result for backward compatibility - same as pathologist
-                                        $resultValue = data_get($preEmployment->lab_report, $testSlug . '_result', data_get($preEmployment->lab_report, $testSlug, ''));
+                                        
+                                        // Special handling for Chest X-Ray - get from radiologist data
+                                        if ($labField['name'] === 'Chest X-Ray') {
+                                            $resultValue = '';
+                                            if ($preEmployment->lab_findings && is_array($preEmployment->lab_findings) && isset($preEmployment->lab_findings['chest_xray'])) {
+                                                $resultValue = $preEmployment->lab_findings['chest_xray']['result'] ?? '';
+                                            }
+                                        } else {
+                                            // Check both {test} and {test}_result for backward compatibility - same as pathologist
+                                            $resultValue = data_get($preEmployment->lab_report, $testSlug . '_result', data_get($preEmployment->lab_report, $testSlug, ''));
+                                        }
                                     @endphp
                                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700">
-                                        {{ $resultValue ?: 'Not available' }}
+                                        @if($labField['name'] === 'Chest X-Ray' && $resultValue)
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                                                {{ strtolower($resultValue) === 'normal' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-yellow-100 text-yellow-800 border border-yellow-200' }}">
+                                                @if(strtolower($resultValue) === 'normal')
+                                                    <i class="fas fa-check-circle mr-1"></i>
+                                                @else
+                                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                @endif
+                                                {{ $resultValue }}
+                                            </span>
+                                        @else
+                                            {{ $resultValue ?: 'Not available' }}
+                                        @endif
                                     </div>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Findings</label>
                                     @php
-                                        $findingsValue = data_get($preEmployment->lab_report, $testSlug . '_findings', '');
+                                        // Special handling for Chest X-Ray - get from radiologist data
+                                        if ($labField['name'] === 'Chest X-Ray') {
+                                            $findingsValue = '';
+                                            if ($preEmployment->lab_findings && is_array($preEmployment->lab_findings) && isset($preEmployment->lab_findings['chest_xray'])) {
+                                                $findingsValue = $preEmployment->lab_findings['chest_xray']['finding'] ?? '';
+                                            }
+                                        } else {
+                                            $findingsValue = data_get($preEmployment->lab_report, $testSlug . '_findings', '');
+                                        }
                                     @endphp
                                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700 min-h-[2.5rem]">
-                                        {{ $findingsValue ?: 'No findings' }}
+                                        @if($labField['name'] === 'Chest X-Ray' && $findingsValue)
+                                            {{ $findingsValue === '—' ? 'Normal findings' : $findingsValue }}
+                                        @else
+                                            {{ $findingsValue ?: 'No findings' }}
+                                        @endif
                                     </div>
                                 </div>
                             </div>

@@ -349,7 +349,7 @@
                             });
                         
                         // Merge and combine companies
-                        $allCompanies = $appointmentCompanies->merge($preEmploymentCompanies)
+                        $allCompanies = collect($appointmentCompanies->values())->merge(collect($preEmploymentCompanies->values()))
                             ->filter(function($company) {
                                 return isset($company['name']) && $company['name'] !== 'Unknown' && !empty($company['name']);
                             })

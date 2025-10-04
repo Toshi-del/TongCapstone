@@ -127,17 +127,44 @@ class RadtechController extends Controller
     /**
      * Show annual physical X-ray records
      */
-    public function annualPhysicalXray()
+    public function annualPhysicalXray(Request $request)
     {
-        $patients = Patient::where('status', 'approved')
-            ->whereDoesntHave('annualPhysicalExamination', function ($q) {
-                $q->whereIn('status', ['completed', 'sent_to_company']);
-            })
-            ->whereDoesntHave('medicalChecklist', function ($q) {
-                $q->whereNotNull('chest_xray_done_by');
-            })
-            ->latest()
-            ->get();
+        $query = Patient::where('status', 'approved');
+
+        // Handle tab filtering
+        $xrayStatus = $request->get('xray_status', 'needs_attention');
+        
+        if ($xrayStatus === 'needs_attention') {
+            // Records that need X-ray imaging (no chest_xray_done_by)
+            $query->whereDoesntHave('medicalChecklists', function ($q) {
+                $q->where('examination_type', 'annual-physical')
+                  ->whereNotNull('chest_xray_done_by')
+                  ->where('chest_xray_done_by', '!=', '');
+            });
+        } elseif ($xrayStatus === 'xray_completed') {
+            // Records where X-ray imaging is completed
+            $query->whereHas('medicalChecklists', function ($q) {
+                $q->where('examination_type', 'annual-physical')
+                  ->whereNotNull('chest_xray_done_by')
+                  ->where('chest_xray_done_by', '!=', '');
+            });
+        }
+
+        // Apply additional filters
+        if ($request->filled('gender')) {
+            $query->where('sex', $request->get('gender'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $patients = $query->latest()->get();
 
         return view('radtech.annual-physical-xray', compact('patients'));
     }
@@ -217,60 +244,70 @@ class RadtechController extends Controller
      */
     public function updateMedicalChecklist(Request $request, $id)
     {
-        $medicalChecklist = MedicalChecklist::findOrFail($id);
-        
-        $validated = $request->validate([
-            'chest_xray_done_by' => 'required|string|max:100',
-            'xray_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:25000',
-        ]);
+        try {
+            $medicalChecklist = MedicalChecklist::findOrFail($id);
+            
+            $validated = $request->validate([
+                'chest_xray_done_by' => 'nullable|string|max:100',
+                'xray_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:25000',
+            ]);
 
-        if ($request->hasFile('xray_image') && $request->file('xray_image')->isValid()) {
-            $path = $request->file('xray_image')->store('xray-images', 'public');
-            $validated['xray_image_path'] = $path;
+            if ($request->hasFile('xray_image') && $request->file('xray_image')->isValid()) {
+                $path = $request->file('xray_image')->store('xray-images', 'public');
+                $validated['xray_image_path'] = $path;
+            }
+
+            // Update chest X-ray completion
+            if (array_key_exists('chest_xray_done_by', $validated) && !empty($validated['chest_xray_done_by'])) {
+                $medicalChecklist->chest_xray_done_by = $validated['chest_xray_done_by'];
+            }
+            if (array_key_exists('xray_image_path', $validated)) {
+                $medicalChecklist->xray_image_path = $validated['xray_image_path'];
+            }
+            
+            $medicalChecklist->save();
+
+            // Create notification for admin when X-ray is completed
+            if (!empty($validated['chest_xray_done_by'])) {
+                $radtech = Auth::user();
+                $patientName = $medicalChecklist->name;
+                $examinationType = $medicalChecklist->pre_employment_record_id ? 'Pre-Employment' : 'Annual Physical';
+                
+                Notification::createForAdmin(
+                    'xray_completed',
+                    'X-Ray Examination Completed',
+                    "Radtech {$radtech->name} has completed X-ray examination for {$patientName} ({$examinationType}).",
+                    [
+                        'checklist_id' => $medicalChecklist->id,
+                        'patient_name' => $patientName,
+                        'radtech_name' => $radtech->name,
+                        'examination_type' => strtolower(str_replace('-', '_', $examinationType)),
+                        'completed_by' => $validated['chest_xray_done_by'],
+                        'has_image' => !empty($validated['xray_image_path'])
+                    ],
+                    'medium',
+                    $radtech,
+                    $medicalChecklist
+                );
+            }
+
+            // Determine redirect route based on examination type
+            if ($medicalChecklist->pre_employment_record_id) {
+                return redirect()->route('radtech.pre-employment-xray')
+                    ->with('success', 'X-ray information updated successfully.');
+            } elseif ($medicalChecklist->patient_id) {
+                return redirect()->route('radtech.annual-physical-xray')
+                    ->with('success', 'X-ray information updated successfully.');
+            }
+
+            return redirect()->route('radtech.dashboard')
+                ->with('success', 'X-ray information updated successfully.');
+                
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update X-ray information: ' . $e->getMessage());
         }
-
-        // Update chest X-ray completion
-        if (array_key_exists('chest_xray_done_by', $validated)) {
-            $medicalChecklist->chest_xray_done_by = $validated['chest_xray_done_by'];
-        }
-        if (array_key_exists('xray_image_path', $validated)) {
-            $medicalChecklist->xray_image_path = $validated['xray_image_path'];
-        }
-        $medicalChecklist->save();
-
-        // Create notification for admin when X-ray is completed
-        $radtech = Auth::user();
-        $patientName = $medicalChecklist->name;
-        $examinationType = $medicalChecklist->pre_employment_record_id ? 'Pre-Employment' : 'Annual Physical';
-        
-        Notification::createForAdmin(
-            'xray_completed',
-            'X-Ray Examination Completed',
-            "Radtech {$radtech->name} has completed X-ray examination for {$patientName} ({$examinationType}).",
-            [
-                'checklist_id' => $medicalChecklist->id,
-                'patient_name' => $patientName,
-                'radtech_name' => $radtech->name,
-                'examination_type' => strtolower(str_replace('-', '_', $examinationType)),
-                'completed_by' => $validated['chest_xray_done_by'],
-                'has_image' => !empty($validated['xray_image_path'])
-            ],
-            'medium',
-            $radtech,
-            $medicalChecklist
-        );
-
-        // Determine redirect route based on examination type
-        if ($medicalChecklist->pre_employment_record_id) {
-            return redirect()->route('radtech.pre-employment-xray')
-                ->with('success', 'X-ray information updated successfully. Record removed from your list.');
-        } elseif ($medicalChecklist->patient_id) {
-            return redirect()->route('radtech.annual-physical-xray')
-                ->with('success', 'X-ray information updated successfully. Record removed from your list.');
-        }
-
-        return redirect()->route('radtech.dashboard')
-            ->with('success', 'X-ray information updated successfully.');
     }
 
     /**
@@ -278,16 +315,18 @@ class RadtechController extends Controller
      */
     public function storeMedicalChecklist(Request $request)
     {
-        $validated = $request->validate([
-            'examination_type' => 'required|in:pre-employment,annual-physical',
-            'pre_employment_record_id' => 'required_if:examination_type,pre-employment|nullable|exists:pre_employment_records,id',
-            'patient_id' => 'required_if:examination_type,annual-physical|nullable|exists:patients,id',
-            'name' => 'required|string|max:255',
-            'date' => 'required|date',
-            'age' => 'required|integer|min:0',
-            'number' => 'nullable|string|max:255',
-            'xray_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:25000',
-        ]);
+        try {
+            $validated = $request->validate([
+                'examination_type' => 'required|in:pre-employment,annual-physical',
+                'pre_employment_record_id' => 'required_if:examination_type,pre-employment|nullable|exists:pre_employment_records,id',
+                'patient_id' => 'required_if:examination_type,annual-physical|nullable|exists:patients,id',
+                'name' => 'required|string|max:255',
+                'date' => 'required|date',
+                'age' => 'required|integer|min:0',
+                'number' => 'nullable|string|max:255',
+                'chest_xray_done_by' => 'nullable|string|max:100',
+                'xray_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:25000',
+            ]);
 
         $validated['user_id'] = Auth::id();
 
@@ -311,7 +350,47 @@ class RadtechController extends Controller
 
         $medicalChecklist = MedicalChecklist::create($validated);
 
-        return redirect()->back()->with('success', 'Medical checklist created successfully.');
+        // Create notification for admin when X-ray is completed
+        if (!empty($validated['chest_xray_done_by'])) {
+            $radtech = Auth::user();
+            $patientName = $validated['name'];
+            $examinationType = $validated['examination_type'] === 'pre-employment' ? 'Pre-Employment' : 'Annual Physical';
+            
+            Notification::createForAdmin(
+                'xray_completed',
+                'X-Ray Examination Completed',
+                "Radtech {$radtech->name} has completed X-ray examination for {$patientName} ({$examinationType}).",
+                [
+                    'checklist_id' => $medicalChecklist->id,
+                    'patient_name' => $patientName,
+                    'radtech_name' => $radtech->name,
+                    'examination_type' => strtolower(str_replace('-', '_', $examinationType)),
+                    'completed_by' => $validated['chest_xray_done_by'],
+                    'has_image' => !empty($validated['xray_image_path'])
+                ],
+                'medium',
+                $radtech,
+                $medicalChecklist
+            );
+        }
+
+        // Determine redirect route based on examination type
+        if ($validated['examination_type'] === 'pre-employment') {
+            return redirect()->route('radtech.pre-employment-xray')
+                ->with('success', 'X-ray information saved successfully.');
+        } elseif ($validated['examination_type'] === 'annual-physical') {
+            return redirect()->route('radtech.annual-physical-xray')
+                ->with('success', 'X-ray information saved successfully.');
+        }
+
+        return redirect()->route('radtech.dashboard')
+            ->with('success', 'Medical checklist created successfully.');
+            
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to save X-ray information: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -67,7 +67,8 @@
                                     });
                                 })
                                 ->whereDoesntHave('medicalChecklist', function($q) {
-                                    $q->whereNotNull('chest_xray_done_by');
+                                    $q->whereNotNull('chest_xray_done_by')
+                                      ->where('chest_xray_done_by', '!=', '');
                                 })
                                 ->count();
                         @endphp

@@ -34,9 +34,15 @@
                         <p class="text-purple-100 text-sm">Comprehensive health assessment and medical evaluation</p>
                     </div>
                 </div>
-                <div class="bg-white bg-opacity-20 rounded-xl px-6 py-4 border border-white border-opacity-30">
-                    <p class="text-purple-100 text-sm font-medium">Patient ID</p>
-                    <p class="text-white text-2xl font-bold">#{{ $annualPhysical->id }}</p>
+                <div class="flex items-center space-x-4">
+                    <div class="bg-white bg-opacity-20 rounded-xl px-6 py-4 border border-white border-opacity-30">
+                        <p class="text-purple-100 text-sm font-medium">Patient ID</p>
+                        <p class="text-white text-2xl font-bold">#{{ $annualPhysical->id }}</p>
+                    </div>
+                    <a href="{{ route('doctor.annual-physical.examination.show', $annualPhysical->id) }}" 
+                       class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 border border-white border-opacity-30">
+                        <i class="fas fa-x-ray mr-2"></i>View X-Ray Results
+                    </a>
                 </div>
             </div>
         </div>
@@ -406,15 +412,56 @@
                     </div>
                     
                     @php
-                        $labRows = [
-                            'Chest X-Ray' => ['icon' => 'fas fa-x-ray', 'color' => 'gray'],
-                            'Urinalysis' => ['icon' => 'fas fa-vial', 'color' => 'yellow'],
-                            'Fecalysis' => ['icon' => 'fas fa-microscope', 'color' => 'brown'],
-                            'CBC' => ['icon' => 'fas fa-tint', 'color' => 'red'],
-                            'HBsAg Screening' => ['icon' => 'fas fa-shield-virus', 'color' => 'purple'],
-                            'HEPA A IGG & IGM' => ['icon' => 'fas fa-virus', 'color' => 'pink'],
-                            'Others' => ['icon' => 'fas fa-plus-circle', 'color' => 'indigo']
-                        ];
+                        // Get pathologist tests that were actually requested for this patient
+                        $pathologistTests = $annualPhysical->patient->pathologist_tests ?? collect();
+                        
+                        // Build dynamic lab fields based on requested tests
+                        $labRows = [];
+                        
+                        // Always include Chest X-Ray as it's standard
+                        $labRows['Chest X-Ray'] = ['icon' => 'fas fa-x-ray', 'color' => 'gray'];
+                        
+                        foreach($pathologistTests as $test) {
+                            $testName = $test['test_name'];
+                            
+                            // Skip Blood Chemistry Panel - we don't want to show this in the card view
+                            if (stripos($testName, 'blood chemistry panel') !== false) {
+                                continue;
+                            }
+                            
+                            $config = ['icon' => 'fas fa-flask', 'color' => 'teal'];
+                            
+                            // Set appropriate icons/colors based on test type
+                            if (stripos($testName, 'complete blood count') !== false || stripos($testName, 'cbc') !== false) {
+                                $config = ['icon' => 'fas fa-tint', 'color' => 'red'];
+                                $labRows['CBC'] = $config;
+                            } elseif (stripos($testName, 'urinalysis') !== false) {
+                                $config = ['icon' => 'fas fa-vial', 'color' => 'yellow'];
+                                $labRows['Urinalysis'] = $config;
+                            } elseif (stripos($testName, 'stool') !== false || stripos($testName, 'fecalysis') !== false) {
+                                $config = ['icon' => 'fas fa-microscope', 'color' => 'brown'];
+                                $labRows['Fecalysis'] = $config;
+                            } elseif (stripos($testName, 'hbsag') !== false || stripos($testName, 'hepatitis b') !== false) {
+                                $config = ['icon' => 'fas fa-shield-virus', 'color' => 'purple'];
+                                $labRows['HBsAg Screening'] = $config;
+                            } elseif (stripos($testName, 'hepa a') !== false || stripos($testName, 'hepatitis a') !== false) {
+                                $config = ['icon' => 'fas fa-virus', 'color' => 'pink'];
+                                $labRows['HEPA A IGG & IGM'] = $config;
+                            } else {
+                                $config = ['icon' => 'fas fa-flask', 'color' => 'indigo'];
+                                $labRows[$testName] = $config;
+                            }
+                        }
+                        
+                        // If no specific tests found besides X-ray, show basic tests
+                        if (count($labRows) <= 1) {
+                            $labRows = [
+                                'Chest X-Ray' => ['icon' => 'fas fa-x-ray', 'color' => 'gray'],
+                                'Urinalysis' => ['icon' => 'fas fa-vial', 'color' => 'yellow'],
+                                'Fecalysis' => ['icon' => 'fas fa-microscope', 'color' => 'brown'],
+                                'CBC' => ['icon' => 'fas fa-tint', 'color' => 'red']
+                            ];
+                        }
                     @endphp
                     
                     <div class="space-y-4">
@@ -432,8 +479,15 @@
                                         $testKey = str_replace('chest_x_ray', 'xray', $testKey);
                                         $testKey = str_replace('hepa_a_igg___igm', 'hepa_a_igg_igm', $testKey);
                                         
+                                        // Special handling for Chest X-Ray - get from radiologist data
+                                        if ($row === 'Chest X-Ray') {
+                                            $resultValue = '';
+                                            if ($annualPhysical->lab_findings && is_array($annualPhysical->lab_findings) && isset($annualPhysical->lab_findings['chest_xray'])) {
+                                                $resultValue = $annualPhysical->lab_findings['chest_xray']['result'] ?? '';
+                                            }
+                                        }
                                         // Special handling for drug test - use actual drug test data
-                                        if ($testKey === 'drug_test') {
+                                        elseif ($testKey === 'drug_test') {
                                             $drugTestData = $annualPhysical->drug_test ?? [];
                                             $methResult = $drugTestData['methamphetamine'] ?? '';
                                             $marijuanaResult = $drugTestData['marijuana'] ?? '';
@@ -458,14 +512,33 @@
                                         }
                                     @endphp
                                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700">
-                                        {{ $resultValue ?: 'Not available' }}
+                                        @if($row === 'Chest X-Ray' && $resultValue)
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                                                {{ strtolower($resultValue) === 'normal' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-yellow-100 text-yellow-800 border border-yellow-200' }}">
+                                                @if(strtolower($resultValue) === 'normal')
+                                                    <i class="fas fa-check-circle mr-1"></i>
+                                                @else
+                                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                @endif
+                                                {{ $resultValue }}
+                                            </span>
+                                        @else
+                                            {{ $resultValue ?: 'Not available' }}
+                                        @endif
                                     </div>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Findings</label>
                                     @php
+                                        // Special handling for Chest X-Ray - get from radiologist data
+                                        if ($row === 'Chest X-Ray') {
+                                            $findingsValue = '';
+                                            if ($annualPhysical->lab_findings && is_array($annualPhysical->lab_findings) && isset($annualPhysical->lab_findings['chest_xray'])) {
+                                                $findingsValue = $annualPhysical->lab_findings['chest_xray']['finding'] ?? '';
+                                            }
+                                        }
                                         // Special handling for drug test findings
-                                        if ($testKey === 'drug_test') {
+                                        elseif ($testKey === 'drug_test') {
                                             $drugTestData = $annualPhysical->drug_test ?? [];
                                             $methResult = $drugTestData['methamphetamine'] ?? '';
                                             $marijuanaResult = $drugTestData['marijuana'] ?? '';
@@ -485,7 +558,11 @@
                                         }
                                     @endphp
                                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700 min-h-[2.5rem]">
-                                        {{ $findingsValue ?: 'No findings' }}
+                                        @if($row === 'Chest X-Ray' && $findingsValue)
+                                            {{ $findingsValue === '—' ? 'Normal findings' : $findingsValue }}
+                                        @else
+                                            {{ $findingsValue ?: 'No findings' }}
+                                        @endif
                                     </div>
                                 </div>
                             </div>

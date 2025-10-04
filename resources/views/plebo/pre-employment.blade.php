@@ -49,6 +49,7 @@
                     <i class="fas fa-exclamation-circle mr-2"></i>
                     Needs Attention
                     @php
+                        // Phlebotomy-focused count: only blood_extraction_done_by required
                         $needsAttentionCount = \App\Models\PreEmploymentRecord::where('status', 'approved')
                             ->where(function($query) {
                                 // Check medical test relationships OR other_exams column
@@ -71,7 +72,6 @@
                                              ->orWhere('name', 'like', '%Laboratory%');
                                     });
                                 })->orWhere(function($q) {
-                                    // Also check other_exams column for medical test information
                                     $q->where('other_exams', 'like', '%Pre-Employment%')
                                       ->orWhere('other_exams', 'like', '%CBC%')
                                       ->orWhere('other_exams', 'like', '%FECA%')
@@ -83,11 +83,14 @@
                             ->where(function($q) {
                                 $q->whereDoesntHave('medicalChecklist')
                                   ->orWhereHas('medicalChecklist', function($subQ) {
+                                      // Phlebotomy focus: only check blood_extraction_done_by
                                       $subQ->where(function($checkQ) {
-                                          $checkQ->whereNull('stool_exam_done_by')
-                                                 ->orWhereNull('urinalysis_done_by')
-                                                 ->orWhereNull('blood_extraction_done_by');
+                                          $checkQ->whereNull('blood_extraction_done_by')
+                                                 ->orWhere('blood_extraction_done_by', '');
                                       });
+                                  })
+                                  ->orWhereDoesntHave('preEmploymentExamination', function($subQ) {
+                                      $subQ->whereNotNull('lab_report');
                                   });
                             })
                             ->count();
@@ -102,6 +105,7 @@
                     <i class="fas fa-check-circle mr-2"></i>
                     Collection Completed
                     @php
+                        // Phlebotomy-focused count: blood_extraction_done_by AND lab_report exists
                         $completedCount = \App\Models\PreEmploymentRecord::where('status', 'approved')
                             ->where(function($query) {
                                 // Check medical test relationships OR other_exams column
@@ -124,7 +128,6 @@
                                              ->orWhere('name', 'like', '%Laboratory%');
                                     });
                                 })->orWhere(function($q) {
-                                    // Also check other_exams column for medical test information
                                     $q->where('other_exams', 'like', '%Pre-Employment%')
                                       ->orWhere('other_exams', 'like', '%CBC%')
                                       ->orWhere('other_exams', 'like', '%FECA%')
@@ -134,12 +137,13 @@
                                 });
                             })
                             ->whereHas('medicalChecklist', function($q) {
-                                $q->whereNotNull('stool_exam_done_by')
-                                  ->where('stool_exam_done_by', '!=', '')
-                                  ->whereNotNull('urinalysis_done_by')
-                                  ->where('urinalysis_done_by', '!=', '')
-                                  ->whereNotNull('blood_extraction_done_by')
+                                // Phlebotomy focus: only blood_extraction_done_by required
+                                $q->whereNotNull('blood_extraction_done_by')
                                   ->where('blood_extraction_done_by', '!=', '');
+                            })
+                            ->whereHas('preEmploymentExamination', function($q) {
+                                // Must have lab_report (created by PleboController)
+                                $q->whereNotNull('lab_report');
                             })
                             ->count();
                     @endphp

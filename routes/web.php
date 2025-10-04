@@ -246,6 +246,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::patch('/doctor/annual-physical/{id}', [DoctorController::class, 'updateAnnualPhysical'])->name('doctor.annual-physical.update');
     Route::get('/doctor/pre-employment/{id}/examination', [DoctorController::class, 'showExamination'])->name('doctor.pre-employment.examination.show');
     Route::post('/doctor/pre-employment/{record}/submit', [DoctorController::class, 'submitPreEmploymentByRecordId'])->name('doctor.pre-employment.by-record.submit');
+    Route::get('/doctor/annual-physical/{id}/examination', [DoctorController::class, 'showAnnualPhysicalExamination'])->name('doctor.annual-physical.examination.show');
     Route::get('/doctor/annual-physical/patient/{patientId}/edit', [DoctorController::class, 'editAnnualPhysicalByPatientId'])->name('doctor.annual-physical.by-patient.edit');
     Route::post('/doctor/annual-physical/patient/{patientId}/submit', [DoctorController::class, 'submitAnnualPhysicalByPatientId'])->name('doctor.annual-physical.by-patient.submit');
     

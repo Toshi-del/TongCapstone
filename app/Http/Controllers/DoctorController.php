@@ -55,7 +55,7 @@ class DoctorController extends Controller
     {
         // Show pre-employment examinations that are ready for doctor review
         $preEmploymentExaminations = \App\Models\PreEmploymentExamination::with(['preEmploymentRecord.medicalTest', 'preEmploymentRecord.medicalTestCategory', 'user'])
-            ->whereIn('status', ['pending', 'completed', 'Approved']) // Show pending, completed, and Approved examinations
+            ->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed']) // Show pending, completed, Approved, and collection_completed examinations
             ->latest()
             ->paginate(15);
             
@@ -105,7 +105,7 @@ class DoctorController extends Controller
         $patients = Patient::with(['appointment', 'annualPhysicalExamination'])
             ->where('status', 'approved')
             ->whereHas('annualPhysicalExamination', function ($q) {
-                $q->where('status', 'completed');
+                $q->whereIn('status', ['completed', 'collection_completed']);
             })
             ->latest()
             ->get();
@@ -355,6 +355,17 @@ class DoctorController extends Controller
             'drugTestResults'
         ])->findOrFail($id);
         
+        // Debug: Log what examination data we're passing to the view
+        \Log::info('Doctor Controller - Pre-Employment Examination Debug:', [
+            'examination_id' => $examination->id,
+            'patient_name' => $examination->name,
+            'lab_findings_exists' => !is_null($examination->lab_findings),
+            'lab_findings_type' => gettype($examination->lab_findings),
+            'lab_findings_keys' => is_array($examination->lab_findings) ? array_keys($examination->lab_findings) : 'not_array',
+            'chest_xray_data' => is_array($examination->lab_findings) && isset($examination->lab_findings['chest_xray']) ? $examination->lab_findings['chest_xray'] : 'not_found',
+            'raw_lab_findings' => $examination->lab_findings
+        ]);
+        
         // Check if this examination requires a drug test
         $requiresDrugTest = false;
         if ($examination->preEmploymentRecord && $examination->preEmploymentRecord->medicalTest) {
@@ -390,6 +401,19 @@ class DoctorController extends Controller
             ]
         );
         return redirect()->route('doctor.pre-employment.edit', $examination->id);
+    }
+
+    /**
+     * Show an annual physical examination
+     */
+    public function showAnnualPhysicalExamination($id)
+    {
+        $examination = \App\Models\AnnualPhysicalExamination::with([
+            'patient.appointment.medicalTest',
+            'drugTestResults'
+        ])->findOrFail($id);
+        
+        return view('doctor.annual-physical-examination', compact('examination'));
     }
 
     /**

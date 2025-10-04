@@ -307,30 +307,29 @@ class PleboController extends Controller
         $bloodStatus = $request->get('blood_status', 'needs_attention');
         
         if ($bloodStatus === 'needs_attention') {
-            // Records that need blood collection (no medical checklist or incomplete)
+            // Records that need blood collection (phlebotomy focus - only blood_extraction_done_by required)
             $query->where(function($q) {
                 $q->whereDoesntHave('medicalChecklist')
                   ->orWhereHas('medicalChecklist', function($subQ) {
-                      // Incomplete if ANY of the required fields are empty
+                      // Incomplete if blood extraction is empty (phlebotomy focus)
                       $subQ->where(function($checkQ) {
-                          $checkQ->whereNull('stool_exam_done_by')
-                                 ->orWhere('stool_exam_done_by', '')
-                                 ->orWhereNull('urinalysis_done_by')
-                                 ->orWhere('urinalysis_done_by', '')
-                                 ->orWhereNull('blood_extraction_done_by')
+                          $checkQ->whereNull('blood_extraction_done_by')
                                  ->orWhere('blood_extraction_done_by', '');
                       });
+                  })
+                  ->orWhereDoesntHave('preEmploymentExamination', function($subQ) {
+                      // Also show if no examination exists yet or no lab_report
+                      $subQ->whereNotNull('lab_report');
                   });
             });
         } elseif ($bloodStatus === 'collection_completed') {
-            // Records where blood collection is completed (all required fields filled)
+            // Records where blood collection is completed AND lab_report exists (phlebotomy focus)
             $query->whereHas('medicalChecklist', function($q) {
-                $q->whereNotNull('stool_exam_done_by')
-                  ->where('stool_exam_done_by', '!=', '')
-                  ->whereNotNull('urinalysis_done_by')
-                  ->where('urinalysis_done_by', '!=', '')
-                  ->whereNotNull('blood_extraction_done_by')
+                $q->whereNotNull('blood_extraction_done_by')
                   ->where('blood_extraction_done_by', '!=', '');
+            })
+            ->whereHas('preEmploymentExamination', function($q) {
+                $q->whereNotNull('lab_report');
             });
         }
 
@@ -364,25 +363,59 @@ class PleboController extends Controller
     /**
      * List annual physical patients for plebo
      */
-    public function annualPhysical()
+    public function annualPhysical(Request $request)
     {
-        $patients = Patient::where('status', 'approved')
-            ->where(function($query) {
-                // Only show patients without checklist OR with incomplete checklist
-                $query->whereDoesntHave('medicalChecklist')
-                      ->orWhereHas('medicalChecklist', function($q) {
-                          // Incomplete if blood extraction is empty
-                          $q->where(function($subQ) {
-                              $subQ->whereNull('blood_extraction_done_by')
-                                   ->orWhere('blood_extraction_done_by', '');
-                          });
+        $query = Patient::where('status', 'approved');
+
+        // Handle tab filtering
+        $bloodStatus = $request->get('blood_status', 'needs_attention');
+        
+        if ($bloodStatus === 'needs_attention') {
+            // Patients that need blood collection (phlebotomy focus - only blood_extraction_done_by required)
+            $query->where(function($q) {
+                $q->whereDoesntHave('medicalChecklist')
+                  ->orWhereHas('medicalChecklist', function($subQ) {
+                      // Incomplete if blood extraction is empty (phlebotomy focus)
+                      $subQ->where(function($checkQ) {
+                          $checkQ->whereNull('blood_extraction_done_by')
+                                 ->orWhere('blood_extraction_done_by', '');
                       });
+                  })
+                  ->orWhereDoesntHave('annualPhysicalExamination', function($subQ) {
+                      // Also show if no examination exists yet or no lab_report
+                      $subQ->whereNotNull('lab_report');
+                  });
+            });
+        } elseif ($bloodStatus === 'collection_completed') {
+            // Patients where blood collection is completed AND lab_report exists (phlebotomy focus)
+            $query->whereHas('medicalChecklist', function($q) {
+                $q->whereNotNull('blood_extraction_done_by')
+                  ->where('blood_extraction_done_by', '!=', '');
             })
-            ->whereDoesntHave('annualPhysicalExamination', function($q) {
-                $q->whereIn('status', ['completed', 'sent_to_company']);
-            })
-            ->latest()
-            ->paginate(15);
+            ->whereHas('annualPhysicalExamination', function($q) {
+                $q->whereNotNull('lab_report');
+            });
+        }
+
+        // Apply additional filters
+        if ($request->filled('company')) {
+            $query->where('company_name', 'like', '%' . $request->company . '%');
+        }
+
+        if ($request->filled('gender')) {
+            $query->where('sex', $request->gender);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', '%' . $search . '%')
+                  ->orWhere('last_name', 'like', '%' . $search . '%')
+                  ->orWhere('company_name', 'like', '%' . $search . '%');
+            });
+        }
+
+        $patients = $query->latest()->paginate(15);
             
         return view('plebo.annual-physical', compact('patients'));
     }
@@ -478,6 +511,9 @@ class PleboController extends Controller
                 \Log::info('Medical Checklist Created:', ['id' => $medicalChecklist->id, 'data' => $data]);
             }
 
+            // Check and update collection status after medical checklist save
+            $this->checkAndUpdateCollectionStatus($medicalChecklist, $data);
+
             // Redirect based on examination type
             if ($data['examination_type'] === 'pre_employment') {
                 return redirect()->route('plebo.pre-employment')->with('success', 'Medical checklist saved successfully.');
@@ -524,6 +560,9 @@ class PleboController extends Controller
         ]);
 
         $medicalChecklist->update($data);
+
+        // Check and update collection status after medical checklist update
+        $this->checkAndUpdateCollectionStatus($medicalChecklist, $data);
 
         // Create notification for admin when blood collection is completed
         if (!empty($data['stool_exam_done_by']) || !empty($data['urinalysis_done_by']) || !empty($data['blood_extraction_done_by'])) {
@@ -792,6 +831,89 @@ class PleboController extends Controller
             ->count();
         
         return response()->json(['count' => $count]);
+    }
+
+    /**
+     * Check and update collection status when medical checklist is completed
+     * Based on phlebotomy-focused workflow: only blood_extraction_done_by is required
+     */
+    private function checkAndUpdateCollectionStatus($medicalChecklist, $data)
+    {
+        // Only proceed if blood extraction is completed (phlebotomy focus)
+        if (empty($data['blood_extraction_done_by'])) {
+            return;
+        }
+
+        if ($data['examination_type'] === 'pre_employment' && !empty($data['pre_employment_record_id'])) {
+            // Handle pre-employment examination
+            $record = PreEmploymentRecord::find($data['pre_employment_record_id']);
+            if ($record) {
+                // Find or create examination
+                $exam = PreEmploymentExamination::where('pre_employment_record_id', $record->id)->first();
+                
+                if (!$exam) {
+                    // Create new examination
+                    $exam = PreEmploymentExamination::create([
+                        'pre_employment_record_id' => $record->id,
+                        'name' => $record->first_name . ' ' . $record->last_name,
+                        'company_name' => $record->company_name,
+                        'date' => now(),
+                        'status' => 'collection_completed',
+                        'lab_report' => [
+                            'collection_completed_at' => now()->toDateTimeString(),
+                            'blood_extraction_completed' => true,
+                            'phlebotomist' => Auth::user()->name ?? 'Unknown'
+                        ]
+                    ]);
+                } else {
+                    // Update existing examination
+                    $exam->status = 'collection_completed';
+                    
+                    // Ensure lab_report exists
+                    $labReport = $exam->lab_report ?? [];
+                    $labReport['collection_completed_at'] = now()->toDateTimeString();
+                    $labReport['blood_extraction_completed'] = true;
+                    $labReport['phlebotomist'] = Auth::user()->name ?? 'Unknown';
+                    
+                    $exam->lab_report = $labReport;
+                    $exam->save();
+                }
+            }
+        } elseif ($data['examination_type'] === 'annual_physical' && !empty($data['patient_id'])) {
+            // Handle annual physical examination
+            $patient = Patient::find($data['patient_id']);
+            if ($patient) {
+                // Find or create examination
+                $exam = AnnualPhysicalExamination::where('patient_id', $patient->id)->first();
+                
+                if (!$exam) {
+                    // Create new examination
+                    $exam = AnnualPhysicalExamination::create([
+                        'patient_id' => $patient->id,
+                        'name' => $patient->first_name . ' ' . $patient->last_name,
+                        'date' => now(),
+                        'status' => 'collection_completed',
+                        'lab_report' => [
+                            'collection_completed_at' => now()->toDateTimeString(),
+                            'blood_extraction_completed' => true,
+                            'phlebotomist' => Auth::user()->name ?? 'Unknown'
+                        ]
+                    ]);
+                } else {
+                    // Update existing examination
+                    $exam->status = 'collection_completed';
+                    
+                    // Ensure lab_report exists
+                    $labReport = $exam->lab_report ?? [];
+                    $labReport['collection_completed_at'] = now()->toDateTimeString();
+                    $labReport['blood_extraction_completed'] = true;
+                    $labReport['phlebotomist'] = Auth::user()->name ?? 'Unknown';
+                    
+                    $exam->lab_report = $labReport;
+                    $exam->save();
+                }
+            }
+        }
     }
 }
 
