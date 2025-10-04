@@ -645,37 +645,74 @@
                     
                     @php
                         $lab = $preEmployment->lab_report ?? [];
+                        $drugTest = $preEmployment->drug_test ?? [];
                         
-                        // Count "Not normal" results from lab tests
-                        $notNormalCount = 0;
-                        $labTests = ['chest_x_ray', 'urinalysis', 'fecalysis', 'cbc', 'drug_test', 'hbsag_screening', 'hepa_a_igg_igm', 'others'];
                         
-                        foreach($labTests as $test) {
+                        // Count drug test positive results
+                        $drugPositiveCount = 0;
+                        $methResult = $drugTest['methamphetamine_result'] ?? '';
+                        $mariResult = $drugTest['marijuana_result'] ?? '';
+                        
+                        if (strtolower(trim($methResult)) === 'positive') {
+                            $drugPositiveCount++;
+                        }
+                        if (strtolower(trim($mariResult)) === 'positive') {
+                            $drugPositiveCount++;
+                        }
+                        
+                        // Count "Not normal" results from medical tests (excluding drug test)
+                        $medicalNotNormalCount = 0;
+                        $medicalTests = ['chest_x_ray', 'urinalysis', 'fecalysis', 'cbc', 'hbsag_screening', 'hepa_a_igg_igm', 'others'];
+                        
+                        foreach($medicalTests as $test) {
                             $result = data_get($lab, $test, '');
                             if (strtolower($result) === 'not normal' || strtolower($result) === 'abnormal' || strtolower($result) === 'positive') {
-                                $notNormalCount++;
+                                $medicalNotNormalCount++;
                             }
                         }
                         
-                        // Determine assessment based on lab results
-                        if ($notNormalCount >= 2) {
-                            $assessment = 'Not fit for work';
-                            $assessmentColor = 'red';
-                            $assessmentIcon = 'fas fa-times-circle';
-                        } elseif ($notNormalCount === 1) {
-                            $assessment = 'For evaluation';
-                            $assessmentColor = 'yellow';
-                            $assessmentIcon = 'fas fa-exclamation-triangle';
-                        } else {
+                        // Determine assessment based on drug test and medical test combination
+                        // DRUG TEST - MEDICAL TEST
+                        // All Negative, All normal - Fit to Work
+                        // All Negative, 2 or more not normal - not fit
+                        // 2 Negative, 1 Not Normal - For Eval
+                        // 1 Positive, 1 Not Normal - Not Fit
+                        // 1 Positive, 2 Not Normal - Not Fit
+                        // 2 Positive, 2 Not Normal - Not Fit
+                        // 1 Positive, All Normal - Not Fit
+                        
+                        if ($drugPositiveCount == 0 && $medicalNotNormalCount == 0) {
+                            // All Negative, All normal - Fit to Work
                             $assessment = 'Fit to work';
                             $assessmentColor = 'green';
                             $assessmentIcon = 'fas fa-check-circle';
+                        } elseif ($drugPositiveCount == 0 && $medicalNotNormalCount >= 2) {
+                            // All Negative, 2 or more not normal - not fit
+                            $assessment = 'Not fit for work';
+                            $assessmentColor = 'red';
+                            $assessmentIcon = 'fas fa-times-circle';
+                        } elseif ($drugPositiveCount == 0 && $medicalNotNormalCount == 1) {
+                            // All Negative, 1 Not Normal - For Eval
+                            $assessment = 'For evaluation';
+                            $assessmentColor = 'yellow';
+                            $assessmentIcon = 'fas fa-exclamation-triangle';
+                        } elseif ($drugPositiveCount >= 1) {
+                            // Any positive drug test result - Not Fit
+                            $assessment = 'Not fit for work';
+                            $assessmentColor = 'red';
+                            $assessmentIcon = 'fas fa-times-circle';
+                        } else {
+                            // Fallback
+                            $assessment = 'For evaluation';
+                            $assessmentColor = 'yellow';
+                            $assessmentIcon = 'fas fa-exclamation-triangle';
                         }
+                        
+                        // Total abnormal count for display
+                        $totalAbnormalCount = $drugPositiveCount + $medicalNotNormalCount;
                     @endphp
                     
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      
-                        
                         <!-- Automatic Medical Assessment -->
                         <div class="bg-white rounded-lg p-4 border-l-4 border-{{ $assessmentColor }}-500">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -687,7 +724,33 @@
                                     <span class="font-semibold text-{{ $assessmentColor }}-800">{{ $assessment }}</span>
                                 </div>
                                 <div class="text-xs text-{{ $assessmentColor }}-600 mt-1">
-                                    Based on {{ $notNormalCount }} abnormal lab result(s)
+                                    Drug Test: {{ $drugPositiveCount }} positive result(s) | Medical Tests: {{ $medicalNotNormalCount }} abnormal result(s)
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Assessment Logic Breakdown -->
+                        <div class="bg-white rounded-lg p-4 border-l-4 border-blue-500">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-info-circle text-blue-600 mr-2"></i>Assessment Logic
+                            </label>
+                            <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                <div class="text-xs text-blue-600 space-y-1">
+                                    <div class="font-semibold">Current Results:</div>
+                                    <div>• Drug Tests: {{ $drugPositiveCount == 0 ? 'All Negative' : $drugPositiveCount . ' Positive' }}</div>
+                                    <div>• Medical Tests: {{ $medicalNotNormalCount == 0 ? 'All Normal' : $medicalNotNormalCount . ' Abnormal' }}</div>
+                                    <div class="pt-1 font-semibold">Applied Rule:</div>
+                                    <div>
+                                        @if ($drugPositiveCount == 0 && $medicalNotNormalCount == 0)
+                                            All Negative, All Normal → Fit to Work
+                                        @elseif ($drugPositiveCount == 0 && $medicalNotNormalCount >= 2)
+                                            All Negative, 2+ Abnormal → Not Fit
+                                        @elseif ($drugPositiveCount == 0 && $medicalNotNormalCount == 1)
+                                            All Negative, 1 Abnormal → For Evaluation
+                                        @elseif ($drugPositiveCount >= 1)
+                                            Any Positive Drug Test → Not Fit
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>

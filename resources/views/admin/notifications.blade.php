@@ -158,7 +158,439 @@
                                             <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
                                         @endif
                                     </div>
-                                    <p class="text-gray-700 mb-3 leading-relaxed">{{ $notification->message }}</p>
+                                    <!-- Structured Notification Content -->
+                                    <div class="mb-3">
+                                        @php
+                                            // Parse notification message for better display
+                                            $message = $notification->message;
+                                            $structuredData = [];
+                                            
+                                            // Check for different notification types and extract structured data
+                                            if (str_contains($message, 'pre-employment record(s)')) {
+                                                // Pre-employment notification
+                                                preg_match("/Company '([^']+)' has created (\d+) new pre-employment record\(s\)\./", $message, $matches);
+                                                if ($matches) {
+                                                    $structuredData['type'] = 'pre_employment';
+                                                    $structuredData['company'] = $matches[1];
+                                                    $structuredData['count'] = $matches[2];
+                                                }
+                                                
+                                                // Extract tests - improved pattern to handle periods in test names
+                                                if (preg_match("/Tests: (.+?)(?:\. Total value:|$)/", $message, $testMatches)) {
+                                                    $structuredData['tests'] = trim($testMatches[1]);
+                                                }
+                                                
+                                                // Extract total value
+                                                if (preg_match("/Total value: ([^.]+)/", $message, $valueMatches)) {
+                                                    $structuredData['total_value'] = $valueMatches[1];
+                                                }
+                                            } elseif (str_contains($message, 'appointment') && str_contains($message, 'scheduled')) {
+                                                // Appointment scheduled notification
+                                                $structuredData['type'] = 'appointment_scheduled';
+                                                if (preg_match("/Patient '([^']+)'/", $message, $patientMatches)) {
+                                                    $structuredData['patient'] = $patientMatches[1];
+                                                }
+                                                if (preg_match("/scheduled for (.+?) on (.+?) at (.+?)\./", $message, $appointmentMatches)) {
+                                                    $structuredData['service'] = $appointmentMatches[1];
+                                                    $structuredData['date'] = $appointmentMatches[2];
+                                                    $structuredData['time'] = $appointmentMatches[3];
+                                                }
+                                            } elseif (str_contains($message, 'specimen collected')) {
+                                                // Specimen collection notification
+                                                $structuredData['type'] = 'specimen';
+                                                if (preg_match("/Patient: ([^,]+)/", $message, $patientMatches)) {
+                                                    $structuredData['patient'] = $patientMatches[1];
+                                                }
+                                                if (preg_match("/Tests: (.+)/", $message, $testMatches)) {
+                                                    $structuredData['tests'] = $testMatches[1];
+                                                }
+                                            } elseif (str_contains($message, 'X-ray') && str_contains($message, 'completed')) {
+                                                // X-ray completed notification
+                                                $structuredData['type'] = 'xray_completed';
+                                                if (preg_match("/Patient: ([^,]+)/", $message, $patientMatches)) {
+                                                    $structuredData['patient'] = $patientMatches[1];
+                                                }
+                                                if (preg_match("/Type: (.+)/", $message, $typeMatches)) {
+                                                    $structuredData['xray_type'] = $typeMatches[1];
+                                                }
+                                            } elseif (str_contains($message, 'X-ray') && str_contains($message, 'interpreted')) {
+                                                // X-ray interpreted notification
+                                                $structuredData['type'] = 'xray_interpreted';
+                                                if (preg_match("/Patient: ([^,]+)/", $message, $patientMatches)) {
+                                                    $structuredData['patient'] = $patientMatches[1];
+                                                }
+                                            } elseif (str_contains($message, 'ECG') && str_contains($message, 'completed')) {
+                                                // ECG completed notification
+                                                $structuredData['type'] = 'ecg_completed';
+                                                if (preg_match("/Patient: ([^,]+)/", $message, $patientMatches)) {
+                                                    $structuredData['patient'] = $patientMatches[1];
+                                                }
+                                            } elseif (str_contains($message, 'pathologist') && str_contains($message, 'report')) {
+                                                // Pathologist report notification
+                                                $structuredData['type'] = 'pathologist_report';
+                                                if (preg_match("/Patient: ([^,]+)/", $message, $patientMatches)) {
+                                                    $structuredData['patient'] = $patientMatches[1];
+                                                }
+                                                if (preg_match("/Tests: (.+)/", $message, $testMatches)) {
+                                                    $structuredData['tests'] = $testMatches[1];
+                                                }
+                                            } elseif (str_contains($message, 'checklist completed')) {
+                                                // Checklist completed notification
+                                                $structuredData['type'] = 'checklist_completed';
+                                                if (preg_match("/Patient: ([^,]+)/", $message, $patientMatches)) {
+                                                    $structuredData['patient'] = $patientMatches[1];
+                                                }
+                                            } elseif (str_contains($message, 'examination') && str_contains($message, 'updated')) {
+                                                // Doctor examination notification
+                                                $structuredData['type'] = 'examination_updated';
+                                                if (preg_match("/Patient: ([^,]+)/", $message, $patientMatches)) {
+                                                    $structuredData['patient'] = $patientMatches[1];
+                                                }
+                                            } elseif (str_contains($message, 'patient registered')) {
+                                                // Patient registration notification
+                                                $structuredData['type'] = 'patient_registered';
+                                                if (preg_match("/Patient '([^']+)'/", $message, $patientMatches)) {
+                                                    $structuredData['patient'] = $patientMatches[1];
+                                                }
+                                                if (preg_match("/Company: ([^.]+)/", $message, $companyMatches)) {
+                                                    $structuredData['company'] = $companyMatches[1];
+                                                }
+                                            } else {
+                                                // Default/other notifications
+                                                $structuredData['type'] = 'default';
+                                            }
+                                        @endphp
+
+                                        @if(isset($structuredData['type']) && $structuredData['type'] === 'pre_employment')
+                                            <!-- Pre-Employment Structured Display -->
+                                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                                                <div class="flex items-center space-x-2">
+                                                    <i class="fas fa-building text-blue-600"></i>
+                                                    <span class="font-semibold text-blue-900">Company:</span>
+                                                    <span class="text-blue-800">{{ $structuredData['company'] }}</span>
+                                                </div>
+                                                
+                                                <div class="flex items-center space-x-2">
+                                                    <i class="fas fa-file-medical text-blue-600"></i>
+                                                    <span class="font-semibold text-blue-900">Records Created:</span>
+                                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                        {{ $structuredData['count'] }} new pre-employment record(s)
+                                                    </span>
+                                                </div>
+                                                
+                                                @if(isset($structuredData['tests']))
+                                                    <div class="space-y-2">
+                                                        <div class="flex items-start space-x-2">
+                                                            <i class="fas fa-list-check text-blue-600 mt-1"></i>
+                                                            <span class="font-semibold text-blue-900">Tests Included:</span>
+                                                        </div>
+                                                        <div class="ml-6 bg-white border border-blue-200 rounded-md p-3">
+                                                            @php
+                                                                $tests = explode(', ', $structuredData['tests']);
+                                                            @endphp
+                                                            <div class="flex flex-wrap gap-2">
+                                                                @foreach($tests as $test)
+                                                                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm">
+                                                                        {{ trim($test) }}
+                                                                    </span>
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(isset($structuredData['total_value']))
+                                                    <div class="flex items-center space-x-2 pt-2 border-t border-blue-200">
+                                                        <i class="fas fa-peso-sign text-green-600"></i>
+                                                        <span class="font-semibold text-green-900">Total Value:</span>
+                                                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full font-bold">
+                                                            {{ $structuredData['total_value'] }}
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @elseif(isset($structuredData['type']) && $structuredData['type'] === 'appointment_scheduled')
+                                            <!-- Appointment Scheduled Structured Display -->
+                                            <div class="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                                                @if(isset($structuredData['patient']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-user text-green-600"></i>
+                                                        <span class="font-semibold text-green-900">Patient:</span>
+                                                        <span class="text-green-800">{{ $structuredData['patient'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(isset($structuredData['service']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-stethoscope text-green-600"></i>
+                                                        <span class="font-semibold text-green-900">Service:</span>
+                                                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                            {{ $structuredData['service'] }}
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(isset($structuredData['date']) && isset($structuredData['time']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-calendar-check text-green-600"></i>
+                                                        <span class="font-semibold text-green-900">Scheduled:</span>
+                                                        <span class="text-green-800">{{ $structuredData['date'] }} at {{ $structuredData['time'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(!isset($structuredData['patient']) && !isset($structuredData['service']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-calendar-check text-green-600 mt-1"></i>
+                                                        <div class="text-green-800">{{ $notification->message }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @elseif(isset($structuredData['type']) && $structuredData['type'] === 'patient_registered')
+                                            <!-- Patient Registration Structured Display -->
+                                            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-3">
+                                                @if(isset($structuredData['patient']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-user-plus text-emerald-600"></i>
+                                                        <span class="font-semibold text-emerald-900">New Patient:</span>
+                                                        <span class="text-emerald-800">{{ $structuredData['patient'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(isset($structuredData['company']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-building text-emerald-600"></i>
+                                                        <span class="font-semibold text-emerald-900">Company:</span>
+                                                        <span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                            {{ $structuredData['company'] }}
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(!isset($structuredData['patient']) && !isset($structuredData['company']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-user-plus text-emerald-600 mt-1"></i>
+                                                        <div class="text-emerald-800">{{ $notification->message }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @elseif(isset($structuredData['type']) && $structuredData['type'] === 'checklist_completed')
+                                            <!-- Checklist Completed Structured Display -->
+                                            <div class="bg-teal-50 border border-teal-200 rounded-lg p-4 space-y-3">
+                                                @if(isset($structuredData['patient']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-user text-teal-600"></i>
+                                                        <span class="font-semibold text-teal-900">Patient:</span>
+                                                        <span class="text-teal-800">{{ $structuredData['patient'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                <div class="flex items-center space-x-2">
+                                                    <i class="fas fa-check-circle text-teal-600"></i>
+                                                    <span class="font-semibold text-teal-900">Status:</span>
+                                                    <span class="bg-teal-100 text-teal-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                        Checklist Completed
+                                                    </span>
+                                                </div>
+                                                
+                                                @if(!isset($structuredData['patient']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-check-circle text-teal-600 mt-1"></i>
+                                                        <div class="text-teal-800">{{ $notification->message }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @elseif(isset($structuredData['type']) && $structuredData['type'] === 'specimen')
+                                            <!-- Specimen Collection Structured Display -->
+                                            <div class="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+                                                @if(isset($structuredData['patient']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-user text-red-600"></i>
+                                                        <span class="font-semibold text-red-900">Patient:</span>
+                                                        <span class="text-red-800">{{ $structuredData['patient'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                <div class="flex items-center space-x-2">
+                                                    <i class="fas fa-vial text-red-600"></i>
+                                                    <span class="font-semibold text-red-900">Status:</span>
+                                                    <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                        Specimen Collected
+                                                    </span>
+                                                </div>
+                                                
+                                                @if(isset($structuredData['tests']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-list-check text-red-600 mt-1"></i>
+                                                        <span class="font-semibold text-red-900">Tests:</span>
+                                                        <span class="text-red-800">{{ $structuredData['tests'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(!isset($structuredData['patient']) && !isset($structuredData['tests']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-vial text-red-600 mt-1"></i>
+                                                        <div class="text-red-800">{{ $notification->message }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @elseif(isset($structuredData['type']) && $structuredData['type'] === 'xray_completed')
+                                            <!-- X-ray Completed Structured Display -->
+                                            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-3">
+                                                @if(isset($structuredData['patient']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-user text-indigo-600"></i>
+                                                        <span class="font-semibold text-indigo-900">Patient:</span>
+                                                        <span class="text-indigo-800">{{ $structuredData['patient'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                <div class="flex items-center space-x-2">
+                                                    <i class="fas fa-x-ray text-indigo-600"></i>
+                                                    <span class="font-semibold text-indigo-900">Status:</span>
+                                                    <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                        X-ray Completed
+                                                    </span>
+                                                </div>
+                                                
+                                                @if(isset($structuredData['xray_type']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-image text-indigo-600"></i>
+                                                        <span class="font-semibold text-indigo-900">Type:</span>
+                                                        <span class="text-indigo-800">{{ $structuredData['xray_type'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(!isset($structuredData['patient']) && !isset($structuredData['xray_type']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-x-ray text-indigo-600 mt-1"></i>
+                                                        <div class="text-indigo-800">{{ $notification->message }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @elseif(isset($structuredData['type']) && $structuredData['type'] === 'xray_interpreted')
+                                            <!-- X-ray Interpreted Structured Display -->
+                                            <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-4 space-y-3">
+                                                @if(isset($structuredData['patient']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-user text-cyan-600"></i>
+                                                        <span class="font-semibold text-cyan-900">Patient:</span>
+                                                        <span class="text-cyan-800">{{ $structuredData['patient'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                <div class="flex items-center space-x-2">
+                                                    <i class="fas fa-search text-cyan-600"></i>
+                                                    <span class="font-semibold text-cyan-900">Status:</span>
+                                                    <span class="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                        X-ray Interpreted
+                                                    </span>
+                                                </div>
+                                                
+                                                @if(!isset($structuredData['patient']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-search text-cyan-600 mt-1"></i>
+                                                        <div class="text-cyan-800">{{ $notification->message }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @elseif(isset($structuredData['type']) && $structuredData['type'] === 'ecg_completed')
+                                            <!-- ECG Completed Structured Display -->
+                                            <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-3">
+                                                @if(isset($structuredData['patient']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-user text-orange-600"></i>
+                                                        <span class="font-semibold text-orange-900">Patient:</span>
+                                                        <span class="text-orange-800">{{ $structuredData['patient'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                <div class="flex items-center space-x-2">
+                                                    <i class="fas fa-heartbeat text-orange-600"></i>
+                                                    <span class="font-semibold text-orange-900">Status:</span>
+                                                    <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                        ECG Completed
+                                                    </span>
+                                                </div>
+                                                
+                                                @if(!isset($structuredData['patient']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-heartbeat text-orange-600 mt-1"></i>
+                                                        <div class="text-orange-800">{{ $notification->message }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @elseif(isset($structuredData['type']) && $structuredData['type'] === 'pathologist_report')
+                                            <!-- Pathologist Report Structured Display -->
+                                            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-3">
+                                                @if(isset($structuredData['patient']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-user text-purple-600"></i>
+                                                        <span class="font-semibold text-purple-900">Patient:</span>
+                                                        <span class="text-purple-800">{{ $structuredData['patient'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                <div class="flex items-center space-x-2">
+                                                    <i class="fas fa-microscope text-purple-600"></i>
+                                                    <span class="font-semibold text-purple-900">Status:</span>
+                                                    <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                        Pathologist Report Submitted
+                                                    </span>
+                                                </div>
+                                                
+                                                @if(isset($structuredData['tests']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-list-check text-purple-600 mt-1"></i>
+                                                        <span class="font-semibold text-purple-900">Tests:</span>
+                                                        <span class="text-purple-800">{{ $structuredData['tests'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(!isset($structuredData['patient']) && !isset($structuredData['tests']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-microscope text-purple-600 mt-1"></i>
+                                                        <div class="text-purple-800">{{ $notification->message }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @elseif(isset($structuredData['type']) && $structuredData['type'] === 'examination_updated')
+                                            <!-- Doctor Examination Structured Display -->
+                                            <div class="bg-violet-50 border border-violet-200 rounded-lg p-4 space-y-3">
+                                                @if(isset($structuredData['patient']))
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-user text-violet-600"></i>
+                                                        <span class="font-semibold text-violet-900">Patient:</span>
+                                                        <span class="text-violet-800">{{ $structuredData['patient'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                <div class="flex items-center space-x-2">
+                                                    <i class="fas fa-user-md text-violet-600"></i>
+                                                    <span class="font-semibold text-violet-900">Status:</span>
+                                                    <span class="bg-violet-100 text-violet-800 px-2 py-1 rounded-full text-sm font-medium">
+                                                        Examination Updated
+                                                    </span>
+                                                </div>
+                                                
+                                                @if(!isset($structuredData['patient']))
+                                                    <div class="flex items-start space-x-2">
+                                                        <i class="fas fa-user-md text-violet-600 mt-1"></i>
+                                                        <div class="text-violet-800">{{ $notification->message }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <!-- Default Structured Display -->
+                                            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                                <div class="flex items-start space-x-2">
+                                                    <i class="fas fa-info-circle text-gray-600 mt-1"></i>
+                                                    <div class="text-gray-800 leading-relaxed">
+                                                        {{ $notification->message }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
                                     
                                     <!-- Enhanced Metadata -->
                                     <div class="flex items-center space-x-4 text-sm">

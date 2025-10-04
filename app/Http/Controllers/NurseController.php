@@ -215,6 +215,9 @@ class NurseController extends Controller
         $validated['status'] = 'Approved';
         
         $preEmployment->update($validated);
+        
+        // Calculate and store fitness assessment automatically
+        $preEmployment->calculateFitnessAssessment();
 
         return redirect()->route('nurse.pre-employment')->with('success', 'Pre-employment examination updated and sent to doctor for review.');
     }

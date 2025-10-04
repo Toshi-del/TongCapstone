@@ -315,8 +315,16 @@ class DoctorController extends Controller
             'physical_findings' => 'nullable|array',
             'lab_findings' => 'nullable|array',
             'ecg' => 'nullable|string',
+            'drug_test' => 'nullable|array',
+            'fitness_assessment' => 'nullable|string',
+            'drug_positive_count' => 'nullable|integer',
+            'medical_abnormal_count' => 'nullable|integer',
+            'assessment_details' => 'nullable|string',
         ]);
         $preEmployment->update($data);
+        
+        // Calculate and store fitness assessment automatically
+        $preEmployment->calculateFitnessAssessment();
         
         // Create notification for admin when doctor completes examination
         $doctor = Auth::user();
