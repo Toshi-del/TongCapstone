@@ -18,6 +18,16 @@
                         <div>
                             <h1 class="text-xl font-semibold text-gray-900">Pre-Employment Medical Results</h1>
                             <p class="text-sm text-gray-500">Exam ID: #{{ $examination->id }}</p>
+                            @if($examination->date)
+                                <p class="text-sm text-gray-500">
+                                    Examination Date: {{ \Carbon\Carbon::parse($examination->date)->format('F j, Y \a\t h:i A') }}
+                                </p>
+                            @endif
+                            @if($examination->created_at)
+                                <p class="text-sm text-gray-500">
+                                    Created: {{ $examination->created_at->format('F j, Y \a\t h:i A') }}
+                                </p>
+                            @endif
                         </div>
                     </div>
                     <a href="{{ route('admin.tests') }}" 
@@ -290,45 +300,6 @@
         </div>
         @endif
 
-        <!-- Physical Findings -->
-        @if($examination->physical_findings && is_array($examination->physical_findings))
-        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-search text-cyan-600 text-sm"></i>
-                    </div>
-                    <h2 class="text-lg font-medium text-gray-900">Physical Findings</h2>
-                </div>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    @foreach($examination->physical_findings as $area => $findings)
-                        @if(is_array($findings) && (isset($findings['result']) || isset($findings['findings'])))
-                        <div class="bg-cyan-50 rounded-lg p-4 border border-cyan-200">
-                            <h4 class="text-sm font-semibold text-cyan-900 mb-3">{{ ucfirst(str_replace('_', ' ', $area)) }}</h4>
-                            @if(isset($findings['result']))
-                                <div class="mb-2">
-                                    <span class="text-xs text-cyan-700 font-medium">Result:</span>
-                                    <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $findings['result'] === 'Normal' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                        {{ $findings['result'] }}
-                                    </span>
-                                </div>
-                            @endif
-                            @if(isset($findings['findings']) && $findings['findings'])
-                                <div>
-                                    <span class="text-xs text-cyan-700 font-medium">Findings:</span>
-                                    <p class="text-sm text-cyan-800 mt-1">{{ $findings['findings'] }}</p>
-                                </div>
-                            @endif
-                        </div>
-                        @endif
-                    @endforeach
-                </div>
-            </div>
-        </div>
-        @endif
-
         <!-- Laboratory Results -->
         @if($examination->lab_findings && is_array($examination->lab_findings))
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
@@ -368,6 +339,57 @@
         </div>
         @endif
 
+        <!-- Physical Examination Findings -->
+        @if($examination->physical_findings && is_array($examination->physical_findings))
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-search text-cyan-600 text-sm"></i>
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900">Physical Examination Findings</h2>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="overflow-x-auto">
+                    <table class="w-full border border-gray-200 rounded-lg overflow-hidden">
+                        <thead class="bg-cyan-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-cyan-800 uppercase tracking-wider border-b border-cyan-200">Examination Area</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-cyan-800 uppercase tracking-wider border-b border-cyan-200">Result</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-cyan-800 uppercase tracking-wider border-b border-cyan-200">Findings</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach($examination->physical_findings as $area => $findings)
+                                @if(is_array($findings) && (isset($findings['result']) || isset($findings['findings'])))
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">
+                                        {{ $area }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        @if(isset($findings['result']))
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $findings['result'] === 'Normal' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200' }}">
+                                                <i class="fas {{ $findings['result'] === 'Normal' ? 'fa-check-circle' : 'fa-exclamation-triangle' }} mr-1 text-xs"></i>
+                                                {{ $findings['result'] }}
+                                            </span>
+                                        @else
+                                            <span class="text-gray-500 text-xs">Not specified</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-700">
+                                        {{ $findings['findings'] ?? 'No findings recorded' }}
+                                    </td>
+                                </tr>
+                                @endif
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <!-- Drug Test Results -->
         @if($examination->drug_test && is_array($examination->drug_test))
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
@@ -380,9 +402,74 @@
                 </div>
             </div>
             <div class="p-6">
+                <!-- Patient Information Table -->
+                @if(isset($examination->drug_test['patient_name']) || isset($examination->drug_test['examination_datetime']))
+                <div class="mb-6">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-4">Patient Information</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border border-gray-300 rounded-lg">
+                            <tbody class="bg-white">
+                                @if(isset($examination->drug_test['patient_name']))
+                                <tr class="border-b border-gray-200">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50">Patient name</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $examination->drug_test['patient_name'] }}</td>
+                                </tr>
+                                @endif
+                                @if(isset($examination->drug_test['address']))
+                                <tr class="border-b border-gray-200">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50">Address</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $examination->drug_test['address'] }}</td>
+                                </tr>
+                                @endif
+                                @if(isset($examination->drug_test['age']))
+                                <tr class="border-b border-gray-200">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50">Age</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $examination->drug_test['age'] }}</td>
+                                </tr>
+                                @endif
+                                @if(isset($examination->drug_test['gender']))
+                                <tr class="border-b border-gray-200">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50">Gender</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $examination->drug_test['gender'] }}</td>
+                                </tr>
+                                @endif
+                                @if(isset($examination->drug_test['examination_datetime']))
+                                <tr class="border-b border-gray-200">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50">Examination datetime</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">
+                                        @php
+                                            $datetime = $examination->drug_test['examination_datetime'];
+                                            if (is_string($datetime)) {
+                                                try {
+                                                    $formatted = \Carbon\Carbon::parse($datetime)->format('F j, Y \a\t h:i A');
+                                                } catch (\Exception $e) {
+                                                    $formatted = $datetime;
+                                                }
+                                            } else {
+                                                $formatted = $datetime;
+                                            }
+                                        @endphp
+                                        {{ $formatted }}
+                                    </td>
+                                </tr>
+                                @endif
+                                @if(isset($examination->drug_test['test_method']))
+                                <tr class="border-b border-gray-200">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50">Test method</td>
+                                    <td class="px-4 py-3 text-sm text-gray-900">{{ $examination->drug_test['test_method'] }}</td>
+                                </tr>
+                                @endif
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Drug Test Results -->
+                <h4 class="text-sm font-semibold text-gray-700 mb-4">Test Results</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     @foreach($examination->drug_test as $drug => $result)
-                        @if($result)
+                        @if($result && !in_array($drug, ['patient_name', 'address', 'age', 'gender', 'examination_datetime', 'test_method']))
                         <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                             <span class="text-sm font-medium text-yellow-900">{{ ucfirst(str_replace('_', ' ', $drug)) }}</span>
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $result === 'Negative' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
@@ -470,14 +557,14 @@
         </div>
         @endif
 
-        <!-- Billing Information & Send to Company -->
+        <!-- Billing Information & Send Results -->
         <div class="bg-white shadow-sm rounded-lg border border-gray-200">
             <div class="px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center space-x-3">
                     <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-receipt text-green-600 text-sm"></i>
+                        <i class="fas fa-paper-plane text-green-600 text-sm"></i>
                     </div>
-                    <h2 class="text-lg font-medium text-gray-900">Billing Information & Send to Company</h2>
+                    <h2 class="text-lg font-medium text-gray-900">Send Medical Results</h2>
                 </div>
             </div>
             <div class="p-6">
@@ -528,19 +615,37 @@
                     </div>
                 </div>
                 
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-600 text-sm">Medical examination completed and ready for company review</p>
+                <div class="space-y-4">
+                    <div class="text-center">
+                        <p class="text-gray-600 text-sm">Medical examination completed and ready for distribution</p>
                         <p class="text-gray-500 text-xs mt-1">Please review and confirm billing details before sending</p>
                     </div>
-                    <button type="button" 
-                            id="sendToCompanyBtn"
-                            onclick="sendToCompany()"
-                            disabled
-                            class="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed transition-colors">
-                        <i class="fas fa-paper-plane mr-2"></i>
-                        Send to Company
-                    </button>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button type="button" 
+                                id="sendToCompanyBtn"
+                                onclick="sendToCompany()"
+                                disabled
+                                class="w-full inline-flex items-center justify-center px-6 py-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed transition-all duration-200">
+                            <i class="fas fa-building mr-3 text-lg"></i>
+                            <div class="text-left">
+                                <div class="font-semibold">Send to Company</div>
+                                <div class="text-xs opacity-90">Send results to hiring company</div>
+                            </div>
+                        </button>
+                        
+                        <button type="button" 
+                                id="sendToPatientBtn"
+                                onclick="sendToPatient()"
+                                disabled
+                                class="w-full inline-flex items-center justify-center px-6 py-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed transition-all duration-200">
+                            <i class="fas fa-user mr-3 text-lg"></i>
+                            <div class="text-left">
+                                <div class="font-semibold">Send to Patient</div>
+                                <div class="text-xs opacity-90">Send results directly to patient</div>
+                            </div>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -554,19 +659,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listener for billing confirmation checkbox
     const billingCheckbox = document.getElementById('billingConfirmed');
-    const sendButton = document.getElementById('sendToCompanyBtn');
+    const sendToCompanyBtn = document.getElementById('sendToCompanyBtn');
+    const sendToPatientBtn = document.getElementById('sendToPatientBtn');
     
-    if (billingCheckbox && sendButton) {
+    if (billingCheckbox) {
         billingCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                sendButton.disabled = false;
-                sendButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                sendButton.classList.add('bg-green-600', 'hover:bg-green-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-green-500');
-            } else {
-                sendButton.disabled = true;
-                sendButton.classList.add('bg-gray-400', 'cursor-not-allowed');
-                sendButton.classList.remove('bg-green-600', 'hover:bg-green-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-green-500');
-            }
+            const buttons = [sendToCompanyBtn, sendToPatientBtn];
+            
+            buttons.forEach(button => {
+                if (button) {
+                    if (this.checked) {
+                        button.disabled = false;
+                        button.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                        
+                        if (button.id === 'sendToCompanyBtn') {
+                            button.classList.add('bg-blue-600', 'hover:bg-blue-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-blue-500');
+                        } else {
+                            button.classList.add('bg-green-600', 'hover:bg-green-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-green-500');
+                        }
+                    } else {
+                        button.disabled = true;
+                        button.classList.add('bg-gray-400', 'cursor-not-allowed');
+                        button.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-green-600', 'hover:bg-green-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-blue-500', 'focus:ring-green-500');
+                    }
+                }
+            });
         });
     }
 });
@@ -614,7 +731,10 @@ async function sendToCompany() {
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
+            },
+            body: JSON.stringify({
+                send_to: 'company'
+            })
         });
         
         const data = await response.json();
@@ -630,6 +750,43 @@ async function sendToCompany() {
     } catch (error) {
         console.error('Error sending examination:', error);
         showErrorMessage('Network Error', 'Failed to send examination to company. Please check your connection and try again.');
+    }
+}
+
+// Send to patient
+async function sendToPatient() {
+    const billingCheckbox = document.getElementById('billingConfirmed');
+    
+    if (!billingCheckbox.checked) {
+        alert('Please confirm the billing information is correct before sending.');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/examinations/pre-employment/{{ $examination->id }}/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                send_to: 'patient'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccessMessage('Pre-employment examination sent to patient successfully!', 'The medical examination results have been successfully sent to the patient via email.');
+            setTimeout(() => {
+                window.location.href = '{{ route("admin.tests") }}';
+            }, 2000);
+        } else {
+            showErrorMessage('Failed to send examination', data.message || 'An error occurred while sending the examination to the patient.');
+        }
+    } catch (error) {
+        console.error('Error sending examination:', error);
+        showErrorMessage('Network Error', 'Failed to send examination to patient. Please check your connection and try again.');
     }
 }
 

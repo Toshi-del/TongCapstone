@@ -111,49 +111,100 @@
         </div>
         @endif
 
-        <!-- Medical Examination Details -->
+        <!-- Physical Examination Findings -->
+        @if($examination->physical_findings && is_array($examination->physical_findings))
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-medium text-gray-900">Medical Examination Details</h2>
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-stethoscope text-cyan-600"></i>
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900">Physical Examination Findings</h2>
+                </div>
             </div>
             <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    @if($examination->height)
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <label class="block text-sm font-medium text-gray-500 mb-1">Height</label>
-                        <p class="text-lg font-semibold text-gray-900">{{ $examination->height }} cm</p>
-                    </div>
-                    @endif
-                    
-                    @if($examination->weight)
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <label class="block text-sm font-medium text-gray-500 mb-1">Weight</label>
-                        <p class="text-lg font-semibold text-gray-900">{{ $examination->weight }} kg</p>
-                    </div>
-                    @endif
-                    
-                    @if($examination->blood_pressure)
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <label class="block text-sm font-medium text-gray-500 mb-1">Blood Pressure</label>
-                        <p class="text-lg font-semibold text-gray-900">{{ $examination->blood_pressure }} mmHg</p>
-                    </div>
-                    @endif
-                    
-                    @if($examination->pulse_rate)
-                    <div class="p-4 bg-gray-50 rounded-lg">
-                        <label class="block text-sm font-medium text-gray-500 mb-1">Pulse Rate</label>
-                        <p class="text-lg font-semibold text-gray-900">{{ $examination->pulse_rate }} bpm</p>
-                    </div>
-                    @endif
+                <div class="overflow-x-auto">
+                    <table class="w-full border border-gray-200 rounded-lg overflow-hidden">
+                        <thead class="bg-cyan-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-cyan-800 uppercase tracking-wider border-b border-cyan-200">Examination Area</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-cyan-800 uppercase tracking-wider border-b border-cyan-200">Result</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-cyan-800 uppercase tracking-wider border-b border-cyan-200">Findings</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach($examination->physical_findings as $area => $findings)
+                                @if(is_array($findings) && (isset($findings['result']) || isset($findings['findings'])))
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-900">
+                                        {{ $area }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        @if(isset($findings['result']))
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $findings['result'] === 'Normal' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200' }}">
+                                                <i class="fas {{ $findings['result'] === 'Normal' ? 'fa-check-circle' : 'fa-exclamation-triangle' }} mr-1 text-xs"></i>
+                                                {{ $findings['result'] }}
+                                            </span>
+                                        @else
+                                            <span class="text-gray-500 text-xs">Not specified</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-gray-700">
+                                        {{ $findings['findings'] ?? 'No findings recorded' }}
+                                    </td>
+                                </tr>
+                                @endif
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
+        @endif
 
         <!-- Laboratory Results -->
-        @if($examination->lab_findings)
+        @if($examination->lab_findings && is_array($examination->lab_findings))
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-medium text-gray-900">Laboratory Results</h2>
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-flask text-pink-600"></i>
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900">Laboratory Results</h2>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    @foreach($examination->lab_findings as $test => $result)
+                        @if(is_array($result) && (isset($result['result']) || isset($result['findings'])))
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-semibold text-gray-900">{{ ucfirst(str_replace('_', ' ', $test)) }}</h4>
+                                @if(isset($result['result']))
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $result['result'] === 'Normal' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                        <i class="fas {{ $result['result'] === 'Normal' ? 'fa-check' : 'fa-exclamation-triangle' }} mr-1"></i>
+                                        {{ $result['result'] }}
+                                    </span>
+                                @endif
+                            </div>
+                            @if(isset($result['findings']) && $result['findings'])
+                                <p class="text-xs text-gray-600">{{ $result['findings'] }}</p>
+                            @endif
+                        </div>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @elseif($examination->lab_findings)
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-flask text-pink-600"></i>
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900">Laboratory Results</h2>
+                </div>
             </div>
             <div class="p-6">
                 <div class="prose max-w-none">
@@ -163,39 +214,86 @@
         </div>
         @endif
 
-        <!-- X-Ray Results -->
-        @if($examination->xray_findings)
-        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-medium text-gray-900">X-Ray Results</h2>
-            </div>
-            <div class="p-6">
-                <div class="prose max-w-none">
-                    {!! nl2br(e($examination->xray_findings)) !!}
-                </div>
-            </div>
-        </div>
-        @endif
-
-        <!-- ECG Results -->
-        @if($examination->ecg)
-        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-medium text-gray-900">ECG Results</h2>
-            </div>
-            <div class="p-6">
-                <div class="prose max-w-none">
-                    {!! nl2br(e($examination->ecg)) !!}
-                </div>
-            </div>
-        </div>
-        @endif
-
         <!-- Drug Test Results -->
-        @if($examination->drugTestResults && $examination->drugTestResults->count() > 0)
+        @if($examination->drug_test && is_array($examination->drug_test))
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-medium text-gray-900">Drug Test Results</h2>
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-vial text-yellow-600"></i>
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900">Drug Test Results</h2>
+                </div>
+            </div>
+            <div class="p-6">
+                <!-- Patient Information -->
+                @if(isset($examination->drug_test['patient_name']) || isset($examination->drug_test['examination_datetime']))
+                <div class="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">Test Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        @if(isset($examination->drug_test['patient_name']))
+                        <div>
+                            <span class="text-gray-600">Patient:</span>
+                            <span class="font-medium text-gray-900 block">{{ $examination->drug_test['patient_name'] }}</span>
+                        </div>
+                        @endif
+                        @if(isset($examination->drug_test['examination_datetime']))
+                        <div>
+                            <span class="text-gray-600">Test Date:</span>
+                            <span class="font-medium text-gray-900 block">
+                                @php
+                                    $datetime = $examination->drug_test['examination_datetime'];
+                                    if (is_string($datetime)) {
+                                        try {
+                                            $formatted = \Carbon\Carbon::parse($datetime)->format('F j, Y \a\t h:i A');
+                                        } catch (\Exception $e) {
+                                            $formatted = $datetime;
+                                        }
+                                    } else {
+                                        $formatted = $datetime;
+                                    }
+                                @endphp
+                                {{ $formatted }}
+                            </span>
+                        </div>
+                        @endif
+                        @if(isset($examination->drug_test['test_method']))
+                        <div>
+                            <span class="text-gray-600">Method:</span>
+                            <span class="font-medium text-gray-900 block">{{ $examination->drug_test['test_method'] }}</span>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+                <!-- Drug Test Results -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    @foreach($examination->drug_test as $drug => $result)
+                        @if($result && !in_array($drug, ['patient_name', 'address', 'age', 'gender', 'examination_datetime', 'test_method']))
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-sm font-semibold text-gray-900">{{ ucfirst(str_replace('_', ' ', $drug)) }}</h4>
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ $result === 'Negative' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                    <i class="fas {{ $result === 'Negative' ? 'fa-check' : 'fa-exclamation-triangle' }} mr-1"></i>
+                                    {{ $result }}
+                                </span>
+                            </div>
+                        </div>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @elseif($examination->drugTestResults && $examination->drugTestResults->count() > 0)
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-vial text-yellow-600"></i>
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900">Drug Test Results</h2>
+                </div>
             </div>
             <div class="p-6">
                 <div class="space-y-4">
@@ -217,19 +315,131 @@
         </div>
         @endif
 
-        <!-- Doctor's Recommendations -->
-        @if($examination->recommendations)
+        <!-- Medical History -->
+        @if($examination->illness_history || $examination->past_medical_history || $examination->accidents_operations)
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-medium text-gray-900">Doctor's Recommendations</h2>
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-history text-purple-600"></i>
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900">Medical History</h2>
+                </div>
+            </div>
+            <div class="p-6 space-y-6">
+                @if($examination->illness_history)
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Past Illness/Disease</h3>
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <p class="text-sm text-gray-700">{{ $examination->illness_history }}</p>
+                    </div>
+                </div>
+                @endif
+                @if($examination->accidents_operations)
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Accidents/Operations</h3>
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <p class="text-sm text-gray-700">{{ $examination->accidents_operations }}</p>
+                    </div>
+                </div>
+                @endif
+                @if($examination->past_medical_history)
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Past Medical History</h3>
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <p class="text-sm text-gray-700">{{ $examination->past_medical_history }}</p>
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        <!-- Doctor's Findings -->
+        @if($examination->findings)
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-user-md text-blue-600"></i>
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900">Doctor's Findings</h2>
+                </div>
             </div>
             <div class="p-6">
-                <div class="prose max-w-none">
-                    {!! nl2br(e($examination->recommendations)) !!}
+                <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <p class="text-sm text-blue-800">{{ $examination->findings }}</p>
                 </div>
             </div>
         </div>
         @endif
+
+        <!-- Additional Medical Information -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            @if($examination->visual)
+            <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-6 h-6 bg-indigo-100 rounded flex items-center justify-center">
+                            <i class="fas fa-eye text-indigo-600 text-xs"></i>
+                        </div>
+                        <h3 class="text-sm font-medium text-gray-900">Visual Acuity</h3>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm text-gray-700">{{ $examination->visual }}</p>
+                </div>
+            </div>
+            @endif
+
+            @if($examination->ishihara_test)
+            <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
+                            <i class="fas fa-palette text-green-600 text-xs"></i>
+                        </div>
+                        <h3 class="text-sm font-medium text-gray-900">Color Vision Test</h3>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm text-gray-700">{{ $examination->ishihara_test }}</p>
+                </div>
+            </div>
+            @endif
+
+            @if($examination->ecg)
+            <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-6 h-6 bg-red-100 rounded flex items-center justify-center">
+                            <i class="fas fa-heartbeat text-red-600 text-xs"></i>
+                        </div>
+                        <h3 class="text-sm font-medium text-gray-900">ECG Results</h3>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm text-gray-700">{{ $examination->ecg }}</p>
+                </div>
+            </div>
+            @endif
+
+            @if($examination->skin_marks)
+            <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-6 h-6 bg-orange-100 rounded flex items-center justify-center">
+                            <i class="fas fa-search text-orange-600 text-xs"></i>
+                        </div>
+                        <h3 class="text-sm font-medium text-gray-900">Skin Marks</h3>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <p class="text-sm text-gray-700">{{ $examination->skin_marks }}</p>
+                </div>
+            </div>
+            @endif
+        </div>
 
         <!-- Footer -->
         <div class="bg-blue-50 rounded-lg p-6 text-center">

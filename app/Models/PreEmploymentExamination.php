@@ -11,6 +11,7 @@ class PreEmploymentExamination extends Model
 {
     protected $fillable = [
         'user_id',
+        'patient_id',
         'name',
         'company_name',
         'date',
@@ -55,6 +56,11 @@ class PreEmploymentExamination extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'patient_id');
     }
 
     public function preEmploymentRecord(): BelongsTo

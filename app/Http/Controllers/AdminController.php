@@ -363,10 +363,10 @@ class AdminController extends Controller
     public function tests()
     {
         // Only show examinations that have been submitted by doctors to admin
-        // Pre-Employment: Doctor submits with status 'Approved' -> Admin can send to company
-        // Annual Physical: Doctor submits with status 'sent_to_admin' -> Admin can send to company
+        // Pre-Employment: Doctor submits with status 'sent_to_company' -> Admin can send to company/patient
+        // Annual Physical: Doctor submits with status 'sent_to_admin' -> Admin can send to company/patient
         
-        $preEmploymentResults = \App\Models\PreEmploymentExamination::where('status', 'Approved')->get();
+        $preEmploymentResults = \App\Models\PreEmploymentExamination::whereIn('status', ['sent_to_company', 'Approved'])->get();
         $annualPhysicalResults = \App\Models\AnnualPhysicalExamination::where('status', 'sent_to_admin')->get();
         
         return view('admin.tests', compact('preEmploymentResults', 'annualPhysicalResults'));
@@ -1245,42 +1245,103 @@ class AdminController extends Controller
     /**
      * Send pre-employment examination to company with billing confirmation
      */
-    public function sendPreEmploymentExaminationWithBilling($id)
+    public function sendPreEmploymentExaminationWithBilling(Request $request, $id)
     {
         try {
             $examination = PreEmploymentExamination::with(['preEmploymentRecord'])
                 ->findOrFail($id);
             
-            if ($examination->status === 'sent_to_company') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Examination has already been sent to company'
+            $sendTo = $request->input('send_to', 'company');
+            
+            if ($sendTo === 'company') {
+                if ($examination->status === 'sent_to_company') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Examination has already been sent to company'
+                    ]);
+                }
+                
+                // Update examination status
+                $examination->update(['status' => 'sent_to_company']);
+                
+                // Log the billing transaction
+                \Log::info('Pre-employment examination sent to company', [
+                    'examination_id' => $examination->id,
+                    'patient_name' => $examination->name,
+                    'company_name' => $examination->company_name,
+                    'total_amount' => $examination->preEmploymentRecord ? $examination->preEmploymentRecord->total_price : 0,
+                    'sent_by' => Auth::id(),
+                    'sent_at' => now()
                 ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pre-employment examination sent to company successfully'
+                ]);
+            } else {
+                // Send to patient - allow even if already sent to company
+                
+                // Try to find and link the patient account
+                $patient = $this->findPatientForExamination($examination);
+                
+                $updateData = ['status' => 'sent_to_patient'];
+                if ($patient) {
+                    $updateData['patient_id'] = $patient->id;
+                }
+                
+                $examination->update($updateData);
+                
+                // Get patient email - try multiple sources
+                $patientEmail = $patient ? $patient->email : null;
+                $patientName = $patient ? ($patient->fname . ' ' . $patient->lname) : $examination->name;
+                
+                // First, try to get email from the examination record itself
+                if (isset($examination->email)) {
+                    $patientEmail = $examination->email;
+                }
+                
+                // If not found, try to get from related pre-employment record
+                if (!$patientEmail && $examination->preEmploymentRecord) {
+                    $patientEmail = $examination->preEmploymentRecord->email;
+                    if (!$patientName && $examination->preEmploymentRecord->full_name) {
+                        $patientName = $examination->preEmploymentRecord->full_name;
+                    }
+                }
+                
+                // Send email notification to patient
+                if ($patientEmail) {
+                    try {
+                        Mail::to($patientEmail)->send(new MedicalResultsNotification(
+                            $examination,
+                            'pre_employment',
+                            $patientEmail,
+                            $patientName
+                        ));
+                        
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Pre-employment examination sent to patient (' . $patientName . ') at ' . $patientEmail . ' successfully'
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send medical results email: ' . $e->getMessage());
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Pre-employment examination status updated, but email could not be sent. Please check the patient email address.'
+                        ]);
+                    }
+                } else {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Pre-employment examination status updated, but no email address found for patient (' . $patientName . ').'
+                    ]);
+                }
             }
-            
-            // Update examination status
-            $examination->update(['status' => 'sent_to_company']);
-            
-            // Log the billing transaction
-            \Log::info('Pre-employment examination sent to company', [
-                'examination_id' => $examination->id,
-                'patient_name' => $examination->name,
-                'company_name' => $examination->company_name,
-                'total_amount' => $examination->preEmploymentRecord ? $examination->preEmploymentRecord->total_price : 0,
-                'sent_by' => Auth::id(),
-                'sent_at' => now()
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Pre-employment examination sent to company successfully'
-            ]);
             
         } catch (\Exception $e) {
             \Log::error('Error sending pre-employment examination: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send examination to company'
+                'message' => 'Failed to send examination'
             ]);
         }
     }
@@ -1589,6 +1650,48 @@ class AdminController extends Controller
             \Log::error('Error sending annual physical examination: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to send examination.');
         }
+    }
+
+    /**
+     * Find a patient account for the given examination
+     */
+    private function findPatientForExamination($examination)
+    {
+        $patients = User::where('role', 'patient')->get();
+        
+        // Try multiple matching strategies
+        foreach ($patients as $patient) {
+            $patientFullName = trim($patient->fname . ' ' . $patient->lname);
+            
+            // Strategy 1: Exact email match with pre-employment record
+            if ($examination->preEmploymentRecord && 
+                $examination->preEmploymentRecord->email === $patient->email) {
+                return $patient;
+            }
+            
+            // Strategy 2: Exact name match with examination name
+            if ($examination->name && 
+                strtolower($examination->name) === strtolower($patientFullName)) {
+                return $patient;
+            }
+            
+            // Strategy 3: Name match with pre-employment record
+            if ($examination->preEmploymentRecord) {
+                $recordFullName = trim($examination->preEmploymentRecord->first_name . ' ' . $examination->preEmploymentRecord->last_name);
+                if (strtolower($recordFullName) === strtolower($patientFullName)) {
+                    return $patient;
+                }
+            }
+            
+            // Strategy 4: Partial name match (first and last name)
+            if ($examination->preEmploymentRecord &&
+                strtolower($examination->preEmploymentRecord->first_name) === strtolower($patient->fname) &&
+                strtolower($examination->preEmploymentRecord->last_name) === strtolower($patient->lname)) {
+                return $patient;
+            }
+        }
+        
+        return null;
     }
 
 }

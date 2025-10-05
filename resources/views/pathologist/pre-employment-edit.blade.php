@@ -56,115 +56,155 @@
 
         @if($pathologistTests->isNotEmpty())
             @foreach($groupedTests as $categoryName => $tests)
+                @php
+                    // Filter out tests that should be skipped (like Blood Chemistry Panel)
+                    $visibleTests = $tests->filter(function($test) {
+                        return stripos($test['test_name'], 'blood chemistry panel') === false;
+                    });
+                @endphp
+                
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 class="text-xl font-bold text-gray-800 mb-6">
                         <i class="fas fa-flask mr-2 text-teal-600"></i>{{ $categoryName }} Results
                     </h3>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        @foreach($tests as $test)
-                            @php
-                                // Skip Blood Chemistry Panel - individual tests are shown separately
-                                if (stripos($test['test_name'], 'blood chemistry panel') !== false) {
-                                    continue;
-                                }
-                                $fieldName = 'lab_report[' . strtolower(str_replace([' ', '-', '&'], '_', $test['test_name'])) . ']';
-                            @endphp
-                            <div class="space-y-2">
-                                <label class="block text-sm font-semibold text-gray-700">
-                                    {{ $test['test_name'] }}
-                                    @if($test['is_package_component'] ?? false)
-                                        <div class="text-xs text-blue-600 font-medium mt-1">
-                                            <i class="fas fa-box mr-1"></i>From: {{ $test['package_name'] }}
-                                            @if($test['package_price'] > 0)
-                                                ({{ $test['package_category'] ?? 'Package' }}: ₱{{ number_format($test['package_price'], 2) }})
-                                            @endif
-                                            @if(!empty($test['blood_chemistry_sources']))
-                                                @foreach($test['blood_chemistry_sources'] as $bcSource)
-                                                    <br><i class="fas fa-flask mr-1"></i>{{ $bcSource['name'] }}
-                                                    @if($bcSource['price'] > 0)
-                                                        (Blood Chemistry: ₱{{ number_format($bcSource['price'], 2) }})
-                                                    @endif
-                                                @endforeach
-                                            @endif
-                                        </div>
-                                    @elseif($test['price'] > 0)
-                                        <span class="text-xs text-emerald-600 font-medium">(₱{{ number_format($test['price'], 2) }})</span>
-                                    @endif
-                                </label>
+                    @if($visibleTests->isNotEmpty())
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            @foreach($visibleTests as $test)
                                 @php
-                                    $testSlug = strtolower(str_replace([' ', '-', '&'], '_', $test['test_name']));
-                                    // Check both {test} and {test}_result for backward compatibility
-                                    $currentResult = old($fieldName, $examination->lab_report[$testSlug . '_result'] ?? $examination->lab_report[$testSlug] ?? '');
-                                    $isOthers = !in_array($currentResult, ['', 'Not available', 'Normal', 'Not normal']) && !empty($currentResult);
-                                    $othersValue = $isOthers ? $currentResult : '';
-                                    $selectValue = $isOthers ? 'Others' : ($currentResult ?: 'Not available');
+                                    $fieldName = 'lab_report[' . strtolower(str_replace([' ', '-', '&'], '_', $test['test_name'])) . ']';
                                 @endphp
-                                <select name="{{ $fieldName }}" 
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown"
-                                        data-test-slug="{{ $testSlug }}">
-                                    <option value="Not available" {{ $selectValue == 'Not available' ? 'selected' : '' }}>Not available</option>
-                                    <option value="Normal" {{ $selectValue == 'Normal' ? 'selected' : '' }}>Normal</option>
-                                    <option value="Not normal" {{ $selectValue == 'Not normal' ? 'selected' : '' }}>Not normal</option>
-                                    <option value="Others" {{ $selectValue == 'Others' ? 'selected' : '' }}>Others (specify)</option>
-                                </select>
-                                <input type="text" 
-                                       name="{{ $fieldName }}_others" 
-                                       value="{{ $othersValue }}"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 mt-2 others-input" 
-                                       data-test-slug="{{ $testSlug }}"
-                                       placeholder="Specify other result"
-                                       style="{{ $selectValue == 'Others' ? '' : 'display: none;' }}">
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-semibold text-gray-700">
+                                        {{ $test['test_name'] }}
+                                        @if($test['is_package_component'] ?? false)
+                                            <div class="text-xs text-blue-600 font-medium mt-1">
+                                                <i class="fas fa-box mr-1"></i>From: {{ $test['package_name'] }}
+                                                @if($test['package_price'] > 0)
+                                                    ({{ $test['package_category'] ?? 'Package' }}: ₱{{ number_format($test['package_price'], 2) }})
+                                                @endif
+                                                @if(!empty($test['blood_chemistry_sources']))
+                                                    @foreach($test['blood_chemistry_sources'] as $bcSource)
+                                                        <br><i class="fas fa-flask mr-1"></i>{{ $bcSource['name'] }}
+                                                        @if($bcSource['price'] > 0)
+                                                            (Blood Chemistry: ₱{{ number_format($bcSource['price'], 2) }})
+                                                        @endif
+                                                    @endforeach
+                                                @endif
+                                            </div>
+                                        @elseif($test['price'] > 0)
+                                            <span class="text-xs text-emerald-600 font-medium">(₱{{ number_format($test['price'], 2) }})</span>
+                                        @endif
+                                    </label>
+                                    @php
+                                        $testSlug = strtolower(str_replace([' ', '-', '&'], '_', $test['test_name']));
+                                        // Check both {test} and {test}_result for backward compatibility
+                                        $currentResult = old($fieldName, $examination->lab_report[$testSlug . '_result'] ?? $examination->lab_report[$testSlug] ?? '');
+                                        $isOthers = !in_array($currentResult, ['', 'Not available', 'Normal', 'Not normal']) && !empty($currentResult);
+                                        $othersValue = $isOthers ? $currentResult : '';
+                                        $selectValue = $isOthers ? 'Others' : ($currentResult ?: 'Not available');
+                                    @endphp
+                                    <select name="{{ $fieldName }}" 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown"
+                                            data-test-slug="{{ $testSlug }}">
+                                        <option value="Not available" {{ $selectValue == 'Not available' ? 'selected' : '' }}>Not available</option>
+                                        <option value="Normal" {{ $selectValue == 'Normal' ? 'selected' : '' }}>Normal</option>
+                                        <option value="Not normal" {{ $selectValue == 'Not normal' ? 'selected' : '' }}>Not normal</option>
+                                        <option value="Others" {{ $selectValue == 'Others' ? 'selected' : '' }}>Others (specify)</option>
+                                    </select>
+                                    <input type="text" 
+                                           name="{{ $fieldName }}_others" 
+                                           value="{{ $othersValue }}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 mt-2 others-input" 
+                                           data-test-slug="{{ $testSlug }}"
+                                           placeholder="Specify other result"
+                                           style="{{ $selectValue == 'Others' ? '' : 'display: none;' }}">
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <!-- Empty State for Category with No Visible Tests -->
+                        <div class="text-center py-12">
+                            <div class="w-20 h-20 bg-gradient-to-br from-orange-100 to-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-vial text-orange-500 text-2xl"></i>
                             </div>
-                        @endforeach
-                    </div>
+                            <h4 class="text-lg font-semibold text-gray-700 mb-2">No {{ $categoryName }} Tests Available</h4>
+                            <p class="text-gray-500 text-sm max-w-md mx-auto">
+                                No specific {{ strtolower($categoryName) }} tests have been assigned for this examination.
+                            </p>
+                        </div>
+                    @endif
                 </div>
             @endforeach
         @else
-            <!-- Fallback for records without selected tests data -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-6">
-                    <i class="fas fa-flask mr-2 text-teal-600"></i>Laboratory Examination Report
-                </h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Enhanced Empty State for No Pathologist Tests -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                <div class="text-center py-12">
+                    <div class="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-flask text-gray-400 text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">
+                        <i class="fas fa-exclamation-triangle mr-2 text-yellow-500"></i>No Laboratory Tests Found
+                    </h3>
+                    <p class="text-gray-600 mb-6 max-w-md mx-auto">
+                        No specific pathologist tests have been assigned to this examination. You can still add general laboratory findings below.
+                    </p>
+                    
+                    <!-- Fallback General Test Input -->
                     @if($examination->preEmploymentRecord->medicalTest)
-                        @php
-                            $testName = $examination->preEmploymentRecord->medicalTest->name;
-                            $fieldName = 'lab_report[' . strtolower(str_replace([' ', '-', '&'], '_', $testName)) . ']';
-                        @endphp
-                        <div class="space-y-2">
-                            <label class="block text-sm font-semibold text-gray-700">{{ $testName }}</label>
+                        <div class="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-6 border border-teal-200 max-w-lg mx-auto">
+                            <h4 class="text-lg font-semibold text-teal-800 mb-4">
+                                <i class="fas fa-clipboard-check mr-2"></i>General Laboratory Examination
+                            </h4>
                             @php
+                                $testName = $examination->preEmploymentRecord->medicalTest->name;
+                                $fieldName = 'lab_report[' . strtolower(str_replace([' ', '-', '&'], '_', $testName)) . ']';
                                 $testSlug = strtolower(str_replace([' ', '-', '&'], '_', $testName));
-                                // Check both {test} and {test}_result for backward compatibility
                                 $currentResult = old($fieldName, $examination->lab_report[$testSlug . '_result'] ?? $examination->lab_report[$testSlug] ?? '');
                                 $isOthers = !in_array($currentResult, ['', 'Not available', 'Normal', 'Not normal']) && !empty($currentResult);
                                 $othersValue = $isOthers ? $currentResult : '';
                                 $selectValue = $isOthers ? 'Others' : ($currentResult ?: 'Not available');
                             @endphp
-                            <select name="{{ $fieldName }}" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown"
-                                    data-test-slug="{{ $testSlug }}">
-                                <option value="Not available" {{ $selectValue == 'Not available' ? 'selected' : '' }}>Not available</option>
-                                <option value="Normal" {{ $selectValue == 'Normal' ? 'selected' : '' }}>Normal</option>
-                                <option value="Not normal" {{ $selectValue == 'Not normal' ? 'selected' : '' }}>Not normal</option>
-                                <option value="Others" {{ $selectValue == 'Others' ? 'selected' : '' }}>Others (specify)</option>
-                            </select>
-                            <input type="text" 
-                                   name="{{ $fieldName }}_others" 
-                                   value="{{ $othersValue }}"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 mt-2 others-input" 
-                                   data-test-slug="{{ $testSlug }}"
-                                   placeholder="Specify other result"
-                                   style="{{ $selectValue == 'Others' ? '' : 'display: none;' }}">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-teal-700 mb-2">{{ $testName }}</label>
+                                    <select name="{{ $fieldName }}" 
+                                            class="w-full px-4 py-3 border border-teal-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown bg-white"
+                                            data-test-slug="{{ $testSlug }}">
+                                        <option value="Not available" {{ $selectValue == 'Not available' ? 'selected' : '' }}>Not available</option>
+                                        <option value="Normal" {{ $selectValue == 'Normal' ? 'selected' : '' }}>Normal</option>
+                                        <option value="Not normal" {{ $selectValue == 'Not normal' ? 'selected' : '' }}>Not normal</option>
+                                        <option value="Others" {{ $selectValue == 'Others' ? 'selected' : '' }}>Others (specify)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <input type="text" 
+                                           name="{{ $fieldName }}_others" 
+                                           value="{{ $othersValue }}"
+                                           class="w-full px-4 py-3 border border-teal-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 others-input" 
+                                           data-test-slug="{{ $testSlug }}"
+                                           placeholder="Specify other result or detailed findings"
+                                           style="{{ $selectValue == 'Others' ? '' : 'display: none;' }}">
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        <!-- No Medical Test at All -->
+                        <div class="bg-red-50 rounded-xl p-6 border border-red-200 max-w-lg mx-auto">
+                            <div class="flex items-center justify-center space-x-3 mb-4">
+                                <i class="fas fa-exclamation-circle text-red-500 text-xl"></i>
+                                <h4 class="text-lg font-semibold text-red-800">No Medical Test Assigned</h4>
+                            </div>
+                            <p class="text-red-700 text-sm">
+                                This examination record does not have any medical tests assigned. Please contact the administrator to add the required tests.
+                            </p>
                         </div>
                     @endif
                 </div>
             </div>
         @endif
 
-        <!-- Additional Notes Section -->
+        <!-- Additional Examinations Section -->
         @if($examination->preEmploymentRecord->other_exams && !empty($examination->preEmploymentRecord->parsed_other_exams['additional_exams']))
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 class="text-xl font-bold text-gray-800 mb-6">
@@ -181,6 +221,28 @@
                     <textarea name="lab_report[additional_exams_results]" rows="3"
                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500"
                               placeholder="Enter results for additional examinations">{{ old('lab_report.additional_exams_results', $examination->lab_report['additional_exams_results'] ?? '') }}</textarea>
+                </div>
+            </div>
+        @else
+            <!-- Empty State for Additional Examinations -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-clipboard-list mr-2 text-teal-600"></i>Additional Examinations
+                    </h3>
+                    <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        <i class="fas fa-info-circle mr-1"></i>Optional
+                    </span>
+                </div>
+                
+                <div class="text-center py-8">
+                    <div class="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-clipboard-list text-blue-500 text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-gray-700 mb-2">No Additional Examinations Requested</h4>
+                    <p class="text-gray-500 text-sm max-w-md mx-auto">
+                        No additional examinations were requested for this patient.
+                    </p>
                 </div>
             </div>
         @endif
@@ -252,7 +314,7 @@
                                 </tr>
                             @endforeach
                         @else
-                            <!-- Fallback for records without selected tests data -->
+                            <!-- Enhanced Empty State for Laboratory Report Table -->
                             @if($examination->preEmploymentRecord->medicalTest)
                                 @php
                                     $testName = $examination->preEmploymentRecord->medicalTest->name;
@@ -276,6 +338,21 @@
                                                value="{{ old($findingsFieldName, $examination->lab_report[$testNameSlug . '_findings'] ?? '') }}"
                                                class="w-full px-2 py-1 border-0 focus:ring-0 focus:outline-none text-sm"
                                                placeholder="Enter findings">
+                                    </td>
+                                </tr>
+                            @else
+                                <!-- No Tests Available Row -->
+                                <tr>
+                                    <td colspan="3" class="border border-gray-300 px-4 py-8 text-center">
+                                        <div class="flex flex-col items-center space-y-3">
+                                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-flask text-gray-400 text-2xl"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="text-lg font-semibold text-gray-700 mb-1">No Laboratory Tests</h4>
+                                                <p class="text-sm text-gray-500">No specific tests have been assigned to this examination.</p>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             @endif

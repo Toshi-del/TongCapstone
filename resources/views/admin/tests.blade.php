@@ -130,25 +130,30 @@
                                     @php
                                         $status = $exam->status ?? 'Pending';
                                     @endphp
-                                    @if($status === 'Completed')
+                                    @if($status === 'Approved')
                                         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
                                             <i class="fas fa-check-circle mr-1.5 text-xs"></i>
-                                            Completed
+                                            Ready to Send
                                         </span>
-                                    @elseif($status === 'In Progress')
+                                    @elseif($status === 'sent_to_company')
                                         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
-                                            <i class="fas fa-clock mr-1.5 text-xs"></i>
-                                            In Progress
-                                        </span>
-                                    @elseif($status === 'Sent')
-                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
                                             <i class="fas fa-paper-plane mr-1.5 text-xs"></i>
-                                            Sent
+                                            Submitted by Doctor
+                                        </span>
+                                    @elseif($status === 'sent_to_patient')
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                            <i class="fas fa-user mr-1.5 text-xs"></i>
+                                            Sent to Patient
+                                        </span>
+                                    @elseif($status === 'completed')
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            <i class="fas fa-check-double mr-1.5 text-xs"></i>
+                                            Completed
                                         </span>
                                     @else
                                         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
                                             <i class="fas fa-clock mr-1.5 text-xs"></i>
-                                            Pending
+                                            {{ ucfirst(str_replace('_', ' ', $status)) }}
                                         </span>
                                     @endif
                                 </td>
@@ -159,34 +164,11 @@
                                             <i class="fas fa-eye mr-2 text-xs"></i>
                                             View
                                         </a>
-                                        <div class="relative inline-block text-left">
-                                            <button type="button" onclick="toggleDropdown('pre-employment-{{ $exam->id }}')" 
-                                                    class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
-                                                <i class="fas fa-paper-plane mr-2 text-xs"></i>
-                                                Send
-                                                <i class="fas fa-chevron-down ml-1 text-xs"></i>
-                                            </button>
-                                            <div id="pre-employment-{{ $exam->id }}" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                                                <div class="py-1">
-                                                    <form action="{{ route('admin.examinations.pre-employment.send', $exam->id) }}" method="POST" class="block">
-                                                        @csrf
-                                                        <input type="hidden" name="send_to" value="company">
-                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                                                            <i class="fas fa-building mr-2 text-blue-600"></i>
-                                                            Send to Company
-                                                        </button>
-                                                    </form>
-                                                    <form action="{{ route('admin.examinations.pre-employment.send', $exam->id) }}" method="POST" class="block">
-                                                        @csrf
-                                                        <input type="hidden" name="send_to" value="patient">
-                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                                                            <i class="fas fa-user mr-2 text-green-600"></i>
-                                                            Send to Patient
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <button type="button" onclick="openSendModal('pre-employment', {{ $exam->id }}, '{{ $exam->name }}', '{{ $exam->company_name }}')" 
+                                                class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
+                                            <i class="fas fa-paper-plane mr-2 text-xs"></i>
+                                            Send Results
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -316,34 +298,11 @@
                                             <i class="fas fa-eye mr-2 text-xs"></i>
                                             View
                                         </a>
-                                        <div class="relative inline-block text-left">
-                                            <button type="button" onclick="toggleDropdown('annual-physical-{{ $exam->id }}')" 
-                                                    class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
-                                                <i class="fas fa-paper-plane mr-2 text-xs"></i>
-                                                Send
-                                                <i class="fas fa-chevron-down ml-1 text-xs"></i>
-                                            </button>
-                                            <div id="annual-physical-{{ $exam->id }}" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                                                <div class="py-1">
-                                                    <form action="{{ route('admin.examinations.annual-physical.send', $exam->id) }}" method="POST" class="block">
-                                                        @csrf
-                                                        <input type="hidden" name="send_to" value="company">
-                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                                                            <i class="fas fa-building mr-2 text-blue-600"></i>
-                                                            Send to Company
-                                                        </button>
-                                                    </form>
-                                                    <form action="{{ route('admin.examinations.annual-physical.send', $exam->id) }}" method="POST" class="block">
-                                                        @csrf
-                                                        <input type="hidden" name="send_to" value="patient">
-                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
-                                                            <i class="fas fa-user mr-2 text-green-600"></i>
-                                                            Send to Patient
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <button type="button" onclick="openSendModal('annual-physical', {{ $exam->id }}, '{{ $exam->name }}', '')" 
+                                                class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
+                                            <i class="fas fa-paper-plane mr-2 text-xs"></i>
+                                            Send Results
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -361,6 +320,79 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Send Results Modal -->
+<div id="sendResultsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 rounded-t-2xl">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-paper-plane text-white text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-white">Send Medical Results</h3>
+                    <p class="text-blue-100 text-sm">Choose where to send the examination results</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-8">
+            <div class="mb-6">
+                <div class="flex items-center space-x-4 mb-4">
+                    <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-user text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-900" id="modalPatientName">Patient Name</h4>
+                        <p class="text-sm text-gray-600" id="modalExaminationType">Examination Type</p>
+                        <p class="text-xs text-gray-500" id="modalCompanyName">Company Name</p>
+                    </div>
+                </div>
+                
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-info-circle text-amber-600 text-lg mt-0.5"></i>
+                        <div>
+                            <h5 class="text-amber-800 font-medium mb-1">Send Confirmation</h5>
+                            <p class="text-amber-700 text-sm">
+                                Please choose where you want to send these medical examination results. This action will notify the recipient via email.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-3">
+                <button type="button" onclick="sendToCompany()"
+                        class="w-full flex items-center justify-center px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg">
+                    <i class="fas fa-building mr-3 text-lg"></i>
+                    <div class="text-left">
+                        <div class="font-semibold">Send to Company</div>
+                        <div class="text-sm text-blue-100">Send results to the hiring company</div>
+                    </div>
+                </button>
+                
+                <button type="button" onclick="sendToPatient()"
+                        class="w-full flex items-center justify-center px-6 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg">
+                    <i class="fas fa-user mr-3 text-lg"></i>
+                    <div class="text-left">
+                        <div class="font-semibold">Send to Patient</div>
+                        <div class="text-sm text-green-100">Send results directly to the patient</div>
+                    </div>
+                </button>
+            </div>
+            
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                <button type="button" 
+                        onclick="closeSendModal()" 
+                        class="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200">
+                    <i class="fas fa-times mr-2"></i>
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
@@ -401,31 +433,203 @@ function closeSuccessMessage() {
     }
 }
 
-function toggleDropdown(dropdownId) {
-    // Close all other dropdowns first
-    document.querySelectorAll('[id^="pre-employment-"], [id^="annual-physical-"]').forEach(dropdown => {
-        if (dropdown.id !== dropdownId) {
-            dropdown.classList.add('hidden');
-        }
-    });
+// Store current examination data for sending
+let currentExamination = null;
+
+function openSendModal(examinationType, examId, patientName, companyName) {
+    // Store examination data
+    currentExamination = {
+        type: examinationType,
+        id: examId,
+        patientName: patientName,
+        companyName: companyName
+    };
     
-    // Toggle the clicked dropdown
-    const dropdown = document.getElementById(dropdownId);
-    if (dropdown) {
-        dropdown.classList.toggle('hidden');
+    // Set modal content
+    document.getElementById('modalPatientName').textContent = patientName;
+    document.getElementById('modalExaminationType').textContent = examinationType === 'pre-employment' ? 'Pre-Employment Examination' : 'Annual Physical Examination';
+    document.getElementById('modalCompanyName').textContent = companyName || 'N/A';
+    
+    // Show modal
+    document.getElementById('sendResultsModal').classList.remove('hidden');
+}
+
+function closeSendModal() {
+    document.getElementById('sendResultsModal').classList.add('hidden');
+}
+
+// Send to company function
+async function sendToCompany() {
+    if (!currentExamination) {
+        showErrorMessage('Error', 'No examination selected');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/examinations/${currentExamination.type}/${currentExamination.id}/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                send_to: 'company'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeSendModal();
+            showSuccessMessage('Success!', data.message);
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showErrorMessage('Failed to send examination', data.message || 'An error occurred while sending the examination to the company.');
+        }
+    } catch (error) {
+        console.error('Error sending examination:', error);
+        showErrorMessage('Network Error', 'Failed to send examination to company. Please check your connection and try again.');
     }
 }
 
-// Close dropdowns when clicking outside
-document.addEventListener('click', function(event) {
-    const isDropdownButton = event.target.closest('button[onclick^="toggleDropdown"]');
-    const isDropdownContent = event.target.closest('[id^="pre-employment-"], [id^="annual-physical-"]');
+// Send to patient function
+async function sendToPatient() {
+    if (!currentExamination) {
+        showErrorMessage('Error', 'No examination selected');
+        return;
+    }
     
-    if (!isDropdownButton && !isDropdownContent) {
-        document.querySelectorAll('[id^="pre-employment-"], [id^="annual-physical-"]').forEach(dropdown => {
-            dropdown.classList.add('hidden');
+    try {
+        const response = await fetch(`/admin/examinations/${currentExamination.type}/${currentExamination.id}/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                send_to: 'patient'
+            })
         });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeSendModal();
+            showSuccessMessage('Success!', data.message);
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showErrorMessage('Failed to send examination', data.message || 'An error occurred while sending the examination to the patient.');
+        }
+    } catch (error) {
+        console.error('Error sending examination:', error);
+        showErrorMessage('Network Error', 'Failed to send examination to patient. Please check your connection and try again.');
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('sendResultsModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSendModal();
     }
 });
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeSendModal();
+    }
+});
+
+// Show success message function
+function showSuccessMessage(title, message) {
+    // Create success notification
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 z-50 bg-white border-l-4 border-green-500 rounded-lg shadow-xl max-w-md transform transition-all duration-300 translate-x-full';
+    notification.innerHTML = `
+        <div class="p-6">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                </div>
+                <div class="ml-4 flex-1">
+                    <h3 class="text-lg font-semibold text-green-800">${title}</h3>
+                    <p class="text-green-700 text-sm mt-1">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-green-400 hover:text-green-600 ml-4">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+// Show error message function
+function showErrorMessage(title, message) {
+    // Create error notification
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 z-50 bg-white border-l-4 border-red-500 rounded-lg shadow-xl max-w-md transform transition-all duration-300 translate-x-full';
+    notification.innerHTML = `
+        <div class="p-6">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation-circle text-red-600"></i>
+                    </div>
+                </div>
+                <div class="ml-4 flex-1">
+                    <h3 class="text-lg font-semibold text-red-800">${title}</h3>
+                    <p class="text-red-700 text-sm mt-1">${message}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-red-400 hover:text-red-600 ml-4">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Auto-hide after 8 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 8000);
+}
 </script>
 @endsection

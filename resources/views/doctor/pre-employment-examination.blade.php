@@ -439,23 +439,8 @@
                 $chestXrayData = null;
                 $xrayImage = null;
                 
-                // Debug: Log what we're working with in the view
-                \Log::info('Doctor View - Pre-Employment Examination Debug:', [
-                    'examination_id' => $examination->id,
-                    'patient_name' => $examination->name,
-                    'lab_findings_raw' => $examination->lab_findings,
-                    'lab_findings_type' => gettype($examination->lab_findings),
-                    'is_array' => is_array($examination->lab_findings),
-                    'available_keys' => is_array($examination->lab_findings) ? array_keys($examination->lab_findings) : 'not_array'
-                ]);
-                
                 if($examination->lab_findings && is_array($examination->lab_findings)) {
                     $chestXrayData = $examination->lab_findings['chest_xray'] ?? ($examination->lab_findings['Chest X-Ray'] ?? null);
-                    
-                    \Log::info('Doctor View - Chest X-ray Data Retrieved:', [
-                        'chest_xray_found' => !is_null($chestXrayData),
-                        'chest_xray_data' => $chestXrayData
-                    ]);
                 }
                 
                 // Get the medical checklist with X-ray image
@@ -480,28 +465,6 @@
                 }
             @endphp
             
-            <!-- Debug Section (temporary) -->
-            @if(config('app.debug'))
-            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                <h4 class="font-bold text-yellow-800 mb-2">🔍 Debug Information</h4>
-                <div class="text-sm text-yellow-700 space-y-1">
-                    <p><strong>Examination ID:</strong> {{ $examination->id }}</p>
-                    <p><strong>Patient Name:</strong> {{ $examination->name }}</p>
-                    <p><strong>Lab Findings Exists:</strong> {{ $examination->lab_findings ? 'YES' : 'NO' }}</p>
-                    <p><strong>Lab Findings Type:</strong> {{ gettype($examination->lab_findings) }}</p>
-                    @if(is_array($examination->lab_findings))
-                        <p><strong>Available Keys:</strong> {{ implode(', ', array_keys($examination->lab_findings)) }}</p>
-                        <p><strong>Chest X-ray Data Found:</strong> {{ isset($examination->lab_findings['chest_xray']) ? 'YES' : 'NO' }}</p>
-                        @if(isset($examination->lab_findings['chest_xray']))
-                            <p><strong>X-ray Result:</strong> {{ $examination->lab_findings['chest_xray']['result'] ?? 'Not set' }}</p>
-                            <p><strong>X-ray Finding:</strong> {{ $examination->lab_findings['chest_xray']['finding'] ?? 'Not set' }}</p>
-                        @endif
-                    @else
-                        <p><strong>Raw Lab Findings:</strong> {{ json_encode($examination->lab_findings) }}</p>
-                    @endif
-                </div>
-            </div>
-            @endif
             
             <!-- Always show chest X-ray section -->
             <div id="chest-xray-section" class="bg-white rounded-xl shadow-lg overflow-hidden border-l-4 border-purple-500 mb-8">
@@ -624,16 +587,6 @@
                                     <p class="text-xs text-gray-400">
                                         Waiting for radiologist to complete chest X-ray interpretation
                                     </p>
-                                    @if(config('app.debug'))
-                                    <div class="mt-4 p-3 bg-gray-100 rounded text-left text-xs">
-                                        <strong>Debug Info:</strong><br>
-                                        Lab Findings: {{ $examination->lab_findings ? 'Present' : 'Null' }}<br>
-                                        @if($examination->lab_findings && is_array($examination->lab_findings))
-                                            Available Keys: {{ implode(', ', array_keys($examination->lab_findings)) }}<br>
-                                        @endif
-                                        Chest X-ray Data: {{ $chestXrayData ? 'Found' : 'Not Found' }}
-                                    </div>
-                                    @endif
                                 </div>
                             @endif
                         </div>
@@ -663,6 +616,64 @@
                 </div>
             </div>
             @endif
+
+            <!-- Physical Examination Findings -->
+            @if($examination->physical_findings)
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden border-l-4 border-cyan-500 mb-8">
+                <div class="px-6 py-4 bg-gradient-to-r from-cyan-500 to-cyan-600">
+                    <div class="flex items-center">
+                        <i class="fas fa-search text-gray-800 text-xl mr-3"></i>
+                        <h3 class="text-lg font-bold text-gray-800">Physical Examination Findings</h3>
+                    </div>
+                </div>
+                <div class="p-6 bg-cyan-50">
+                    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        @if(is_array($examination->physical_findings) || is_object($examination->physical_findings))
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-cyan-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-cyan-800 uppercase tracking-wider border-b border-cyan-200">Examination Area</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-cyan-800 uppercase tracking-wider border-b border-cyan-200">Result</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-cyan-800 uppercase tracking-wider border-b border-cyan-200">Findings</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200">
+                                        @foreach($examination->physical_findings as $area => $finding)
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 py-3 text-sm font-medium text-gray-900">
+                                                {{ $area }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm">
+                                                @if(isset($finding['result']))
+                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $finding['result'] === 'Normal' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200' }}">
+                                                        <i class="fas {{ $finding['result'] === 'Normal' ? 'fa-check-circle' : 'fa-exclamation-triangle' }} mr-1 text-xs"></i>
+                                                        {{ $finding['result'] }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-gray-500 text-xs">Not specified</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-700">
+                                                {{ $finding['findings'] ?? 'No findings recorded' }}
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @elseif(is_string($examination->physical_findings))
+                            <div class="p-4">
+                                {!! nl2br(e($examination->physical_findings)) !!}
+                            </div>
+                        @else
+                            <div class="p-4 text-gray-500">
+                                {{ $examination->physical_findings }}
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
             @endif
 
             <!-- Drug Test Form (DT Form 2) -->
@@ -686,7 +697,7 @@
             @endif
 
             <!-- Findings and Recommendations -->
-            @if($examination->findings || $examination->physical_findings || $examination->lab_findings)
+            @if($examination->findings || $examination->lab_findings)
             <div class="bg-white rounded-xl shadow-lg overflow-hidden border-l-4 border-red-500 mb-8">
                 <div class="px-6 py-4 bg-gradient-to-r from-red-500 to-red-600">
                     <div class="flex items-center">
@@ -705,21 +716,6 @@
                                 <pre class="text-sm text-gray-700 whitespace-pre-wrap">{{ json_encode($examination->findings, JSON_PRETTY_PRINT) }}</pre>
                             @else
                                 {{ $examination->findings }}
-                            @endif
-                        </div>
-                    </div>
-                    @endif
-
-                    @if($examination->physical_findings)
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Physical Examination Findings</label>
-                        <div class="bg-white p-4 rounded-lg border border-gray-200 prose max-w-none">
-                            @if(is_string($examination->physical_findings))
-                                {!! nl2br(e($examination->physical_findings)) !!}
-                            @elseif(is_array($examination->physical_findings) || is_object($examination->physical_findings))
-                                <pre class="text-sm text-gray-700 whitespace-pre-wrap">{{ json_encode($examination->physical_findings, JSON_PRETTY_PRINT) }}</pre>
-                            @else
-                                {{ $examination->physical_findings }}
                             @endif
                         </div>
                     </div>

@@ -62,7 +62,7 @@ class DoctorController extends Controller
         switch ($filter) {
             case 'needs_attention':
                 // Show examinations that need doctor's attention (pending status)
-                $query->whereIn('status', ['pending', 'collection_completed']);
+                $query->whereIn('status', ['pending', 'collection_completed', 'Pending']);
                 break;
                 
             case 'submitted':
@@ -72,15 +72,14 @@ class DoctorController extends Controller
                 
             default:
                 // Show all examinations that are ready for doctor review
-                $query->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company']);
+                $query->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company', 'Pending']);
                 break;
         }
         
         $preEmploymentExaminations = $query->latest()->paginate(15);
         
-        // Get all examinations for tab counts (without pagination)
+        // Get all examinations for tab counts (without pagination) - don't filter by status for accurate counts
         $allExaminations = \App\Models\PreEmploymentExamination::with(['preEmploymentRecord.medicalTest', 'preEmploymentRecord.medicalTestCategory', 'user'])
-            ->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company'])
             ->get();
             
         // Log the count and statuses for debugging

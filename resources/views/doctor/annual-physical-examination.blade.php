@@ -287,14 +287,50 @@
 
                     @if($examination->physical_findings)
                     <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Physical Examination Findings</label>
-                        <div class="bg-white p-4 rounded-lg border border-gray-200 prose max-w-none">
-                            @if(is_string($examination->physical_findings))
-                                {!! nl2br(e($examination->physical_findings)) !!}
-                            @elseif(is_array($examination->physical_findings) || is_object($examination->physical_findings))
-                                <pre class="text-sm text-gray-700 whitespace-pre-wrap">{{ json_encode($examination->physical_findings, JSON_PRETTY_PRINT) }}</pre>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Physical Examination Findings</label>
+                        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            @if(is_array($examination->physical_findings) || is_object($examination->physical_findings))
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Examination Area</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Result</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Findings</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200">
+                                            @foreach($examination->physical_findings as $area => $finding)
+                                            <tr class="hover:bg-gray-50 transition-colors">
+                                                <td class="px-4 py-3 text-sm font-medium text-gray-900">
+                                                    {{ $area }}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm">
+                                                    @if(isset($finding['result']))
+                                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $finding['result'] === 'Normal' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200' }}">
+                                                            <i class="fas {{ $finding['result'] === 'Normal' ? 'fa-check-circle' : 'fa-exclamation-triangle' }} mr-1 text-xs"></i>
+                                                            {{ $finding['result'] }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-gray-500 text-xs">Not specified</span>
+                                                    @endif
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-gray-700">
+                                                    {{ $finding['findings'] ?? 'No findings recorded' }}
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @elseif(is_string($examination->physical_findings))
+                                <div class="p-4">
+                                    {!! nl2br(e($examination->physical_findings)) !!}
+                                </div>
                             @else
-                                {{ $examination->physical_findings }}
+                                <div class="p-4 text-gray-500">
+                                    {{ $examination->physical_findings }}
+                                </div>
                             @endif
                         </div>
                     </div>
