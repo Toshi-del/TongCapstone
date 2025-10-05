@@ -17,6 +17,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 use App\Mail\RegistrationInvitation;
+use App\Mail\MedicalResultsNotification;
 use Illuminate\Support\Facades\Mail;
 use App\Services\MedicalTestRoutingService;
 use App\Models\AppointmentTestAssignment;
@@ -1460,50 +1461,133 @@ class AdminController extends Controller
     }
 
     /**
-     * Send pre-employment examination to company
+     * Send pre-employment examination to company or patient
      */
-    public function sendPreEmploymentToCompany($id)
+    public function sendPreEmploymentToCompany(Request $request, $id)
     {
         try {
             $examination = \App\Models\PreEmploymentExamination::findOrFail($id);
+            $sendTo = $request->input('send_to', 'company');
             
-            // Update status to indicate it's been sent to company
-            $examination->update(['status' => 'sent_to_company']);
-            
-            // Create notification for company if needed
-            // You can add notification logic here
-            
-            return redirect()->route('admin.tests')
-                ->with('success', 'Pre-employment examination sent to ' . $examination->company_name . ' successfully.');
+            if ($sendTo === 'company') {
+                // Update status to indicate it's been sent to company
+                $examination->update(['status' => 'sent_to_company']);
+                
+                // Create notification for company if needed
+                // You can add notification logic here
+                
+                return redirect()->route('admin.tests')
+                    ->with('success', 'Pre-employment examination sent to ' . $examination->company_name . ' successfully.');
+            } else {
+                // Send to patient
+                $examination->update(['status' => 'sent_to_patient']);
+                
+                // Get patient email - try multiple sources
+                $patientEmail = null;
+                $patientName = $examination->name;
+                
+                // First, try to get email from the examination record itself
+                if (isset($examination->email)) {
+                    $patientEmail = $examination->email;
+                }
+                
+                // If not found, try to get from related pre-employment record
+                if (!$patientEmail && $examination->preEmploymentRecord) {
+                    $patientEmail = $examination->preEmploymentRecord->email;
+                    if (!$patientName && $examination->preEmploymentRecord->full_name) {
+                        $patientName = $examination->preEmploymentRecord->full_name;
+                    }
+                }
+                
+                // Send email notification to patient
+                if ($patientEmail) {
+                    try {
+                        Mail::to($patientEmail)->send(new MedicalResultsNotification(
+                            $examination,
+                            'pre_employment',
+                            $patientEmail,
+                            $patientName
+                        ));
+                        
+                        return redirect()->route('admin.tests')
+                            ->with('success', 'Pre-employment examination sent to patient (' . $patientName . ') at ' . $patientEmail . ' successfully.');
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send medical results email: ' . $e->getMessage());
+                        return redirect()->route('admin.tests')
+                            ->with('success', 'Pre-employment examination status updated, but email could not be sent. Please check the patient email address.');
+                    }
+                } else {
+                    return redirect()->route('admin.tests')
+                        ->with('success', 'Pre-employment examination status updated, but no email address found for patient (' . $patientName . ').');
+                }
+            }
                 
         } catch (\Exception $e) {
             \Log::error('Error sending pre-employment examination: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to send examination to company.');
+            return redirect()->back()->with('error', 'Failed to send examination.');
         }
     }
 
     /**
-     * Send annual physical examination to company
+     * Send annual physical examination to company or patient
      */
-    public function sendAnnualPhysicalToCompany($id)
+    public function sendAnnualPhysicalToCompany(Request $request, $id)
     {
         try {
             $examination = \App\Models\AnnualPhysicalExamination::findOrFail($id);
+            $sendTo = $request->input('send_to', 'company');
             
-            // Update status to indicate it's been sent to company
-            $examination->update(['status' => 'sent_to_company']);
-            
-            // Create notification for company if needed
-            // You can add notification logic here
-            
-            $companyName = $examination->patient->appointment->company ?? 'the company';
-            
-            return redirect()->route('admin.tests')
-                ->with('success', 'Annual physical examination sent to ' . $companyName . ' successfully.');
+            if ($sendTo === 'company') {
+                // Update status to indicate it's been sent to company
+                $examination->update(['status' => 'sent_to_company']);
+                
+                // Create notification for company if needed
+                // You can add notification logic here
+                
+                $companyName = $examination->patient->appointment->company ?? 'the company';
+                
+                return redirect()->route('admin.tests')
+                    ->with('success', 'Annual physical examination sent to ' . $companyName . ' successfully.');
+            } else {
+                // Send to patient
+                $examination->update(['status' => 'sent_to_patient']);
+                
+                // Get patient email and name from related patient record
+                $patientEmail = null;
+                $patientName = $examination->name;
+                
+                // Try to get email from the patient record
+                if ($examination->patient) {
+                    $patientEmail = $examination->patient->email;
+                    $patientName = $examination->patient->first_name . ' ' . $examination->patient->last_name;
+                }
+                
+                // Send email notification to patient
+                if ($patientEmail) {
+                    try {
+                        Mail::to($patientEmail)->send(new MedicalResultsNotification(
+                            $examination,
+                            'annual_physical',
+                            $patientEmail,
+                            $patientName
+                        ));
+                        
+                        return redirect()->route('admin.tests')
+                            ->with('success', 'Annual physical examination sent to patient (' . $patientName . ') at ' . $patientEmail . ' successfully.');
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send medical results email: ' . $e->getMessage());
+                        return redirect()->route('admin.tests')
+                            ->with('success', 'Annual physical examination status updated, but email could not be sent. Please check the patient email address.');
+                    }
+                } else {
+                    return redirect()->route('admin.tests')
+                        ->with('success', 'Annual physical examination status updated, but no email address found for patient (' . $patientName . ').');
+                }
+            }
                 
         } catch (\Exception $e) {
             \Log::error('Error sending annual physical examination: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to send examination to company.');
+            return redirect()->back()->with('error', 'Failed to send examination.');
         }
     }
 

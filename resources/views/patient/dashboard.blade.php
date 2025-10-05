@@ -1,12 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient Dashboard - RSS Citi Health Services</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+@extends('layouts.patient')
+
+@section('title', 'Dashboard')
+
+@section('content')
     <style>
         :root {
             --primary-indigo: #4f46e5;
@@ -505,12 +501,32 @@
                 
                 <!-- Results Tab -->
                 <div id="results" class="tab-content hidden">
+                    <!-- Quick Access to Full Results Page -->
+                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 mb-8 text-white">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                                    <i class="fas fa-file-medical text-white text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold mb-1">View All Medical Results</h3>
+                                    <p class="text-white/90">Access your complete medical examination results sent by RSS Citi Health Services</p>
+                                </div>
+                            </div>
+                            <a href="{{ route('patient.medical-results') }}" 
+                               class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 hover:scale-105 flex items-center space-x-2">
+                                <i class="fas fa-external-link-alt"></i>
+                                <span>View Results</span>
+                            </a>
+                        </div>
+                    </div>
+                    
                     <!-- Results Header -->
                     <div class="mb-8">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                             <div>
-                                <h3 class="text-2xl font-bold text-gray-800 mb-2">Medical Results</h3>
-                                <p class="text-gray-600">View and download your examination results and reports</p>
+                                <h3 class="text-2xl font-bold text-gray-800 mb-2">Medical Results Overview</h3>
+                                <p class="text-gray-600">Quick overview of your examination results and reports</p>
                             </div>
                             <div class="flex items-center space-x-3 mt-4 md:mt-0">
                                 <div class="relative">
@@ -852,5 +868,4 @@
             console.log('Patient dashboard initialized with modern interactions');
         });
     </script>
-</body>
-</html> 
+@endsection 

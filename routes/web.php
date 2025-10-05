@@ -173,6 +173,16 @@ Route::post('admin/pre-employment/{id}/send-email', [App\Http\Controllers\AdminC
     Route::delete('/admin/company-accounts/{id}', [AdminController::class, 'deleteCompany'])->name('admin.company-accounts.delete');
 });
 
+// Patient Routes
+Route::middleware(['auth', 'role:patient'])->group(function () {
+    Route::get('/patient/dashboard', [PatientController::class, 'dashboard'])->name('patient.dashboard');
+    Route::get('/patient/profile', [PatientController::class, 'profile'])->name('patient.profile');
+    Route::put('/patient/profile', [PatientController::class, 'updateProfile'])->name('patient.profile.update');
+    Route::get('/patient/medical-results', [PatientController::class, 'medicalResults'])->name('patient.medical-results');
+    Route::get('/patient/medical-results/pre-employment/{id}', [PatientController::class, 'viewPreEmploymentResult'])->name('patient.view-pre-employment-result');
+    Route::get('/patient/medical-results/annual-physical/{id}', [PatientController::class, 'viewAnnualPhysicalResult'])->name('patient.view-annual-physical-result');
+});
+
 Route::middleware(['auth', 'role:company'])->group(function () {
     Route::get('/company/dashboard', [CompanyController::class, 'dashboard'])->name('company.dashboard');
     

@@ -153,11 +153,41 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-5">
-                                    <a href="{{ route('admin.view-pre-employment-results', $exam->id) }}" 
-                                       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
-                                        <i class="fas fa-eye mr-2 text-xs"></i>
-                                        View & Send
-                                    </a>
+                                    <div class="flex items-center space-x-2">
+                                        <a href="{{ route('admin.view-pre-employment-results', $exam->id) }}" 
+                                           class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
+                                            <i class="fas fa-eye mr-2 text-xs"></i>
+                                            View
+                                        </a>
+                                        <div class="relative inline-block text-left">
+                                            <button type="button" onclick="toggleDropdown('pre-employment-{{ $exam->id }}')" 
+                                                    class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
+                                                <i class="fas fa-paper-plane mr-2 text-xs"></i>
+                                                Send
+                                                <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                                            </button>
+                                            <div id="pre-employment-{{ $exam->id }}" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                                <div class="py-1">
+                                                    <form action="{{ route('admin.examinations.pre-employment.send', $exam->id) }}" method="POST" class="block">
+                                                        @csrf
+                                                        <input type="hidden" name="send_to" value="company">
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                                                            <i class="fas fa-building mr-2 text-blue-600"></i>
+                                                            Send to Company
+                                                        </button>
+                                                    </form>
+                                                    <form action="{{ route('admin.examinations.pre-employment.send', $exam->id) }}" method="POST" class="block">
+                                                        @csrf
+                                                        <input type="hidden" name="send_to" value="patient">
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                                                            <i class="fas fa-user mr-2 text-green-600"></i>
+                                                            Send to Patient
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -280,11 +310,41 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-5">
-                                    <a href="{{ route('admin.view-annual-physical-results', $exam->id) }}" 
-                                       class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
-                                        <i class="fas fa-eye mr-2 text-xs"></i>
-                                        View & Send
-                                    </a>
+                                    <div class="flex items-center space-x-2">
+                                        <a href="{{ route('admin.view-annual-physical-results', $exam->id) }}" 
+                                           class="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
+                                            <i class="fas fa-eye mr-2 text-xs"></i>
+                                            View
+                                        </a>
+                                        <div class="relative inline-block text-left">
+                                            <button type="button" onclick="toggleDropdown('annual-physical-{{ $exam->id }}')" 
+                                                    class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
+                                                <i class="fas fa-paper-plane mr-2 text-xs"></i>
+                                                Send
+                                                <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                                            </button>
+                                            <div id="annual-physical-{{ $exam->id }}" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                                <div class="py-1">
+                                                    <form action="{{ route('admin.examinations.annual-physical.send', $exam->id) }}" method="POST" class="block">
+                                                        @csrf
+                                                        <input type="hidden" name="send_to" value="company">
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                                                            <i class="fas fa-building mr-2 text-blue-600"></i>
+                                                            Send to Company
+                                                        </button>
+                                                    </form>
+                                                    <form action="{{ route('admin.examinations.annual-physical.send', $exam->id) }}" method="POST" class="block">
+                                                        @csrf
+                                                        <input type="hidden" name="send_to" value="patient">
+                                                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                                                            <i class="fas fa-user mr-2 text-green-600"></i>
+                                                            Send to Patient
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -340,5 +400,32 @@ function closeSuccessMessage() {
         }, 300);
     }
 }
+
+function toggleDropdown(dropdownId) {
+    // Close all other dropdowns first
+    document.querySelectorAll('[id^="pre-employment-"], [id^="annual-physical-"]').forEach(dropdown => {
+        if (dropdown.id !== dropdownId) {
+            dropdown.classList.add('hidden');
+        }
+    });
+    
+    // Toggle the clicked dropdown
+    const dropdown = document.getElementById(dropdownId);
+    if (dropdown) {
+        dropdown.classList.toggle('hidden');
+    }
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(event) {
+    const isDropdownButton = event.target.closest('button[onclick^="toggleDropdown"]');
+    const isDropdownContent = event.target.closest('[id^="pre-employment-"], [id^="annual-physical-"]');
+    
+    if (!isDropdownButton && !isDropdownContent) {
+        document.querySelectorAll('[id^="pre-employment-"], [id^="annual-physical-"]').forEach(dropdown => {
+            dropdown.classList.add('hidden');
+        });
+    }
+});
 </script>
 @endsection
