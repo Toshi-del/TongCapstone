@@ -1517,18 +1517,64 @@ class AdminController extends Controller
                 return redirect()->back()->with('error', 'No records selected for sending links.');
             }
 
-            $updated = PreEmploymentRecord::whereIn('id', $ids)
+            // Get the records that need emails sent
+            $records = PreEmploymentRecord::whereIn('id', $ids)
                 ->where('status', 'Approved')
                 ->where('registration_link_sent', false)
-                ->update(['registration_link_sent' => true]);
+                ->get();
 
-            // Here you would typically send the actual emails
-            // For now, we'll just mark them as sent
+            if ($records->isEmpty()) {
+                return redirect()->back()->with('error', 'No eligible records found for sending registration links.');
+            }
 
-            return redirect()->back()->with('success', "Successfully sent registration links to {$updated} approved record(s).");
+            $sent = 0;
+            $failed = 0;
+
+            foreach ($records as $record) {
+                try {
+                    // Generate registration link
+                    $registrationLink = route('register', ['email' => $record->email, 'type' => 'patient', 'record_id' => $record->id]);
+                    
+                    // Prepare invitation data
+                    $invitationData = [
+                        'company' => $record->company_name ?? 'N/A',
+                        'type' => 'Pre-Employment Medical Examination',
+                        'registration_link' => $registrationLink
+                    ];
+
+                    // Send email using MailHelper
+                    $emailSent = \App\Helpers\MailHelper::sendRegistrationInvitation(
+                        $record->email,
+                        $record->full_name ?? ($record->first_name . ' ' . $record->last_name),
+                        $invitationData
+                    );
+
+                    if ($emailSent) {
+                        // Mark as sent only if email was successful
+                        $record->update(['registration_link_sent' => true]);
+                        $sent++;
+                    } else {
+                        $failed++;
+                        \Log::warning("Failed to send registration email to {$record->email}");
+                    }
+
+                } catch (\Exception $e) {
+                    $failed++;
+                    \Log::error("Error sending registration email to {$record->email}: " . $e->getMessage());
+                }
+            }
+
+            if ($sent > 0 && $failed == 0) {
+                return redirect()->back()->with('success', "Successfully sent registration links to {$sent} approved record(s).");
+            } elseif ($sent > 0 && $failed > 0) {
+                return redirect()->back()->with('warning', "Sent {$sent} registration links successfully, but {$failed} failed to send.");
+            } else {
+                return redirect()->back()->with('error', "Failed to send registration links. Please check email configuration.");
+            }
+
         } catch (\Exception $e) {
             \Log::error('Error bulk sending registration links: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to send registration links.');
+            return redirect()->back()->with('error', 'Failed to send registration links: ' . $e->getMessage());
         }
     }
 

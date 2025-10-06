@@ -178,15 +178,45 @@
                     <table class="w-full">
                         <tbody class="divide-y divide-gray-200">
                             @php
-                                $labTests = [
-                                    'chest_xray' => ['name' => 'Chest X-Ray', 'icon' => 'fas fa-lungs', 'color' => 'gray'],
-                                    'cbc' => ['name' => 'CBC', 'icon' => 'fas fa-tint', 'color' => 'red'],
-                                    'fecalysis' => ['name' => 'Fecalysis', 'icon' => 'fas fa-vial', 'color' => 'yellow'],
-                                    'urinalysis' => ['name' => 'Urinalysis', 'icon' => 'fas fa-flask', 'color' => 'orange'],
-                                    'hba1c' => ['name' => 'HbA1C', 'icon' => 'fas fa-chart-line', 'color' => 'blue'],
-                                    'sodium' => ['name' => 'Sodium', 'icon' => 'fas fa-atom', 'color' => 'blue'],
-                                    'calcium' => ['name' => 'Calcium', 'icon' => 'fas fa-bone', 'color' => 'blue']
+                                // Get all unique test names from lab_report data
+                                $labTests = [];
+                                $testIcons = [
+                                    'chest_xray' => ['icon' => 'fas fa-lungs', 'color' => 'gray'],
+                                    'cbc' => ['icon' => 'fas fa-tint', 'color' => 'red'],
+                                    'fecalysis' => ['icon' => 'fas fa-vial', 'color' => 'yellow'],
+                                    'urinalysis' => ['icon' => 'fas fa-flask', 'color' => 'orange'],
+                                    'fbs' => ['icon' => 'fas fa-cube', 'color' => 'blue'],
+                                    'bua' => ['icon' => 'fas fa-cube', 'color' => 'blue'],
+                                    'hba1c' => ['icon' => 'fas fa-chart-line', 'color' => 'blue'],
+                                    'sodium' => ['icon' => 'fas fa-atom', 'color' => 'blue'],
+                                    'calcium' => ['icon' => 'fas fa-bone', 'color' => 'blue']
                                 ];
+                                
+                                // Extract all test names from lab_report
+                                if ($examination->lab_report && is_array($examination->lab_report)) {
+                                    foreach ($examination->lab_report as $key => $value) {
+                                        if (str_ends_with($key, '_result')) {
+                                            $testKey = str_replace('_result', '', $key);
+                                            if (!isset($labTests[$testKey])) {
+                                                $displayName = ucwords(str_replace('_', ' ', $testKey));
+                                                $labTests[$testKey] = [
+                                                    'name' => $displayName,
+                                                    'icon' => $testIcons[$testKey]['icon'] ?? 'fas fa-flask',
+                                                    'color' => $testIcons[$testKey]['color'] ?? 'blue'
+                                                ];
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Always include chest_xray even if not in lab_report
+                                if (!isset($labTests['chest_xray'])) {
+                                    $labTests['chest_xray'] = [
+                                        'name' => 'Chest X-Ray',
+                                        'icon' => 'fas fa-lungs',
+                                        'color' => 'gray'
+                                    ];
+                                }
                             @endphp
                             
                             @foreach($labTests as $testKey => $testInfo)
