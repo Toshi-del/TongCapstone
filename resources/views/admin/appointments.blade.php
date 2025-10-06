@@ -5,6 +5,55 @@
 
 @section('content')
 <div class="space-y-8">
+    <!-- Success/Error Messages -->
+    @if(session('success'))
+    <div class="content-card rounded-xl p-4 shadow-lg border border-emerald-200 bg-emerald-50">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-check text-emerald-600"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-emerald-800 font-medium">{{ session('success') }}</p>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" class="text-emerald-400 hover:text-emerald-600 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    @endif
+
+    @if(session('error'))
+    <div class="content-card rounded-xl p-4 shadow-lg border border-red-200 bg-red-50">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-exclamation-triangle text-red-600"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-red-800 font-medium">{{ session('error') }}</p>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" class="text-red-400 hover:text-red-600 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    @endif
+
+    @if(session('info'))
+    <div class="content-card rounded-xl p-4 shadow-lg border border-blue-200 bg-blue-50">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-info-circle text-blue-600"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-blue-800 font-medium">{{ session('info') }}</p>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" class="text-blue-400 hover:text-blue-600 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    @endif
+
     <!-- Header Section -->
     <div class="content-card rounded-xl overflow-hidden shadow-lg border border-gray-200">
         <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 px-8 py-6">

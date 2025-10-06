@@ -159,16 +159,71 @@ class NurseController extends Controller
 
 
     /**
-     * Show annual physical patients
+     * Show annual physical patients with filtering
      */
-    public function annualPhysical()
+    public function annualPhysical(Request $request)
     {
-        // Show all approved patients with their examination status
-        // Nurses can see all patients regardless of examination completion
-        $patients = Patient::with(['annualPhysicalExamination'])
+        $query = Patient::with(['annualPhysicalExamination', 'appointment'])
             ->where('status', 'approved')
-            ->latest()
-            ->paginate(15);
+            ->whereHas('appointment', function($q) {
+                $q->where('status', 'approved');
+            });
+
+        // Apply search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        // Apply exam status filtering to match existing tabs - default to 'needs_attention'
+        $examStatus = $request->filled('exam_status') ? $request->exam_status : 'needs_attention';
+        
+        switch ($examStatus) {
+            case 'needs_attention':
+                // Patients that need attention (no examination record OR examination with no meaningful lab results)
+                $query->where(function($mainQuery) {
+                    // Patients without any annual physical examination record
+                    $mainQuery->whereDoesntHave('annualPhysicalExamination')
+                    // OR patients with examination record but no meaningful lab results
+                    ->orWhereHas('annualPhysicalExamination', function($q) {
+                        $q->where(function($subQuery) {
+                            $subQuery->whereNull('lab_report')
+                                     ->orWhere('lab_report', '[]')
+                                     ->orWhere('lab_report', '{}')
+                                     ->orWhere('lab_report', 'null')
+                                     ->orWhereRaw("JSON_LENGTH(lab_report) = 0")
+                                     ->orWhereRaw("CHAR_LENGTH(lab_report) <= 2");
+                        });
+                    });
+                });
+                break;
+                
+            case 'exam_completed':
+                // Patients with meaningful lab results (completed examinations)
+                $query->whereHas('annualPhysicalExamination', function($q) {
+                    $q->whereNotNull('lab_report')
+                      ->where('lab_report', '!=', '[]')
+                      ->where('lab_report', '!=', '{}')
+                      ->where('lab_report', '!=', 'null')
+                      ->where(function($subQuery) {
+                          $subQuery->whereRaw("JSON_LENGTH(lab_report) > 0")
+                                   ->orWhereRaw("CHAR_LENGTH(lab_report) > 2");
+                      });
+                });
+                break;
+                
+            case 'all':
+            default:
+                // Show all patients - no additional filtering
+                break;
+        }
+
+        $patients = $query->latest()->paginate(15);
         
         return view('nurse.annual-physical', compact('patients'));
     }
@@ -262,12 +317,45 @@ class NurseController extends Controller
             'assessment_details' => 'nullable|string',
         ]);
 
+        // Set status to completed when nurse updates examination
+        $validated['status'] = 'completed';
+        
         $annualPhysical->update($validated);
         
         // Calculate and store fitness assessment automatically
         $annualPhysical->calculateFitnessAssessment();
 
-        return redirect()->route('nurse.annual-physical')->with('success', 'Annual physical examination updated successfully.');
+        return redirect()->route('nurse.annual-physical', ['exam_status' => 'needs_attention'])->with('success', 'Annual physical examination updated successfully.');
+    }
+
+    /**
+     * Send annual physical examination to doctor
+     */
+    public function sendAnnualPhysicalToDoctor($id)
+    {
+        $annualPhysical = \App\Models\AnnualPhysicalExamination::findOrFail($id);
+        
+        // Update status to completed to make it visible to doctor
+        $annualPhysical->update(['status' => 'completed']);
+        
+        // Create notification for doctor
+        $patient = $annualPhysical->patient;
+        $patientName = $patient ? $patient->full_name : $annualPhysical->name;
+        
+        Notification::createForRole(
+            'doctor',
+            'Annual Physical Examination Ready',
+            "Annual physical examination for {$patientName} has been completed and is ready for doctor review.",
+            json_encode([
+                'type' => 'annual_physical_completed',
+                'examination_id' => $annualPhysical->id,
+                'patient_id' => $annualPhysical->patient_id,
+                'patient_name' => $patientName
+            ])
+        );
+        
+        return redirect()->route('nurse.annual-physical', ['exam_status' => 'needs_attention'])
+            ->with('success', "Annual physical examination for {$patientName} has been sent to doctor successfully.");
     }
 
     /**

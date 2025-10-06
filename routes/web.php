@@ -348,6 +348,7 @@ Route::middleware(['auth', 'role:nurse'])->group(function () {
     // Nurse Annual Physical Edit Routes
     Route::get('/nurse/annual-physical/{id}/edit', [NurseController::class, 'editAnnualPhysical'])->name('nurse.annual-physical.edit');
     Route::patch('/nurse/annual-physical/{id}', [NurseController::class, 'updateAnnualPhysical'])->name('nurse.annual-physical.update');
+    Route::post('/nurse/annual-physical/{id}/send-to-doctor', [NurseController::class, 'sendAnnualPhysicalToDoctor'])->name('nurse.annual-physical.send-to-doctor');
     
     // Nurse OPD Routes
     Route::get('/nurse/opd', [NurseController::class, 'opd'])->name('nurse.opd');

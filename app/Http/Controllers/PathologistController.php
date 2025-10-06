@@ -172,10 +172,14 @@ class PathologistController extends Controller
      */
     public function annualPhysical(Request $request)
     {
+        // Start with all approved patients from appointments
         $query = Patient::with(['appointment.medicalTestCategory', 'appointment.medicalTest', 'annualPhysicalExamination', 'medicalChecklists'])
-            ->where('status', 'approved');
+            ->where('status', 'approved')
+            ->whereHas('appointment', function($q) {
+                $q->where('status', 'approved');
+            });
 
-        // Apply filters
+        // Apply basic filters
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -187,82 +191,56 @@ class PathologistController extends Controller
             });
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($request->filled('gender')) {
+            $query->where('sex', $request->gender);
         }
 
         if ($request->filled('company')) {
             $query->where('company_name', 'like', "%{$request->company}%");
         }
 
-        // Lab status filtering - match the view tab parameters
+        // Simplified lab status filtering
         $labStatus = $request->filled('lab_status') ? $request->lab_status : 'needs_attention';
         
         switch ($labStatus) {
             case 'needs_attention':
-                // Default: Records that need pathologist attention (blood collection completed but no lab results yet)
+                // Show patients that need lab work (either no lab results yet OR blood extraction done but no complete lab report)
                 $query->where(function($mainQuery) {
-                    // Option 1: Blood collection completed by phlebotomist
-                    $mainQuery->whereHas('medicalChecklists', function($q) {
-                        $q->where('examination_type', 'annual_physical')
-                          ->whereNotNull('blood_extraction_done_by')
-                          ->where('blood_extraction_done_by', '!=', '');
-                    })
-                    // Option 2: OR patients with annual physical examinations created
-                    ->orWhereHas('annualPhysicalExamination', function($q) {
-                        $q->whereIn('status', ['completed', 'sent_to_admin']);
+                    // Patients without any annual physical examination record
+                    $mainQuery->whereDoesntHave('annualPhysicalExamination')
+                    // OR patients with blood extraction done but incomplete lab results
+                    ->orWhere(function($subQuery) {
+                        $subQuery->whereHas('medicalChecklists', function($q) {
+                            $q->where('examination_type', 'annual_physical')
+                              ->whereNotNull('blood_extraction_done_by')
+                              ->where('blood_extraction_done_by', '!=', '');
+                        })
+                        ->whereDoesntHave('annualPhysicalExamination', function($q) {
+                            $q->whereNotNull('lab_report')
+                              ->where('lab_report', '!=', '[]')
+                              ->where('lab_report', '!=', '{}');
+                        });
                     });
-                })
-                ->whereDoesntHave('annualPhysicalExamination', function($q) {
-                    $q->whereNotNull('lab_report')
-                      ->where('lab_report', '!=', '[]')
-                      ->where('lab_report', '!=', '{}')
-                      ->where(function($subQuery) {
-                          // Check for actual meaningful lab results (not just "Not available" or empty)
-                          $subQuery->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"cbc_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"urinalysis_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"stool_exam_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"fbs_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"bun_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"creatinine_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"additional_exams_results\"')) NOT IN ('', 'Not available')");
-                      });
                 });
                 break;
                 
             case 'lab_completed':
-                // Patients with actual meaningful lab results completed
-                $query->where(function($mainQuery) {
-                    // Option 1: Blood collection completed by phlebotomist
-                    $mainQuery->whereHas('medicalChecklists', function($q) {
-                        $q->where('examination_type', 'annual_physical')
-                          ->whereNotNull('blood_extraction_done_by')
-                          ->where('blood_extraction_done_by', '!=', '');
-                    })
-                    // Option 2: OR patients with annual physical examinations created
-                    ->orWhereHas('annualPhysicalExamination', function($q) {
-                        $q->whereIn('status', ['completed', 'sent_to_admin']);
-                    });
-                })
-                ->whereHas('annualPhysicalExamination', function($q) {
+                // Show patients with completed lab results
+                $query->whereHas('annualPhysicalExamination', function($q) {
                     $q->whereNotNull('lab_report')
                       ->where('lab_report', '!=', '[]')
                       ->where('lab_report', '!=', '{}')
+                      ->where('lab_report', '!=', 'null')
                       ->where(function($subQuery) {
-                          // Check for actual meaningful lab results (not just "Not available" or empty)
-                          $subQuery->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"cbc_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"urinalysis_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"stool_exam_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"fbs_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"bun_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"creatinine_result\"')) NOT IN ('', 'Not available')")
-                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"additional_exams_results\"')) NOT IN ('', 'Not available')");
+                          // Additional check for meaningful lab results
+                          $subQuery->whereRaw("JSON_LENGTH(lab_report) > 0")
+                                   ->orWhereRaw("CHAR_LENGTH(lab_report) > 2");
                       });
                 });
                 break;
         }
 
-        // Filter patients that don't have completed examinations (unless specifically filtering for completed lab status)
+        // Exclude patients whose results have already been sent to company (unless viewing completed lab status)
         if ($labStatus !== 'lab_completed') {
             $query->whereDoesntHave('annualPhysicalExamination', function ($q) {
                 $q->whereIn('status', ['sent_to_company']);
@@ -908,27 +886,20 @@ class PathologistController extends Controller
         // First try to find existing examination
         $examination = AnnualPhysicalExamination::with('patient')->find($id);
         
-        // If no examination exists, create one for the patient
+        // If no examination exists, create one for the patient but don't save it yet
         if (!$examination) {
             $patient = Patient::findOrFail($id);
-            $examination = AnnualPhysicalExamination::create([
+            $examination = new AnnualPhysicalExamination([
                 'patient_id' => $patient->id,
                 'user_id' => Auth::id(),
                 'name' => $patient->full_name,
                 'date' => now()->toDateString(),
                 'status' => 'Pending',
-                'lab_report' => [
-                    'urinalysis' => 'Not available',
-                    'cbc' => 'Not available',
-                    'xray' => 'Not available',
-                    'fecalysis' => 'Not available',
-                    'blood_chemistry' => 'Not available',
-                    'others' => 'Not available',
-                    'hbsag_screening' => 'Not available',
-                    'hepa_a_igg_igm' => 'Not available',
-                ]
+                'lab_report' => []
             ]);
-            $examination->load('patient');
+            // Set the patient relationship manually since we haven't saved yet
+            $examination->patient = $patient;
+            $examination->exists = false; // Indicate this is a new record
         }
         
         return view('pathologist.annual-physical-edit', compact('examination'));
@@ -939,7 +910,20 @@ class PathologistController extends Controller
      */
     public function updateAnnualPhysical(Request $request, $id)
     {
-        $examination = AnnualPhysicalExamination::findOrFail($id);
+        // Try to find existing examination, or get patient for new examination
+        $examination = AnnualPhysicalExamination::find($id);
+        $isNewExamination = false;
+        
+        if (!$examination) {
+            // This means we're creating a new examination
+            $patient = Patient::findOrFail($id);
+            $examination = new AnnualPhysicalExamination();
+            $examination->patient_id = $patient->id;
+            $examination->user_id = Auth::id();
+            $examination->name = $patient->full_name;
+            $examination->date = now()->toDateString();
+            $isNewExamination = true;
+        }
 
         // Log incoming data for debugging
         \Log::info('Annual Physical Update Request', [
@@ -996,7 +980,14 @@ class PathologistController extends Controller
                 $updateData['findings'] = $request->findings;
             }
 
-            $examination->update($updateData);
+            if ($isNewExamination) {
+                // For new examinations, fill and save
+                $examination->fill($updateData);
+                $examination->save();
+            } else {
+                // For existing examinations, update
+                $examination->update($updateData);
+            }
             
             \Log::info('Annual Physical Examination Updated Successfully', [
                 'id' => $examination->id,

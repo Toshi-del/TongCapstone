@@ -605,8 +605,19 @@
                     <div class="bg-white rounded-lg p-4">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
                             <i class="fas fa-chart-line text-red-600 mr-2"></i>ECG Results
+                            <span class="text-xs text-gray-500 font-normal">(Read-only - Managed by ECG Technician)</span>
                         </label>
-                        <input type="text" name="ecg" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm" value="{{ old('ecg', $annualPhysical->ecg ?? '') }}" placeholder="Enter ECG findings and interpretation">
+                        @if($annualPhysical->ecg)
+                            <div class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+                                {{ $annualPhysical->ecg }}
+                            </div>
+                        @else
+                            <div class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 italic">
+                                No ECG results available yet
+                            </div>
+                        @endif
+                        <!-- Hidden field to preserve ECG data during form submission -->
+                        <input type="hidden" name="ecg" value="{{ $annualPhysical->ecg ?? '' }}">
                     </div>
                 </div>
                 @endif

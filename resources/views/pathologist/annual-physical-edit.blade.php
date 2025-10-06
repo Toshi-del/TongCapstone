@@ -30,7 +30,7 @@
 @endif
 
 <div class="max-w-6xl mx-auto">
-    <form action="{{ route('pathologist.annual-physical.update', $examination->id) }}" method="POST" class="space-y-8">
+    <form action="{{ route('pathologist.annual-physical.update', $examination->id ?? $examination->patient_id) }}" method="POST" class="space-y-8">
         @csrf
         @method('PUT')
         
@@ -105,24 +105,6 @@
                                         @endif
                                     </label>
                                     
-                                    @if($test['is_package_component'] ?? false)
-                                        <div class="text-xs text-blue-600 space-y-1 mb-3">
-                                            <div><i class="fas fa-box mr-1"></i>From: {{ $test['package_name'] }} ({{ $test['package_category'] ?? 'Package' }}: ₱{{ number_format($test['package_price'], 2) }})</div>
-                                            @if(!empty($test['blood_chemistry_sources']))
-                                                @foreach($test['blood_chemistry_sources'] as $bcSource)
-                                                    <div><i class="fas fa-flask mr-1"></i>{{ $bcSource['name'] }} (Blood Chemistry: ₱{{ number_format($bcSource['price'], 2) }})</div>
-                                                @endforeach
-                                            @endif
-                                        </div>
-                                    @else
-                                        @if(!empty($test['blood_chemistry_sources']))
-                                            <div class="text-xs text-blue-600 space-y-1 mb-3">
-                                                @foreach($test['blood_chemistry_sources'] as $bcSource)
-                                                    <div><i class="fas fa-flask mr-1"></i>{{ $bcSource['name'] }} (Blood Chemistry: ₱{{ number_format($bcSource['price'], 2) }})</div>
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    @endif
                                     
                                     @php
                                         $currentMainValue = old(str_replace(['[', ']'], ['.', ''], $fieldName), $examination->lab_report[$cleanFieldName] ?? '');

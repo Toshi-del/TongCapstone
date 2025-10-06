@@ -45,7 +45,17 @@ class CompanyAppointmentController extends Controller
             ->orderBy('time_slot', 'asc')
             ->get();
         
-        return view('company.appointments.index', compact('appointments'));
+        // Get all booked dates (from all companies) to prevent double booking
+        $allBookedDates = Appointment::whereNotNull('appointment_date')
+            ->pluck('appointment_date')
+            ->map(function($date) {
+                return Carbon::parse($date)->format('Y-m-d');
+            })
+            ->unique()
+            ->values()
+            ->toArray();
+        
+        return view('company.appointments.index', compact('appointments', 'allBookedDates'));
     }
 
     public function create(Request $request)

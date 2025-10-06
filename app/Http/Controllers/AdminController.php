@@ -780,8 +780,10 @@ class AdminController extends Controller
      */
     public function approveAppointment($id)
     {
-        $appointment = Appointment::findOrFail($id);
+        $appointment = Appointment::with(['creator', 'patients'])->findOrFail($id);
         $appointment->status = 'approved';
+        $appointment->approved_at = now();
+        $appointment->approved_by = Auth::id();
         $appointment->save();
         
         // Update all patients with this appointment_id
@@ -792,7 +794,14 @@ class AdminController extends Controller
         $routingService = new MedicalTestRoutingService();
         $assignments = $routingService->routeTestsForAppointment($appointment);
         
-        $message = 'Appointment and patients approved successfully.';
+        // Build detailed success message
+        $companyName = $appointment->creator->company ?? 'Unknown Company';
+        $appointmentDate = \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y');
+        $patientCount = $appointment->patients->count();
+        
+        $message = "✅ Appointment #$id approved successfully! ";
+        $message .= "Company: $companyName | Date: $appointmentDate | Patients: $patientCount";
+        
         if (!empty($assignments)) {
             $assignmentCount = count($assignments);
             $staffRoles = array_unique(array_column($assignments, 'staff_role'));
@@ -800,7 +809,7 @@ class AdminController extends Controller
                 return $routingService->getStaffRoleDisplayName($role);
             }, $staffRoles));
             
-            $message .= " {$assignmentCount} test assignments created for: {$staffList}.";
+            $message .= " | $assignmentCount test assignments created for: $staffList";
         }
         
         return redirect()->back()->with('success', $message);
@@ -809,12 +818,32 @@ class AdminController extends Controller
     /**
      * Decline an appointment
      */
-    public function declineAppointment($id)
+    public function declineAppointment(Request $request, $id)
     {
-        $appointment = Appointment::findOrFail($id);
+        $appointment = Appointment::with(['creator', 'patients'])->findOrFail($id);
         $appointment->status = 'declined';
+        $appointment->declined_at = now();
+        $appointment->declined_by = Auth::id();
+        $appointment->decline_reason = $request->input('reason');
         $appointment->save();
-        return redirect()->back()->with('success', 'Appointment declined successfully.');
+        
+        // Update all patients with this appointment_id
+        \App\Models\Patient::where('appointment_id', $appointment->id)
+            ->update(['status' => 'declined']);
+        
+        // Build detailed success message
+        $companyName = $appointment->creator->company ?? 'Unknown Company';
+        $appointmentDate = \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y');
+        $patientCount = $appointment->patients->count();
+        
+        $message = "❌ Appointment #$id declined successfully! ";
+        $message .= "Company: $companyName | Date: $appointmentDate | Patients: $patientCount";
+        
+        if ($request->input('reason')) {
+            $message .= " | Reason: " . \Str::limit($request->input('reason'), 50);
+        }
+        
+        return redirect()->back()->with('success', $message);
     }
 
     /**
@@ -1352,48 +1381,75 @@ class AdminController extends Controller
     /**
      * Send annual physical examination to company with billing confirmation
      */
-    public function sendAnnualPhysicalExaminationWithBilling($id)
+    public function sendAnnualPhysicalExaminationWithBilling(Request $request, $id)
     {
         try {
             $examination = AnnualPhysicalExamination::with(['patient.appointment'])
                 ->findOrFail($id);
             
-            if ($examination->status === 'sent_to_company') {
+            $sendTo = $request->input('send_to', 'company');
+            
+            // Allow sending to patient even if already sent to company
+            if ($sendTo === 'company' && $examination->status === 'sent_to_company') {
                 return response()->json([
                     'success' => false,
                     'message' => 'Examination has already been sent to company'
                 ]);
             }
             
-            // Update examination status
-            $examination->update(['status' => 'sent_to_company']);
-            
-            // Get company name and total amount for logging
-            $patient = $examination->patient;
-            $appointment = $patient ? $patient->appointment : null;
-            $companyName = $appointment && $appointment->creator ? $appointment->creator->company : 'Unknown Company';
-            $totalAmount = $appointment ? $appointment->calculateTotalPrice() : 0;
-            
-            // Log the billing transaction
-            \Log::info('Annual physical examination sent to company', [
-                'examination_id' => $examination->id,
-                'patient_name' => $examination->name,
-                'company_name' => $companyName,
-                'total_amount' => $totalAmount,
-                'sent_by' => Auth::id(),
-                'sent_at' => now()
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Annual physical examination sent to company successfully'
-            ]);
+            if ($sendTo === 'company') {
+                // Update examination status
+                $examination->update(['status' => 'sent_to_company']);
+                
+                // Get company name and total amount for logging
+                $patient = $examination->patient;
+                $appointment = $patient ? $patient->appointment : null;
+                $companyName = $appointment && $appointment->creator ? $appointment->creator->company : 'Unknown Company';
+                $totalAmount = $appointment ? $appointment->calculateTotalPrice() : 0;
+                
+                // Log the billing transaction
+                \Log::info('Annual physical examination sent to company', [
+                    'examination_id' => $examination->id,
+                    'patient_name' => $examination->name,
+                    'company_name' => $companyName,
+                    'total_amount' => $totalAmount,
+                    'sent_by' => Auth::id(),
+                    'sent_at' => now()
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Annual physical examination sent to company successfully'
+                ]);
+            } else {
+                // Send to patient
+                // If already sent to company, mark as sent to both
+                $newStatus = ($examination->status === 'sent_to_company') ? 'sent_to_both' : 'sent_to_patient';
+                $examination->update(['status' => $newStatus]);
+                
+                // Get patient information
+                $patient = $examination->patient;
+                $patientName = $patient ? $patient->first_name . ' ' . $patient->last_name : $examination->name;
+                
+                // Log the transaction
+                \Log::info('Annual physical examination sent to patient', [
+                    'examination_id' => $examination->id,
+                    'patient_name' => $patientName,
+                    'sent_by' => Auth::id(),
+                    'sent_at' => now()
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Annual physical examination sent to patient successfully'
+                ]);
+            }
             
         } catch (\Exception $e) {
             \Log::error('Error sending annual physical examination: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send examination to company'
+                'message' => 'Failed to send examination'
             ]);
         }
     }

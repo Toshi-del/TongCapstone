@@ -173,6 +173,10 @@
                         <span>Blocked/Closed</span>
                     </div>
                     <div class="flex items-center space-x-1 text-sm text-gray-600">
+                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <span>Taken by Other Company</span>
+                    </div>
+                    <div class="flex items-center space-x-1 text-sm text-gray-600">
                         <div class="w-3 h-3 bg-gray-300 rounded-full"></div>
                         <span>Past</span>
                     </div>
@@ -349,13 +353,19 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentMonth = currentDate.getMonth();
     let currentYear = currentDate.getFullYear();
     
-    // Sample appointments data (in a real app, this would come from the server)
+    // Current company's appointments data
     const appointments = @json($appointments->map(function($apt) {
         return [
-            'date' => $apt->formatted_date ?? null,
+            'date' => $apt->appointment_date ? $apt->appointment_date->format('Y-m-d') : null,
             'status' => $apt->status ?? 'scheduled'
         ];
     }));
+    
+    // All booked dates from all companies
+    const allBookedDates = @json($allBookedDates ?? []);
+    
+    // Debug: Log the booked dates to console
+    console.log('All booked dates:', allBookedDates);
     
     function hasAppointment(dateString) {
         return appointments.some(apt => apt.date === dateString);
@@ -364,6 +374,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function getAppointmentStatus(dateString) {
         const appointment = appointments.find(apt => apt.date === dateString);
         return appointment ? appointment.status : null;
+    }
+    
+    function isDateBookedByOtherCompany(dateString) {
+        const isBooked = allBookedDates.includes(dateString) && !hasAppointment(dateString);
+        if (isBooked) {
+            console.log('Date blocked by other company:', dateString);
+        }
+        return isBooked;
+    }
+    
+    // Helper function to format date without timezone issues
+    function formatDateString(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
     
     function generateCalendar(month, year) {
@@ -396,11 +422,13 @@ document.addEventListener('DOMContentLoaded', function() {
             blockedUntil.setDate(today.getDate() + 4);
             const isWithinBlockedDays = date >= today && date < blockedUntil;
             const isSunday = date.getDay() === 0; // Sunday = 0
-            const isBlocked = isWithinBlockedDays || isSunday;
             
-            const dateString = date.toISOString().split('T')[0];
+            const dateString = formatDateString(date);
             const hasAppt = hasAppointment(dateString);
             const appointmentStatus = getAppointmentStatus(dateString);
+            const isBookedByOtherCompany = isDateBookedByOtherCompany(dateString);
+            
+            const isBlocked = isWithinBlockedDays || isSunday || isBookedByOtherCompany;
             
             // Base styling
             let dayClasses = 'relative rounded-xl min-h-[100px] p-3 transition-all duration-200 cursor-pointer border-2 border-transparent';
@@ -458,6 +486,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 let blockedReason = '';
                 if (isSunday) {
                     blockedReason = '<i class="fas fa-calendar-times mr-1"></i>Closed';
+                } else if (isBookedByOtherCompany) {
+                    blockedReason = '<i class="fas fa-building mr-1"></i>Taken';
                 } else if (isWithinBlockedDays) {
                     blockedReason = '<i class="fas fa-ban mr-1"></i>Blocked';
                 }
@@ -473,8 +503,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             dayElement.innerHTML = dayContent;
             
-            // Add click event for future dates in current month (excluding blocked dates)
-            if (!isPast && !isBlocked && isCurrentMonth) {
+            // Add click event for future dates in current month (excluding blocked dates and scheduled appointments)
+            if (!isPast && !isBlocked && !hasAppt && isCurrentMonth) {
                 dayElement.addEventListener('click', function() {
                     // Add selection effect
                     document.querySelectorAll('.calendar-selected').forEach(el => {
@@ -495,15 +525,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, 200);
                 });
                 
-                // Add hover effect for available dates
+                // Add hover effect for available dates only
                 dayElement.addEventListener('mouseenter', function() {
-                    if (!hasAppt && !isToday && !isBlocked) {
+                    if (!hasAppt && !isToday && !isBlocked && !isPast) {
                         dayElement.classList.add('transform', 'scale-105', 'shadow-md');
                     }
                 });
                 
                 dayElement.addEventListener('mouseleave', function() {
-                    if (!hasAppt && !isToday && !isBlocked) {
+                    if (!hasAppt && !isToday && !isBlocked && !isPast) {
                         dayElement.classList.remove('transform', 'scale-105', 'shadow-md');
                     }
                 });

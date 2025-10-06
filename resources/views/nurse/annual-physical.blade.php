@@ -35,6 +35,7 @@
         </div>
     @endif
 
+
     <!-- Header Section -->
     <div class="content-card rounded-xl overflow-hidden shadow-lg border border-gray-200">
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 px-8 py-6">
@@ -48,9 +49,36 @@
                         <p class="text-purple-100 text-sm">Yearly comprehensive health assessments and medical checkups</p>
                     </div>
                 </div>
-                <div class="text-right">
-                    <div class="text-white/90 text-sm">Total Patients</div>
-                    <div class="text-white font-bold text-2xl">{{ $patients->count() }}</div>
+                <div class="flex items-center space-x-4">
+                    <!-- Search Form -->
+                    <form method="GET" action="{{ route('nurse.annual-physical') }}" class="flex items-center space-x-3">
+                        <!-- Preserve current filter -->
+                        @if(request('exam_status'))
+                            <input type="hidden" name="exam_status" value="{{ request('exam_status') }}">
+                        @endif
+                        
+                        <!-- Search Bar -->
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i class="fas fa-search text-white/60 text-sm"></i>
+                            </div>
+                            <input type="text" 
+                                   name="search"
+                                   value="{{ request('search') }}"
+                                   class="glass-morphism pl-12 pr-4 py-2 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all duration-200 w-72 text-sm border border-white/20" 
+                                   placeholder="Search by name, email...">
+                        </div>
+                        
+                        <!-- Search Button -->
+                        <button type="submit" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 border border-white/20 backdrop-blur-sm">
+                            <i class="fas fa-search text-sm"></i>
+                        </button>
+                    </form>
+                    
+                    <div class="text-right">
+                        <div class="text-white/90 text-sm">Total Patients</div>
+                        <div class="text-white font-bold text-2xl">{{ $patients->count() }}</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -72,7 +100,24 @@
                         Needs Attention
                         @php
                             $needsAttentionCount = \App\Models\Patient::where('status', 'approved')
-                                ->whereDoesntHave('annualPhysicalExamination')
+                                ->whereHas('appointment', function($q) {
+                                    $q->where('status', 'approved');
+                                })
+                                ->where(function($mainQuery) {
+                                    // Patients without any annual physical examination record
+                                    $mainQuery->whereDoesntHave('annualPhysicalExamination')
+                                    // OR patients with examination record but no meaningful lab results
+                                    ->orWhereHas('annualPhysicalExamination', function($q) {
+                                        $q->where(function($subQuery) {
+                                            $subQuery->whereNull('lab_report')
+                                                     ->orWhere('lab_report', '[]')
+                                                     ->orWhere('lab_report', '{}')
+                                                     ->orWhere('lab_report', 'null')
+                                                     ->orWhereRaw("JSON_LENGTH(lab_report) = 0")
+                                                     ->orWhereRaw("CHAR_LENGTH(lab_report) <= 2");
+                                        });
+                                    });
+                                })
                                 ->count();
                         @endphp
                         <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $currentTab === 'needs_attention' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600' }}">
@@ -86,7 +131,19 @@
                         Completed
                         @php
                             $completedCount = \App\Models\Patient::where('status', 'approved')
-                                ->whereHas('annualPhysicalExamination')
+                                ->whereHas('appointment', function($q) {
+                                    $q->where('status', 'approved');
+                                })
+                                ->whereHas('annualPhysicalExamination', function($q) {
+                                    $q->whereNotNull('lab_report')
+                                      ->where('lab_report', '!=', '[]')
+                                      ->where('lab_report', '!=', '{}')
+                                      ->where('lab_report', '!=', 'null')
+                                      ->where(function($subQuery) {
+                                          $subQuery->whereRaw("JSON_LENGTH(lab_report) > 0")
+                                                   ->orWhereRaw("CHAR_LENGTH(lab_report) > 2");
+                                      });
+                                })
                                 ->count();
                         @endphp
                         <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $currentTab === 'exam_completed' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600' }}">
@@ -175,8 +232,16 @@
                 $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patient->id)
                     ->where('examination_type', 'annual-physical')
                     ->first();
+                
+                // Check if examination is actually completed (has meaningful lab results)
+                $isExamCompleted = $annualPhysicalExam && 
+                    $annualPhysicalExam->lab_report && 
+                    !empty($annualPhysicalExam->lab_report) && 
+                    $annualPhysicalExam->lab_report != '[]' && 
+                    $annualPhysicalExam->lab_report != '{}' &&
+                    (is_array($annualPhysicalExam->lab_report) ? count(array_filter($annualPhysicalExam->lab_report)) > 0 : true);
                     
-                if($annualPhysicalExam && $medicalChecklist) {
+                if($isExamCompleted) {
                     $completedCount++;
                 } else {
                     $pendingCount++;
@@ -274,6 +339,14 @@
                                     $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patient->id)
                                         ->where('examination_type', 'annual-physical')
                                         ->first();
+                                    
+                                    // Check if examination is actually completed (has meaningful lab results)
+                                    $isExamCompleted = $annualPhysicalExam && 
+                                        $annualPhysicalExam->lab_report && 
+                                        !empty($annualPhysicalExam->lab_report) && 
+                                        $annualPhysicalExam->lab_report != '[]' && 
+                                        $annualPhysicalExam->lab_report != '{}' &&
+                                        (is_array($annualPhysicalExam->lab_report) ? count(array_filter($annualPhysicalExam->lab_report)) > 0 : true);
                                     $isCompleted = $annualPhysicalExam && $medicalChecklist;
                                     $canSendToDoctor = $isCompleted;
                                 @endphp
@@ -323,13 +396,17 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center space-x-2">
                                             <!-- Examination Status Badge -->
-                                            @if($annualPhysicalExam)
+                                            @if($isExamCompleted)
+                                                <span class="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full mr-2">
+                                                    <i class="fas fa-check-circle mr-1"></i>Lab Completed
+                                                </span>
+                                            @elseif($annualPhysicalExam)
                                                 <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full mr-2">
-                                                    <i class="fas fa-check-circle mr-1"></i>Exam Completed
+                                                    <i class="fas fa-flask mr-1"></i>Lab In Progress
                                                 </span>
                                             @else
                                                 <span class="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full mr-2">
-                                                    <i class="fas fa-clock mr-1"></i>Pending Exam
+                                                    <i class="fas fa-clock mr-1"></i>Pending Lab
                                                 </span>
                                             @endif
 
@@ -340,6 +417,20 @@
                                                    title="Edit Examination">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
+                                                
+                                                @if($isExamCompleted)
+                                                    <!-- Send to Doctor Button -->
+                                                    <form action="{{ route('nurse.annual-physical.send-to-doctor', $annualPhysicalExam->id) }}" 
+                                                          method="POST" 
+                                                          class="inline-block">
+                                                        @csrf
+                                                        <button type="submit" 
+                                                                class="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-colors" 
+                                                                title="Send to Doctor">
+                                                            <i class="fas fa-user-md"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             @else
                                                 @if($medicalChecklist && !empty($medicalChecklist->physical_exam_done_by))
                                                     <a href="{{ route('nurse.annual-physical.create', ['patient_id' => $patient->id]) }}" 

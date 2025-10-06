@@ -50,27 +50,30 @@
                         <i class="fas fa-exclamation-circle mr-2"></i>
                         Needs Review
                         @php
-                            // Count patients that need pathologist attention (blood collection completed but no lab results yet)
+                            // Count patients that need pathologist attention - match controller logic
                             $needsAttentionCount = \App\Models\Patient::where('status', 'approved')
-                                ->whereHas('medicalChecklists', function($q) {
-                                    $q->where('examination_type', 'annual_physical')
-                                      ->whereNotNull('blood_extraction_done_by')
-                                      ->where('blood_extraction_done_by', '!=', '');
+                                ->whereHas('appointment', function($q) {
+                                    $q->where('status', 'approved');
                                 })
-                                ->whereDoesntHave('annualPhysicalExamination', function($q) {
-                                    $q->whereNotNull('lab_report')
-                                      ->where('lab_report', '!=', '[]')
-                                      ->where('lab_report', '!=', '{}')
-                                      ->where(function($subQuery) {
-                                          // Check for actual meaningful lab results (not just "Not available" or empty)
-                                          $subQuery->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"cbc_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"urinalysis_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"stool_exam_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"fbs_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"bun_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"creatinine_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"additional_exams_results\"')) NOT IN ('', 'Not available')");
-                                      });
+                                ->where(function($mainQuery) {
+                                    // Patients without any annual physical examination record
+                                    $mainQuery->whereDoesntHave('annualPhysicalExamination')
+                                    // OR patients with blood extraction done but incomplete lab results
+                                    ->orWhere(function($subQuery) {
+                                        $subQuery->whereHas('medicalChecklists', function($q) {
+                                            $q->where('examination_type', 'annual_physical')
+                                              ->whereNotNull('blood_extraction_done_by')
+                                              ->where('blood_extraction_done_by', '!=', '');
+                                        })
+                                        ->whereDoesntHave('annualPhysicalExamination', function($q) {
+                                            $q->whereNotNull('lab_report')
+                                              ->where('lab_report', '!=', '[]')
+                                              ->where('lab_report', '!=', '{}');
+                                        });
+                                    });
+                                })
+                                ->whereDoesntHave('annualPhysicalExamination', function ($q) {
+                                    $q->whereIn('status', ['sent_to_company']);
                                 })
                                 ->count();
                         @endphp
@@ -84,26 +87,20 @@
                         <i class="fas fa-check-circle mr-2"></i>
                         Lab Completed
                         @php
-                            // Count patients with actual meaningful lab results completed
+                            // Count patients with completed lab results - match controller logic
                             $completedCount = \App\Models\Patient::where('status', 'approved')
-                                ->whereHas('medicalChecklists', function($q) {
-                                    $q->where('examination_type', 'annual_physical')
-                                      ->whereNotNull('blood_extraction_done_by')
-                                      ->where('blood_extraction_done_by', '!=', '');
+                                ->whereHas('appointment', function($q) {
+                                    $q->where('status', 'approved');
                                 })
                                 ->whereHas('annualPhysicalExamination', function($q) {
                                     $q->whereNotNull('lab_report')
                                       ->where('lab_report', '!=', '[]')
                                       ->where('lab_report', '!=', '{}')
+                                      ->where('lab_report', '!=', 'null')
                                       ->where(function($subQuery) {
-                                          // Check for actual meaningful lab results (not just "Not available" or empty)
-                                          $subQuery->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"cbc_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"urinalysis_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"stool_exam_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"fbs_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"bun_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"creatinine_result\"')) NOT IN ('', 'Not available')")
-                                                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.\"additional_exams_results\"')) NOT IN ('', 'Not available')");
+                                          // Additional check for meaningful lab results
+                                          $subQuery->whereRaw("JSON_LENGTH(lab_report) > 0")
+                                                   ->orWhereRaw("CHAR_LENGTH(lab_report) > 2");
                                       });
                                 })
                                 ->count();
@@ -392,17 +389,6 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center space-x-2">
-                                            <!-- Lab Status Badge -->
-                                            @if($annualPhysicalExam)
-                                                <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full mr-2">
-                                                    <i class="fas fa-check-circle mr-1"></i>Lab Done
-                                                </span>
-                                            @else
-                                                <span class="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full mr-2">
-                                                    <i class="fas fa-clock mr-1"></i>Pending Lab
-                                                </span>
-                                            @endif
-
                                             <!-- View Details -->
                                             <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors" title="View Details">
                                                 <i class="fas fa-eye"></i>

@@ -107,6 +107,7 @@
                 </div>
                 <div class="p-6">
                     @if($appointment->medicalTestCategory && $appointment->medicalTest)
+                        <!-- Single test (legacy) -->
                         <div class="space-y-4">
                             <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
                                 <div class="flex items-center justify-between">
@@ -130,14 +131,89 @@
                                     <div class="text-right">
                                         <div class="flex items-center space-x-2 text-green-700">
                                             <i class="fas fa-peso-sign"></i>
-                                            <span class="text-lg font-bold">{{ $appointment->formatted_total_price ?? '0.00' }}</span>
+                                            <span class="text-lg font-bold">{{ number_format((float)($appointment->medicalTest->price ?? 0) * $appointment->patient_count, 2) }}</span>
                                         </div>
                                         <p class="text-xs text-green-600">{{ $appointment->patient_count }} × ₱{{ number_format((float)($appointment->medicalTest->price ?? 0), 2) }}</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    @elseif($appointment->selected_categories->count() > 0)
+                        <!-- Multiple tests (new system) -->
+                        <div class="space-y-4">
+                            @php
+                                // Group tests by their categories
+                                $testsByCategory = [];
+                                foreach($appointment->selected_tests as $test) {
+                                    $categoryId = $test->medical_test_category_id;
+                                    if (!isset($testsByCategory[$categoryId])) {
+                                        $testsByCategory[$categoryId] = [];
+                                    }
+                                    $testsByCategory[$categoryId][] = $test;
+                                }
+                            @endphp
+                            
+                            @foreach($appointment->selected_categories as $category)
+                                @php
+                                    $categoryTests = $testsByCategory[$category->id] ?? [];
+                                    $categoryTotalPrice = collect($categoryTests)->sum('price');
+                                @endphp
+                                <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div>
+                                            <h5 class="font-semibold text-amber-800 flex items-center space-x-2">
+                                                <i class="fas fa-clipboard-list text-amber-600 text-sm"></i>
+                                                <span>{{ $category->name }}</span>
+                                            </h5>
+                                            <p class="text-xs text-amber-600 mt-1">{{ count($categoryTests) }} {{ count($categoryTests) == 1 ? 'test' : 'tests' }} selected</p>
+                                        </div>
+                                        @if($categoryTotalPrice > 0)
+                                            <div class="text-right">
+                                                <div class="flex items-center space-x-2 text-green-700">
+                                                    <i class="fas fa-peso-sign text-sm"></i>
+                                                    <span class="font-semibold">{{ number_format($categoryTotalPrice, 2) }}</span>
+                                                </div>
+                                                <p class="text-xs text-gray-500 mt-1">per patient</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    
+                                    @if(count($categoryTests) > 0)
+                                        <div class="space-y-2 ml-6">
+                                            @foreach($categoryTests as $test)
+                                                <div class="flex items-center justify-between bg-white p-2 rounded border border-amber-100">
+                                                    <div class="flex items-center space-x-2">
+                                                        <i class="fas fa-stethoscope text-amber-500 text-xs"></i>
+                                                        <span class="text-sm text-amber-700">{{ $test->name }}</span>
+                                                    </div>
+                                                    @if($test->price)
+                                                        <span class="text-xs text-green-600 font-medium">₱{{ number_format((float)$test->price, 2) }}</span>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                            
+                            <!-- Estimated Billing -->
+                            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-semibold text-green-800">Estimated Total Cost:</span>
+                                    <div class="text-right">
+                                        <div class="flex items-center space-x-2 text-green-700">
+                                            <i class="fas fa-peso-sign"></i>
+                                            <span class="text-lg font-bold">{{ number_format((float)($appointment->total_price ?? 0) * $appointment->patient_count, 2) }}</span>
+                                        </div>
+                                        <p class="text-xs text-green-600">
+                                            {{ $appointment->patient_count }} {{ $appointment->patient_count == 1 ? 'patient' : 'patients' }} × ₱{{ number_format((float)($appointment->total_price ?? 0), 2) }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     @else
+                        <!-- No tests specified -->
                         <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
                             <div class="text-center py-4">
                                 <i class="fas fa-stethoscope text-amber-400 text-3xl mb-2"></i>

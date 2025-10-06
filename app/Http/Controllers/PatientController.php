@@ -56,7 +56,7 @@ class PatientController extends Controller
         $userFullName = trim($user->fname . ' ' . $user->lname);
         
         // Get pre-employment examinations sent to this patient
-        $preEmploymentResults = PreEmploymentExamination::where('status', 'sent_to_patient')
+        $preEmploymentResults = PreEmploymentExamination::whereIn('status', ['sent_to_patient', 'sent_to_both'])
             ->whereHas('patient', function($query) use ($user) {
                 // Only match by exact email - more strict filtering
                 $query->where('email', $user->email);
@@ -66,8 +66,8 @@ class PatientController extends Controller
             ->get();
         
         // Get annual physical examinations sent to this patient
-        // Only show examinations that have been properly sent to this specific patient
-        $annualPhysicalResults = AnnualPhysicalExamination::where('status', 'sent_to_patient')
+        // Include examinations sent to patient only or sent to both patient and company
+        $annualPhysicalResults = AnnualPhysicalExamination::whereIn('status', ['sent_to_patient', 'sent_to_both'])
             ->whereHas('patient', function($query) use ($user) {
                 $query->where('email', $user->email);
             })
@@ -86,7 +86,7 @@ class PatientController extends Controller
         $user = Auth::user();
         
         $examination = PreEmploymentExamination::where('id', $id)
-            ->where('status', 'sent_to_patient')
+            ->whereIn('status', ['sent_to_patient', 'sent_to_both'])
             ->whereHas('preEmploymentRecord', function($query) use ($user) {
                 $query->where('email', $user->email);
             })
@@ -104,7 +104,7 @@ class PatientController extends Controller
         $user = Auth::user();
         
         $examination = AnnualPhysicalExamination::where('id', $id)
-            ->where('status', 'sent_to_patient')
+            ->whereIn('status', ['sent_to_patient', 'sent_to_both'])
             ->whereHas('patient', function($query) use ($user) {
                 $query->where('email', $user->email);
             })
