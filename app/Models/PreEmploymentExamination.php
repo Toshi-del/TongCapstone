@@ -130,11 +130,11 @@ class PreEmploymentExamination extends Model
         
         // Count "Not normal" results from medical tests (excluding drug test)
         $medicalNotNormalCount = 0;
-        $medicalTests = ['chest_x_ray', 'urinalysis', 'fecalysis', 'cbc', 'hbsag_screening', 'hepa_a_igg_igm', 'others'];
+        $medicalTests = ['chest_xray_result', 'urinalysis_result', 'fecalysis_result', 'cbc_result', 'hbsag_screening_result', 'hepa_a_igg_igm_result', 'fbs_result', 'bua_result', 'additional_exams_results'];
         
         foreach($medicalTests as $test) {
             $result = data_get($lab, $test, '');
-            if (in_array(strtolower($result), ['not normal', 'abnormal', 'positive'])) {
+            if (in_array(strtolower(trim($result)), ['not normal', 'abnormal', 'positive'])) {
                 $medicalNotNormalCount++;
             }
         }
@@ -191,7 +191,7 @@ class PreEmploymentExamination extends Model
         // Add abnormal test details
         foreach($medicalTests as $test) {
             $result = data_get($lab, $test, '');
-            if (in_array(strtolower($result), ['not normal', 'abnormal', 'positive'])) {
+            if (in_array(strtolower(trim($result)), ['not normal', 'abnormal', 'positive'])) {
                 $details['medical_results']['abnormal_tests'][] = [
                     'test' => $test,
                     'result' => $result
