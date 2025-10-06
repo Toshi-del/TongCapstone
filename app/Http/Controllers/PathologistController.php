@@ -86,8 +86,20 @@ class PathologistController extends Controller
         
         switch ($labStatus) {
             case 'needs_attention':
-                // Default: Records that need pathologist attention (no meaningful lab results yet)
-                $query->whereDoesntHave('preEmploymentExamination', function($q) {
+                // Default: Records that need pathologist attention (blood collection completed but no lab results yet)
+                $query->where(function($mainQuery) {
+                    // Option 1: Blood collection completed by phlebotomist
+                    $mainQuery->whereHas('medicalChecklist', function($q) {
+                        $q->where('examination_type', 'pre_employment')
+                          ->whereNotNull('blood_extraction_done_by')
+                          ->where('blood_extraction_done_by', '!=', '');
+                    })
+                    // Option 2: OR records with pre-employment examinations created
+                    ->orWhereHas('preEmploymentExamination', function($q) {
+                        $q->whereIn('status', ['completed', 'sent_to_admin']);
+                    });
+                })
+                ->whereDoesntHave('preEmploymentExamination', function($q) {
                     $q->whereNotNull('lab_report')
                       ->where('lab_report', '!=', '[]')
                       ->where('lab_report', '!=', '{}')
@@ -106,7 +118,19 @@ class PathologistController extends Controller
                 
             case 'lab_completed':
                 // Records with actual meaningful lab results completed
-                $query->whereHas('preEmploymentExamination', function($q) {
+                $query->where(function($mainQuery) {
+                    // Option 1: Blood collection completed by phlebotomist
+                    $mainQuery->whereHas('medicalChecklist', function($q) {
+                        $q->where('examination_type', 'pre_employment')
+                          ->whereNotNull('blood_extraction_done_by')
+                          ->where('blood_extraction_done_by', '!=', '');
+                    })
+                    // Option 2: OR records with pre-employment examinations created
+                    ->orWhereHas('preEmploymentExamination', function($q) {
+                        $q->whereIn('status', ['completed', 'sent_to_admin']);
+                    });
+                })
+                ->whereHas('preEmploymentExamination', function($q) {
                     $q->whereNotNull('lab_report')
                       ->where('lab_report', '!=', '[]')
                       ->where('lab_report', '!=', '{}')
@@ -176,13 +200,13 @@ class PathologistController extends Controller
         
         switch ($labStatus) {
             case 'needs_attention':
-                // Default: Records that need pathologist attention (no meaningful lab results yet)
+                // Default: Records that need pathologist attention (blood collection completed but no lab results yet)
                 $query->where(function($mainQuery) {
-                    // Option 1: Traditional workflow (specimen collection completed)
+                    // Option 1: Blood collection completed by phlebotomist
                     $mainQuery->whereHas('medicalChecklists', function($q) {
-                        $q->where('examination_type', 'annual-physical')
-                          ->whereNotNull('stool_exam_done_by')
-                          ->whereNotNull('urinalysis_done_by');
+                        $q->where('examination_type', 'annual_physical')
+                          ->whereNotNull('blood_extraction_done_by')
+                          ->where('blood_extraction_done_by', '!=', '');
                     })
                     // Option 2: OR patients with annual physical examinations created
                     ->orWhereHas('annualPhysicalExamination', function($q) {
@@ -209,11 +233,11 @@ class PathologistController extends Controller
             case 'lab_completed':
                 // Patients with actual meaningful lab results completed
                 $query->where(function($mainQuery) {
-                    // Option 1: Traditional workflow (specimen collection completed)
+                    // Option 1: Blood collection completed by phlebotomist
                     $mainQuery->whereHas('medicalChecklists', function($q) {
-                        $q->where('examination_type', 'annual-physical')
-                          ->whereNotNull('stool_exam_done_by')
-                          ->whereNotNull('urinalysis_done_by');
+                        $q->where('examination_type', 'annual_physical')
+                          ->whereNotNull('blood_extraction_done_by')
+                          ->where('blood_extraction_done_by', '!=', '');
                     })
                     // Option 2: OR patients with annual physical examinations created
                     ->orWhereHas('annualPhysicalExamination', function($q) {

@@ -67,12 +67,12 @@ class DoctorController extends Controller
                 
             case 'submitted':
                 // Show examinations that have been submitted to admin
-                $query->whereIn('status', ['sent_to_company', 'Approved']);
+                $query->whereIn('status', ['sent_to_company', 'Approved', 'sent_to_both']);
                 break;
                 
             default:
                 // Show all examinations that are ready for doctor review
-                $query->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company', 'Pending']);
+                $query->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company', 'Pending', 'sent_to_both']);
                 break;
         }
         

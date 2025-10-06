@@ -491,13 +491,13 @@
                                     
                                     <!-- Results Summary -->
                                     <div class="grid grid-cols-3 gap-3 mb-4">
-                                        <div class="text-center p-3 {{ ($exam->physical_findings && count($exam->physical_findings) > 0) ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200' }} rounded-xl">
-                                            <i class="fas fa-stethoscope {{ ($exam->physical_findings && count($exam->physical_findings) > 0) ? 'text-green-600' : 'text-gray-400' }} text-lg mb-1"></i>
-                                            <p class="text-xs font-medium {{ ($exam->physical_findings && count($exam->physical_findings) > 0) ? 'text-green-700' : 'text-gray-500' }}">Physical</p>
+                                        <div class="text-center p-3 {{ ($exam->physical_findings && (is_array($exam->physical_findings) ? count($exam->physical_findings) > 0 : !empty($exam->physical_findings))) ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200' }} rounded-xl">
+                                            <i class="fas fa-stethoscope {{ ($exam->physical_findings && (is_array($exam->physical_findings) ? count($exam->physical_findings) > 0 : !empty($exam->physical_findings))) ? 'text-green-600' : 'text-gray-400' }} text-lg mb-1"></i>
+                                            <p class="text-xs font-medium {{ ($exam->physical_findings && (is_array($exam->physical_findings) ? count($exam->physical_findings) > 0 : !empty($exam->physical_findings))) ? 'text-green-700' : 'text-gray-500' }}">Physical</p>
                                         </div>
-                                        <div class="text-center p-3 {{ ($exam->lab_findings && count($exam->lab_findings) > 0) ? 'bg-purple-50 border border-purple-200' : 'bg-gray-50 border border-gray-200' }} rounded-xl">
-                                            <i class="fas fa-flask {{ ($exam->lab_findings && count($exam->lab_findings) > 0) ? 'text-purple-600' : 'text-gray-400' }} text-lg mb-1"></i>
-                                            <p class="text-xs font-medium {{ ($exam->lab_findings && count($exam->lab_findings) > 0) ? 'text-purple-700' : 'text-gray-500' }}">Lab Tests</p>
+                                        <div class="text-center p-3 {{ ($exam->lab_findings && (is_array($exam->lab_findings) ? count($exam->lab_findings) > 0 : !empty($exam->lab_findings))) ? 'bg-purple-50 border border-purple-200' : 'bg-gray-50 border border-gray-200' }} rounded-xl">
+                                            <i class="fas fa-flask {{ ($exam->lab_findings && (is_array($exam->lab_findings) ? count($exam->lab_findings) > 0 : !empty($exam->lab_findings))) ? 'text-purple-600' : 'text-gray-400' }} text-lg mb-1"></i>
+                                            <p class="text-xs font-medium {{ ($exam->lab_findings && (is_array($exam->lab_findings) ? count($exam->lab_findings) > 0 : !empty($exam->lab_findings))) ? 'text-purple-700' : 'text-gray-500' }}">Lab Tests</p>
                                         </div>
                                         <div class="text-center p-3 {{ $exam->ecg ? 'bg-teal-50 border border-teal-200' : 'bg-gray-50 border border-gray-200' }} rounded-xl">
                                             <i class="fas fa-heartbeat {{ $exam->ecg ? 'text-teal-600' : 'text-gray-400' }} text-lg mb-1"></i>
@@ -570,14 +570,14 @@
                                             @endif
                                         </td>
                                         <td class="py-3 px-4 text-sm">
-                                            @if($exam->physical_findings && count($exam->physical_findings) > 0)
+                                            @if($exam->physical_findings && (is_array($exam->physical_findings) ? count($exam->physical_findings) > 0 : !empty($exam->physical_findings)))
                                                 <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Available</span>
                                             @else
                                                 <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">Not Available</span>
                                             @endif
                                         </td>
                                         <td class="py-3 px-4 text-sm">
-                                            @if($exam->lab_findings && count($exam->lab_findings) > 0)
+                                            @if($exam->lab_findings && (is_array($exam->lab_findings) ? count($exam->lab_findings) > 0 : !empty($exam->lab_findings)))
                                                 <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Available</span>
                                             @else
                                                 <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">Not Available</span>
@@ -682,8 +682,13 @@
 
             // View exam details function
             window.viewExamDetails = function(type, examId) {
-                alert(`Viewing ${type} examination details for ID: ${examId}`);
-                // Implement modal or redirect functionality here
+                if (type === 'annual-physical') {
+                    window.location.href = `/patient/medical-results/annual-physical/${examId}`;
+                } else if (type === 'pre-employment') {
+                    window.location.href = `/patient/medical-results/pre-employment/${examId}`;
+                } else {
+                    alert(`Viewing ${type} examination details for ID: ${examId}`);
+                }
             }
 
             console.log('Patient dashboard initialized with modern interactions');

@@ -111,8 +111,9 @@ class CompanyController extends Controller
             ->get();
             
         // Get sent examination results from admin
+        // Include sent_to_company, sent_to_patient, and sent_to_both for pre-employment
         $sentPreEmploymentResults = \App\Models\PreEmploymentExamination::where('company_name', $user->company)
-            ->where('status', 'sent_to_company')
+            ->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both'])
             ->orderBy('updated_at', 'desc')
             ->get();
             
@@ -182,7 +183,7 @@ class CompanyController extends Controller
         ])
             ->where('id', $id)
             ->where('company_name', $user->company)
-            ->where('status', 'sent_to_company')
+            ->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both'])
             ->firstOrFail();
             
         return view('company.view-sent-pre-employment', compact('examination'));
@@ -216,7 +217,7 @@ class CompanyController extends Controller
         $user = Auth::user();
         $examination = \App\Models\PreEmploymentExamination::where('id', $id)
             ->where('company_name', $user->company)
-            ->where('status', 'sent_to_company')
+            ->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both'])
             ->firstOrFail();
             
         // For now, redirect to view page - can be enhanced to generate PDF

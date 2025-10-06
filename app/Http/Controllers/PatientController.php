@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\PreEmploymentExamination;
 use App\Models\AnnualPhysicalExamination;
 use App\Models\User;
@@ -55,31 +56,17 @@ class PatientController extends Controller
         $userFullName = trim($user->fname . ' ' . $user->lname);
         
         // Get pre-employment examinations sent to this patient
-        // First try direct patient_id relationship, then fallback to name/email matching
         $preEmploymentResults = PreEmploymentExamination::where('status', 'sent_to_patient')
-            ->where(function($query) use ($user, $userFullName) {
-                // Primary: Match by patient_id (direct relationship)
-                $query->where('patient_id', $user->id);
-                
-                // Fallback: Match by examination name or pre-employment record details
-                $query->orWhere(function($fallbackQuery) use ($user, $userFullName) {
-                    $fallbackQuery->where('name', 'like', '%' . $userFullName . '%')
-                                  ->orWhere('name', 'like', '%' . $user->fname . '%')
-                                  ->orWhere('name', 'like', '%' . $user->lname . '%');
-                    
-                    $fallbackQuery->orWhereHas('preEmploymentRecord', function($subQuery) use ($user, $userFullName) {
-                        $subQuery->where('email', $user->email)
-                                 ->orWhere('first_name', 'like', '%' . $user->fname . '%')
-                                 ->orWhere('last_name', 'like', '%' . $user->lname . '%')
-                                 ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $userFullName . '%']);
-                    });
-                });
+            ->whereHas('patient', function($query) use ($user) {
+                // Only match by exact email - more strict filtering
+                $query->where('email', $user->email);
             })
             ->with(['preEmploymentRecord', 'patient'])
             ->orderBy('updated_at', 'desc')
             ->get();
         
         // Get annual physical examinations sent to this patient
+        // Only show examinations that have been properly sent to this specific patient
         $annualPhysicalResults = AnnualPhysicalExamination::where('status', 'sent_to_patient')
             ->whereHas('patient', function($query) use ($user) {
                 $query->where('email', $user->email);

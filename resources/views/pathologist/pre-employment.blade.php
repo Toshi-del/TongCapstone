@@ -306,15 +306,11 @@
                                         }
                                     }
                                     
-                                    // Check if medical checklist is completed (pathologist tasks: stool exam and urinalysis)
+                                    // Check if medical checklist is completed (blood collection by phlebotomist)
                                     $medicalChecklist = \App\Models\MedicalChecklist::where('pre_employment_record_id', $preEmployment->id)
                                         ->where(function($query) {
-                                            $query->whereNotNull('stool_exam_done_by')
-                                                  ->where('stool_exam_done_by', '!=', '')
-                                                  ->orWhere(function($q) {
-                                                      $q->whereNotNull('urinalysis_done_by')
-                                                        ->where('urinalysis_done_by', '!=', '');
-                                                  });
+                                            $query->whereNotNull('blood_extraction_done_by')
+                                                  ->where('blood_extraction_done_by', '!=', '');
                                         })
                                         ->first();
                                     

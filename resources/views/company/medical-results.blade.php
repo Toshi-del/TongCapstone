@@ -246,10 +246,28 @@
                         </div>
                         
                         <div class="flex items-center justify-between">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                <i class="fas fa-check mr-1"></i>
-                                Result Available
-                            </span>
+                            @if($exam->status === 'sent_to_both')
+                                <div class="flex space-x-2">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        <i class="fas fa-building mr-1"></i>Company
+                                    </span>
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                        <i class="fas fa-user mr-1"></i>Patient
+                                    </span>
+                                </div>
+                            @elseif($exam->status === 'sent_to_company')
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                    <i class="fas fa-building mr-1"></i>Sent to Company
+                                </span>
+                            @elseif($exam->status === 'sent_to_patient')
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                                    <i class="fas fa-user mr-1"></i>Sent to Patient
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                    <i class="fas fa-check mr-1"></i>Result Available
+                                </span>
+                            @endif
                             <div class="flex space-x-2">
                                 <button class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors duration-200" onclick="viewSentResult('pre_employment', {{ $exam->id }})">
                                     <i class="fas fa-eye mr-1"></i>View

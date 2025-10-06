@@ -58,7 +58,7 @@
                     <i class="fas fa-paper-plane mr-2 text-xs"></i>
                     Submitted to Admin
                     <span class="ml-2 inline-flex items-center justify-center w-5 h-5 bg-blue-500 text-white rounded-full text-xs font-bold">
-                        {{ isset($allExaminations) ? $allExaminations->whereIn('status', ['sent_to_company', 'Approved'])->count() : 0 }}
+                        {{ isset($allExaminations) ? $allExaminations->whereIn('status', ['sent_to_company', 'Approved', 'sent_to_both'])->count() : 0 }}
                     </span>
                 </a>
                 <a href="{{ route('doctor.pre-employment') }}" 
@@ -75,19 +75,46 @@
 
     <!-- Applicant Management Section -->
     <div class="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
-        <div class="px-8 py-6 bg-green-600">
+        @php
+            $headerConfig = [
+                'submitted' => [
+                    'bg' => 'bg-blue-600',
+                    'icon' => 'fas fa-paper-plane',
+                    'title' => 'Submitted to Admin',
+                    'description' => 'Pre-employment examinations submitted to administration for final review',
+                    'counter_label' => 'Submitted'
+                ],
+                'needs_attention' => [
+                    'bg' => 'bg-yellow-600',
+                    'icon' => 'fas fa-exclamation-triangle',
+                    'title' => 'Needs Attention',
+                    'description' => 'Pre-employment examinations requiring doctor review and action',
+                    'counter_label' => 'Pending Review'
+                ],
+                'default' => [
+                    'bg' => 'bg-green-600',
+                    'icon' => 'fas fa-user-tie',
+                    'title' => 'Applicant Management',
+                    'description' => 'Pre-employment medical examinations and screening status',
+                    'counter_label' => 'Total Records'
+                ]
+            ];
+            $currentFilter = request('filter', 'default');
+            $config = $headerConfig[$currentFilter] ?? $headerConfig['default'];
+        @endphp
+        <div class="px-8 py-6 {{ $config['bg'] }}">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center border border-white border-opacity-30">
-                        <i class="fas fa-user-tie text-white"></i>
+                        <i class="{{ $config['icon'] }} text-white"></i>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-white">Applicant Management</h2>
-                        <p class="text-green-100 text-sm">Pre-employment medical examinations and screening status</p>
+                        <h2 class="text-xl font-bold text-white">{{ $config['title'] }}</h2>
+                        <p class="text-white text-opacity-90 text-sm">{{ $config['description'] }}</p>
                     </div>
                 </div>
                 <div class="bg-white bg-opacity-20 rounded-lg px-4 py-2 border border-white border-opacity-30">
-                    <p class="text-green-100 text-xs font-medium">Ready for Review</p>
+                    <p class="text-white text-opacity-90 text-xs font-medium">{{ $config['counter_label'] }}</p>
                     <p class="text-white text-lg font-bold">{{ $preEmploymentExaminations->count() }}</p>
                 </div>
             </div>
@@ -135,7 +162,8 @@
                                     'Pending' => ['bg-yellow-100 text-yellow-800', 'fas fa-clock'],
                                     'Approved' => ['bg-green-100 text-green-800', 'fas fa-check-circle'],
                                     'completed' => ['bg-blue-100 text-blue-800', 'fas fa-clipboard-check'],
-                                    'sent_to_company' => ['bg-purple-100 text-purple-800', 'fas fa-paper-plane']
+                                    'sent_to_company' => ['bg-purple-100 text-purple-800', 'fas fa-paper-plane'],
+                                    'sent_to_both' => ['bg-indigo-100 text-indigo-800', 'fas fa-share-alt']
                                 ];
                                 $config = $statusConfig[$examination->status] ?? ['bg-gray-100 text-gray-800', 'fas fa-question-circle'];
                             @endphp
@@ -247,10 +275,57 @@
                         @endif
                     </div>
                     
+                    <!-- Submission Status for Submitted Examinations -->
+                    @if(in_array($examination->status, ['sent_to_company', 'Approved', 'sent_to_both']))
+                    <div class="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-paper-plane text-blue-600 mr-2"></i>
+                            <span class="text-sm font-medium text-blue-800">Submission Status</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-600">Submitted to Admin:</p>
+                                <p class="font-semibold text-blue-600">
+                                    @if($examination->status === 'sent_to_company')
+                                        <i class="fas fa-check-circle mr-1"></i>Yes - Pending Admin Review
+                                    @elseif($examination->status === 'Approved')
+                                        <i class="fas fa-check-double mr-1"></i>Yes - Approved by Admin
+                                    @elseif($examination->status === 'sent_to_both')
+                                        <i class="fas fa-share-alt mr-1"></i>Yes - Sent to Admin & Company
+                                    @endif
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Submission Date:</p>
+                                <p class="font-semibold">{{ $examination->updated_at->format('M d, Y g:i A') }}</p>
+                            </div>
+                            @if($examination->status === 'Approved')
+                            <div class="md:col-span-2">
+                                <div class="bg-green-100 border border-green-200 rounded-lg p-3">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-thumbs-up text-green-600 mr-2"></i>
+                                        <span class="text-green-800 font-medium">This examination has been approved by the admin and sent to the company.</span>
+                                    </div>
+                                </div>
+                            </div>
+                            @elseif($examination->status === 'sent_to_both')
+                            <div class="md:col-span-2">
+                                <div class="bg-indigo-100 border border-indigo-200 rounded-lg p-3">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-share-alt text-indigo-600 mr-2"></i>
+                                        <span class="text-indigo-800 font-medium">This examination has been sent to both admin and company for processing.</span>
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+                    
                     <!-- Action Buttons -->
                     <div class="flex flex-wrap items-center gap-3 mb-4">
-                        @if($preEmployment)
-                            <!-- Send to Admin -->
+                        @if($preEmployment && !in_array($examination->status, ['sent_to_company', 'Approved', 'sent_to_both']))
+                            <!-- Send to Admin - Only show if not already submitted -->
                             <button type="button" 
                                     onclick="openSubmitToAdminModal({{ $preEmployment->id }}, '{{ $fullName }}')"
                                     class="flex-1 min-w-0 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-medium flex items-center justify-center" 
@@ -258,6 +333,16 @@
                                 <i class="fas fa-paper-plane mr-2"></i>
                                 Submit to Admin
                             </button>
+                        @elseif(in_array($examination->status, ['sent_to_company', 'Approved', 'sent_to_both']))
+                            <!-- Already Submitted Indicator -->
+                            <div class="flex-1 min-w-0 px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium flex items-center justify-center border border-green-200">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                @if($examination->status === 'sent_to_both')
+                                    Already Sent to Admin & Company
+                                @else
+                                    Already Submitted to Admin
+                                @endif
+                            </div>
                         @endif
                         
                         <!-- Edit Examination -->
@@ -300,11 +385,12 @@
                                             'Approved' => 'bg-green-500',
                                             'completed' => 'bg-blue-500',
                                             'sent_to_company' => 'bg-purple-500',
+                                            'sent_to_both' => 'bg-indigo-500',
                                             default => 'bg-gray-500'
                                         };
                                     @endphp
                                     <div class="w-2 h-2 {{ $statusDot }} rounded-full"></div>
-                                    <span class="text-sm font-medium" style="color: {{ str_replace('bg-', '', $statusDot) === 'yellow-500' ? '#d97706' : (str_replace('bg-', '', $statusDot) === 'green-500' ? '#059669' : (str_replace('bg-', '', $statusDot) === 'blue-500' ? '#2563eb' : (str_replace('bg-', '', $statusDot) === 'purple-500' ? '#7c3aed' : '#6b7280'))) }}">{{ ucfirst($examination->status) }}</span>
+                                    <span class="text-sm font-medium" style="color: {{ str_replace('bg-', '', $statusDot) === 'yellow-500' ? '#d97706' : (str_replace('bg-', '', $statusDot) === 'green-500' ? '#059669' : (str_replace('bg-', '', $statusDot) === 'blue-500' ? '#2563eb' : (str_replace('bg-', '', $statusDot) === 'purple-500' ? '#7c3aed' : (str_replace('bg-', '', $statusDot) === 'indigo-500' ? '#6366f1' : '#6b7280')))) }}">{{ ucfirst($examination->status) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -323,13 +409,43 @@
         @else
         <!-- Empty State -->
         <div class="p-16 text-center">
-            <div class="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-briefcase text-green-400 text-4xl"></i>
+            @php
+                $emptyStateConfig = [
+                    'submitted' => [
+                        'icon' => 'fas fa-paper-plane',
+                        'color' => 'blue',
+                        'title' => 'No Submitted Examinations',
+                        'message' => 'No pre-employment examinations have been submitted to admin yet. Examinations will appear here after you submit them for admin review.'
+                    ],
+                    'needs_attention' => [
+                        'icon' => 'fas fa-exclamation-triangle',
+                        'color' => 'yellow',
+                        'title' => 'No Examinations Need Attention',
+                        'message' => 'All pre-employment examinations are up to date. New examinations requiring your attention will appear here.'
+                    ],
+                    'default' => [
+                        'icon' => 'fas fa-briefcase',
+                        'color' => 'green',
+                        'title' => 'No Pre-Employment Applicants',
+                        'message' => 'No pre-employment examination records found. Applicants will appear here when they register for medical screenings.'
+                    ]
+                ];
+                $currentFilter = request('filter', 'default');
+                $emptyConfig = $emptyStateConfig[$currentFilter] ?? $emptyStateConfig['default'];
+            @endphp
+            <div class="w-24 h-24 bg-{{ $emptyConfig['color'] }}-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="{{ $emptyConfig['icon'] }} text-{{ $emptyConfig['color'] }}-400 text-4xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-gray-900 mb-2">No Pre-Employment Applicants</h3>
-            <p class="text-gray-600 mb-8 max-w-md mx-auto">No pre-employment examination records found. Applicants will appear here when they register for medical screenings.</p>
-            <div class="flex justify-center">
-                <a href="{{ route('doctor.dashboard') }}" class="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors duration-200">
+            <h3 class="text-xl font-bold text-gray-900 mb-2">{{ $emptyConfig['title'] }}</h3>
+            <p class="text-gray-600 mb-8 max-w-md mx-auto">{{ $emptyConfig['message'] }}</p>
+            <div class="flex justify-center space-x-3">
+                @if(request('filter') === 'submitted')
+                    <a href="{{ route('doctor.pre-employment') }}" class="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors duration-200">
+                        <i class="fas fa-list mr-2"></i>
+                        View All Records
+                    </a>
+                @endif
+                <a href="{{ route('doctor.dashboard') }}" class="inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors duration-200">
                     <i class="fas fa-arrow-left mr-2"></i>
                     Back to Dashboard
                 </a>

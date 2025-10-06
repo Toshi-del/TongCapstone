@@ -162,57 +162,97 @@
         </div>
         @endif
 
-        <!-- Laboratory Results -->
-        @if($examination->lab_findings && is_array($examination->lab_findings))
+        <!-- Laboratory Test Results -->
+        @if($examination->lab_report && count($examination->lab_report) > 0)
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-flask text-pink-600"></i>
+                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-flask text-blue-600"></i>
                     </div>
-                    <h2 class="text-lg font-medium text-gray-900">Laboratory Results</h2>
+                    <h2 class="text-lg font-medium text-gray-900">Laboratory Test Results</h2>
                 </div>
             </div>
             <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    @foreach($examination->lab_findings as $test => $result)
-                        @if(is_array($result) && (isset($result['result']) || isset($result['findings'])))
-                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-semibold text-gray-900">{{ ucfirst(str_replace('_', ' ', $test)) }}</h4>
-                                @if(isset($result['result']))
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $result['result'] === 'Normal' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                        <i class="fas {{ $result['result'] === 'Normal' ? 'fa-check' : 'fa-exclamation-triangle' }} mr-1"></i>
-                                        {{ $result['result'] }}
-                                    </span>
+                <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <table class="w-full">
+                        <tbody class="divide-y divide-gray-200">
+                            @php
+                                $labTests = [
+                                    'chest_xray' => ['name' => 'Chest X-Ray', 'icon' => 'fas fa-lungs', 'color' => 'gray'],
+                                    'cbc' => ['name' => 'CBC', 'icon' => 'fas fa-tint', 'color' => 'red'],
+                                    'fecalysis' => ['name' => 'Fecalysis', 'icon' => 'fas fa-vial', 'color' => 'yellow'],
+                                    'urinalysis' => ['name' => 'Urinalysis', 'icon' => 'fas fa-flask', 'color' => 'orange'],
+                                    'hba1c' => ['name' => 'HbA1C', 'icon' => 'fas fa-chart-line', 'color' => 'blue'],
+                                    'sodium' => ['name' => 'Sodium', 'icon' => 'fas fa-atom', 'color' => 'blue'],
+                                    'calcium' => ['name' => 'Calcium', 'icon' => 'fas fa-bone', 'color' => 'blue']
+                                ];
+                            @endphp
+                            
+                            @foreach($labTests as $testKey => $testInfo)
+                                @if(isset($examination->lab_report[$testKey . '_result']) || ($testKey === 'chest_xray'))
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="w-8 h-8 rounded-full bg-{{ $testInfo['color'] }}-100 flex items-center justify-center mr-3">
+                                                <i class="{{ $testInfo['icon'] }} text-{{ $testInfo['color'] }}-600 text-sm"></i>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-900">{{ $testInfo['name'] }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <div>
+                                            <div class="text-xs text-gray-500 mb-1">Result</div>
+                                            @if($testKey === 'chest_xray')
+                                                <span class="text-sm font-medium text-gray-900">Normal</span>
+                                            @elseif(isset($examination->lab_report[$testKey . '_result']))
+                                                <span class="text-sm font-medium text-gray-900">{{ $examination->lab_report[$testKey . '_result'] }}</span>
+                                            @else
+                                                <span class="text-sm text-gray-500">-</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div>
+                                            <div class="text-xs text-gray-500 mb-1">Findings</div>
+                                            @if($testKey === 'chest_xray')
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    NORMAL
+                                                </span>
+                                            @elseif(isset($examination->lab_report[$testKey . '_findings']) && $examination->lab_report[$testKey . '_findings'])
+                                                <span class="text-sm text-gray-700">{{ $examination->lab_report[$testKey . '_findings'] }}</span>
+                                            @elseif(isset($examination->lab_report[$testKey . '_result']))
+                                                @if($examination->lab_report[$testKey . '_result'] === 'Normal')
+                                                    <span class="text-sm text-gray-500">No findings</span>
+                                                @elseif($examination->lab_report[$testKey . '_result'] === 'Not normal')
+                                                    <span class="text-sm text-gray-500">No findings</span>
+                                                @else
+                                                    <span class="text-sm text-gray-500">No findings</span>
+                                                @endif
+                                            @else
+                                                <span class="text-sm text-gray-500">No findings</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
                                 @endif
-                            </div>
-                            @if(isset($result['findings']) && $result['findings'])
-                                <p class="text-xs text-gray-600">{{ $result['findings'] }}</p>
-                            @endif
-                        </div>
-                        @endif
-                    @endforeach
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </div>
-        @elseif($examination->lab_findings)
-        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center space-x-3">
-                    <div class="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-flask text-pink-600"></i>
-                    </div>
-                    <h2 class="text-lg font-medium text-gray-900">Laboratory Results</h2>
+                
+                @if(isset($examination->lab_report['additional_notes']) && $examination->lab_report['additional_notes'])
+                <div class="mt-4 bg-blue-50 rounded-lg p-4 border-l-4 border-blue-400">
+                    <h4 class="text-sm font-medium text-blue-900 mb-2">
+                        <i class="fas fa-sticky-note mr-2"></i>Additional Laboratory Notes
+                    </h4>
+                    <p class="text-sm text-blue-800">{{ $examination->lab_report['additional_notes'] }}</p>
                 </div>
-            </div>
-            <div class="p-6">
-                <div class="prose max-w-none">
-                    {!! nl2br(e($examination->lab_findings)) !!}
-                </div>
+                @endif
             </div>
         </div>
         @endif
+
 
         <!-- Drug Test Results -->
         @if($examination->drug_test && is_array($examination->drug_test))

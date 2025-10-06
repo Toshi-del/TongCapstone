@@ -363,11 +363,11 @@ class AdminController extends Controller
     public function tests()
     {
         // Only show examinations that have been submitted by doctors to admin
-        // Pre-Employment: Doctor submits with status 'sent_to_company' -> Admin can send to company/patient
+        // Pre-Employment: Doctor submits with status 'sent_to_admin' -> Admin can send to company/patient
         // Annual Physical: Doctor submits with status 'sent_to_admin' -> Admin can send to company/patient
         
-        $preEmploymentResults = \App\Models\PreEmploymentExamination::whereIn('status', ['sent_to_company', 'Approved'])->get();
-        $annualPhysicalResults = \App\Models\AnnualPhysicalExamination::where('status', 'sent_to_admin')->get();
+        $preEmploymentResults = \App\Models\PreEmploymentExamination::whereIn('status', ['sent_to_admin', 'sent_to_company', 'sent_to_patient', 'sent_to_both', 'Approved'])->get();
+        $annualPhysicalResults = \App\Models\AnnualPhysicalExamination::whereIn('status', ['sent_to_admin', 'sent_to_company'])->get();
         
         return view('admin.tests', compact('preEmploymentResults', 'annualPhysicalResults'));
     }
@@ -1254,15 +1254,16 @@ class AdminController extends Controller
             $sendTo = $request->input('send_to', 'company');
             
             if ($sendTo === 'company') {
-                if ($examination->status === 'sent_to_company') {
+                if ($examination->status === 'sent_to_company' || $examination->status === 'sent_to_both') {
                     return response()->json([
                         'success' => false,
                         'message' => 'Examination has already been sent to company'
                     ]);
                 }
                 
-                // Update examination status
-                $examination->update(['status' => 'sent_to_company']);
+                // Update examination status - if already sent to patient, mark as sent to both
+                $newStatus = ($examination->status === 'sent_to_patient') ? 'sent_to_both' : 'sent_to_company';
+                $examination->update(['status' => $newStatus]);
                 
                 // Log the billing transaction
                 \Log::info('Pre-employment examination sent to company', [
@@ -1284,7 +1285,9 @@ class AdminController extends Controller
                 // Try to find and link the patient account
                 $patient = $this->findPatientForExamination($examination);
                 
-                $updateData = ['status' => 'sent_to_patient'];
+                // Update examination status - if already sent to company, mark as sent to both
+                $newStatus = ($examination->status === 'sent_to_company') ? 'sent_to_both' : 'sent_to_patient';
+                $updateData = ['status' => $newStatus];
                 if ($patient) {
                     $updateData['patient_id'] = $patient->id;
                 }
@@ -1532,7 +1535,9 @@ class AdminController extends Controller
             
             if ($sendTo === 'company') {
                 // Update status to indicate it's been sent to company
-                $examination->update(['status' => 'sent_to_company']);
+                // If already sent to patient, mark as sent to both
+                $newStatus = ($examination->status === 'sent_to_patient') ? 'sent_to_both' : 'sent_to_company';
+                $examination->update(['status' => $newStatus]);
                 
                 // Create notification for company if needed
                 // You can add notification logic here
@@ -1541,7 +1546,9 @@ class AdminController extends Controller
                     ->with('success', 'Pre-employment examination sent to ' . $examination->company_name . ' successfully.');
             } else {
                 // Send to patient
-                $examination->update(['status' => 'sent_to_patient']);
+                // If already sent to company, mark as sent to both
+                $newStatus = ($examination->status === 'sent_to_company') ? 'sent_to_both' : 'sent_to_patient';
+                $examination->update(['status' => $newStatus]);
                 
                 // Get patient email - try multiple sources
                 $patientEmail = null;
@@ -1598,6 +1605,18 @@ class AdminController extends Controller
             $examination = \App\Models\AnnualPhysicalExamination::findOrFail($id);
             $sendTo = $request->input('send_to', 'company');
             
+            // Log the request details for debugging
+            \Log::info('Annual Physical Send Request - ID: ' . $id . ', Send To: ' . $sendTo . ', Current Status: ' . $examination->status);
+            
+            // Check if already sent to the requested destination (but allow re-sending)
+            if ($sendTo === 'company' && $examination->status === 'sent_to_company') {
+                \Log::info('Annual physical already sent to company, allowing re-send');
+            }
+            
+            if ($sendTo === 'patient' && $examination->status === 'sent_to_patient') {
+                \Log::info('Annual physical already sent to patient, allowing re-send');
+            }
+            
             if ($sendTo === 'company') {
                 // Update status to indicate it's been sent to company
                 $examination->update(['status' => 'sent_to_company']);
@@ -1606,6 +1625,14 @@ class AdminController extends Controller
                 // You can add notification logic here
                 
                 $companyName = $examination->patient->appointment->company ?? 'the company';
+                
+                // Return JSON response for AJAX requests
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Annual physical examination sent to ' . $companyName . ' successfully.'
+                    ]);
+                }
                 
                 return redirect()->route('admin.tests')
                     ->with('success', 'Annual physical examination sent to ' . $companyName . ' successfully.');
@@ -1621,6 +1648,60 @@ class AdminController extends Controller
                 if ($examination->patient) {
                     $patientEmail = $examination->patient->email;
                     $patientName = $examination->patient->first_name . ' ' . $examination->patient->last_name;
+                } else {
+                    // Log missing patient relationship for debugging
+                    \Log::warning('Annual Physical Examination ID ' . $examination->id . ' (' . $examination->name . ') has no patient relationship');
+                    
+                    // Try to find a patient by name matching
+                    $matchingPatient = \App\Models\Patient::where(function($query) use ($examination) {
+                        $examName = $examination->name;
+                        $nameParts = explode(' ', $examName);
+                        
+                        $query->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ['%' . $examName . '%']);
+                        
+                        if (count($nameParts) >= 2) {
+                            $firstName = $nameParts[0];
+                            $lastName = end($nameParts);
+                            $query->orWhere(function($subQuery) use ($firstName, $lastName) {
+                                $subQuery->where('first_name', 'like', '%' . $firstName . '%')
+                                         ->where('last_name', 'like', '%' . $lastName . '%');
+                            });
+                        }
+                    })->first();
+                    
+                    if ($matchingPatient) {
+                        $patientEmail = $matchingPatient->email;
+                        $patientName = $matchingPatient->first_name . ' ' . $matchingPatient->last_name;
+                        \Log::info('Found matching patient by name: ' . $patientName . ' (' . $patientEmail . ')');
+                        
+                        // Optionally link the patient to the examination for future use
+                        $examination->update(['patient_id' => $matchingPatient->id]);
+                        \Log::info('Linked patient ID ' . $matchingPatient->id . ' to annual physical examination ID ' . $examination->id);
+                    } else {
+                        // Try to find by User table (registered users)
+                        $matchingUser = \App\Models\User::where('role', 'patient')
+                            ->where(function($query) use ($examination) {
+                                $examName = $examination->name;
+                                $nameParts = explode(' ', $examName);
+                                
+                                $query->whereRaw("CONCAT(fname, ' ', lname) LIKE ?", ['%' . $examName . '%']);
+                                
+                                if (count($nameParts) >= 2) {
+                                    $firstName = $nameParts[0];
+                                    $lastName = end($nameParts);
+                                    $query->orWhere(function($subQuery) use ($firstName, $lastName) {
+                                        $subQuery->where('fname', 'like', '%' . $firstName . '%')
+                                                 ->where('lname', 'like', '%' . $lastName . '%');
+                                    });
+                                }
+                            })->first();
+                        
+                        if ($matchingUser) {
+                            $patientEmail = $matchingUser->email;
+                            $patientName = $matchingUser->fname . ' ' . $matchingUser->lname;
+                            \Log::info('Found matching user account: ' . $patientName . ' (' . $patientEmail . ')');
+                        }
+                    }
                 }
                 
                 // Send email notification to patient
@@ -1633,21 +1714,62 @@ class AdminController extends Controller
                             $patientName
                         ));
                         
+                        // Return JSON response for AJAX requests
+                        if ($request->expectsJson()) {
+                            return response()->json([
+                                'success' => true,
+                                'message' => 'Annual physical examination sent to patient (' . $patientName . ') at ' . $patientEmail . ' successfully.'
+                            ]);
+                        }
+                        
                         return redirect()->route('admin.tests')
                             ->with('success', 'Annual physical examination sent to patient (' . $patientName . ') at ' . $patientEmail . ' successfully.');
                     } catch (\Exception $e) {
                         \Log::error('Failed to send medical results email: ' . $e->getMessage());
+                        
+                        // Return JSON response for AJAX requests
+                        if ($request->expectsJson()) {
+                            return response()->json([
+                                'success' => true,
+                                'message' => 'Annual physical examination status updated, but email could not be sent. Please check the patient email address.'
+                            ]);
+                        }
+                        
                         return redirect()->route('admin.tests')
                             ->with('success', 'Annual physical examination status updated, but email could not be sent. Please check the patient email address.');
                     }
                 } else {
+                    $errorMessage = 'No email address found for patient (' . $patientName . '). ';
+                    if (!$examination->patient) {
+                        $errorMessage .= 'The examination has no linked patient record. Please ensure the patient data is properly set up.';
+                    } else {
+                        $errorMessage .= 'The patient record exists but has no email address.';
+                    }
+                    
+                    // Return JSON response for AJAX requests
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $errorMessage
+                        ]);
+                    }
+                    
                     return redirect()->route('admin.tests')
-                        ->with('success', 'Annual physical examination status updated, but no email address found for patient (' . $patientName . ').');
+                        ->with('error', $errorMessage);
                 }
             }
                 
         } catch (\Exception $e) {
             \Log::error('Error sending annual physical examination: ' . $e->getMessage());
+            
+            // Return JSON response for AJAX requests
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to send examination: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Failed to send examination.');
         }
     }

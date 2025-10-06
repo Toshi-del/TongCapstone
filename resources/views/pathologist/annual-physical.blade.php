@@ -50,14 +50,12 @@
                         <i class="fas fa-exclamation-circle mr-2"></i>
                         Needs Review
                         @php
-                            // Count patients that need pathologist attention (no meaningful lab results yet)
+                            // Count patients that need pathologist attention (blood collection completed but no lab results yet)
                             $needsAttentionCount = \App\Models\Patient::where('status', 'approved')
                                 ->whereHas('medicalChecklists', function($q) {
-                                    $q->where('examination_type', 'annual-physical')
-                                      ->whereNotNull('stool_exam_done_by')
-                                      ->where('stool_exam_done_by', '!=', '')
-                                      ->whereNotNull('urinalysis_done_by')
-                                      ->where('urinalysis_done_by', '!=', '');
+                                    $q->where('examination_type', 'annual_physical')
+                                      ->whereNotNull('blood_extraction_done_by')
+                                      ->where('blood_extraction_done_by', '!=', '');
                                 })
                                 ->whereDoesntHave('annualPhysicalExamination', function($q) {
                                     $q->whereNotNull('lab_report')
@@ -89,11 +87,9 @@
                             // Count patients with actual meaningful lab results completed
                             $completedCount = \App\Models\Patient::where('status', 'approved')
                                 ->whereHas('medicalChecklists', function($q) {
-                                    $q->where('examination_type', 'annual-physical')
-                                      ->whereNotNull('stool_exam_done_by')
-                                      ->where('stool_exam_done_by', '!=', '')
-                                      ->whereNotNull('urinalysis_done_by')
-                                      ->where('urinalysis_done_by', '!=', '');
+                                    $q->where('examination_type', 'annual_physical')
+                                      ->whereNotNull('blood_extraction_done_by')
+                                      ->where('blood_extraction_done_by', '!=', '');
                                 })
                                 ->whereHas('annualPhysicalExamination', function($q) {
                                     $q->whereNotNull('lab_report')

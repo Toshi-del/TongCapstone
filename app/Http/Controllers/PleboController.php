@@ -142,7 +142,7 @@ class PleboController extends Controller
                       });
             })
             ->whereDoesntHave('annualPhysicalExamination', function($q) {
-                $q->whereIn('status', ['completed', 'sent_to_company']);
+                $q->whereIn('status', ['completed']);
             })
             ->latest()
             ->take(5)
@@ -161,7 +161,7 @@ class PleboController extends Controller
                       });
             })
             ->whereDoesntHave('annualPhysicalExamination', function($q) {
-                $q->whereIn('status', ['completed', 'sent_to_company']);
+                $q->whereIn('status', ['completed']);
             })
             ->count();
 
@@ -179,7 +179,7 @@ class PleboController extends Controller
                       });
             })
             ->whereDoesntHave('opdExamination', function($q) {
-                $q->whereIn('status', ['completed', 'sent_to_doctor']);
+                $q->whereIn('status', ['completed']);
             })
             ->latest()
             ->take(5)
@@ -198,7 +198,7 @@ class PleboController extends Controller
                       });
             })
             ->whereDoesntHave('opdExamination', function($q) {
-                $q->whereIn('status', ['completed', 'sent_to_doctor']);
+                $q->whereIn('status', ['completed']);
             })
             ->count();
 
@@ -438,7 +438,7 @@ class PleboController extends Controller
                       });
             })
             ->whereDoesntHave('opdExamination', function($q) {
-                $q->whereIn('status', ['completed', 'sent_to_doctor']);
+                $q->whereIn('status', ['completed']);
             })
             ->latest()
             ->paginate(15);

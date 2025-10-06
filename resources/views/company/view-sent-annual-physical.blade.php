@@ -1,4 +1,4 @@
-{{ ... }}
+@extends('layouts.company')
 
 @section('title', 'Annual Physical Examination Results')
 
@@ -315,24 +315,203 @@
                 </div>
                 @endif
 
-                <!-- Laboratory Findings -->
-                @if($examination->lab_findings && count($examination->lab_findings) > 0)
+                <!-- Laboratory Test Results -->
+                @if($examination->lab_report && count($examination->lab_report) > 0)
                 <div class="p-6 border-b border-gray-200">
-                    <h3 class="text-base font-medium text-gray-900 mb-4">Laboratory Results</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        @foreach($examination->lab_findings as $test => $result)
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-sm font-medium text-gray-900">{{ $test }}</h4>
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $result['result'] === 'Normal' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                    {{ $result['result'] }}
-                                </span>
-                            </div>
-                            @if(isset($result['findings']) && $result['findings'])
-                                <p class="text-sm text-gray-700">{{ $result['findings'] }}</p>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-flask text-blue-600 text-sm"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900">Laboratory Test Results</h3>
+                    </div>
+                    
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <table class="w-full">
+                            <tbody class="divide-y divide-gray-200">
+                                @php
+                                    $labTests = [
+                                        'chest_xray' => ['name' => 'Chest X-Ray', 'icon' => 'fas fa-lungs', 'color' => 'gray'],
+                                        'cbc' => ['name' => 'CBC', 'icon' => 'fas fa-tint', 'color' => 'red'],
+                                        'fecalysis' => ['name' => 'Fecalysis', 'icon' => 'fas fa-vial', 'color' => 'yellow'],
+                                        'urinalysis' => ['name' => 'Urinalysis', 'icon' => 'fas fa-flask', 'color' => 'orange'],
+                                        'hba1c' => ['name' => 'HbA1C', 'icon' => 'fas fa-chart-line', 'color' => 'blue'],
+                                        'sodium' => ['name' => 'Sodium', 'icon' => 'fas fa-atom', 'color' => 'blue'],
+                                        'calcium' => ['name' => 'Calcium', 'icon' => 'fas fa-bone', 'color' => 'blue']
+                                    ];
+                                @endphp
+                                
+                                @foreach($labTests as $testKey => $testInfo)
+                                    @if(isset($examination->lab_report[$testKey . '_result']) || ($testKey === 'chest_xray'))
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 rounded-full bg-{{ $testInfo['color'] }}-100 flex items-center justify-center mr-3">
+                                                    <i class="{{ $testInfo['icon'] }} text-{{ $testInfo['color'] }}-600 text-sm"></i>
+                                                </div>
+                                                <span class="text-sm font-medium text-gray-900">{{ $testInfo['name'] }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                                            <div>
+                                                <div class="text-xs text-gray-500 mb-1">Result</div>
+                                                @if($testKey === 'chest_xray')
+                                                    <span class="text-sm font-medium text-gray-900">Normal</span>
+                                                @elseif(isset($examination->lab_report[$testKey . '_result']))
+                                                    <span class="text-sm font-medium text-gray-900">{{ $examination->lab_report[$testKey . '_result'] }}</span>
+                                                @else
+                                                    <span class="text-sm text-gray-500">-</span>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-center">
+                                            <div>
+                                                <div class="text-xs text-gray-500 mb-1">Findings</div>
+                                                @if($testKey === 'chest_xray')
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        NORMAL
+                                                    </span>
+                                                @elseif(isset($examination->lab_report[$testKey . '_findings']) && $examination->lab_report[$testKey . '_findings'])
+                                                    <span class="text-sm text-gray-700">{{ $examination->lab_report[$testKey . '_findings'] }}</span>
+                                                @elseif(isset($examination->lab_report[$testKey . '_result']))
+                                                    @if($examination->lab_report[$testKey . '_result'] === 'Normal')
+                                                        <span class="text-sm text-gray-500">No findings</span>
+                                                    @else
+                                                        <span class="text-sm text-gray-500">No findings</span>
+                                                    @endif
+                                                @else
+                                                    <span class="text-sm text-gray-500">No findings</span>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
+
+                <!-- ECG Report -->
+                @if($examination->ecg || $examination->ecg_date || $examination->ecg_technician)
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-heartbeat text-red-600 text-sm"></i>
+                        </div>
+                        <h3 class="text-base font-medium text-gray-900">ECG Report (ECG Technician)</h3>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div class="bg-red-50 rounded-lg p-4 border-l-4 border-red-400">
+                            <h4 class="text-sm font-medium text-red-900 mb-3">
+                                <i class="fas fa-heartbeat mr-2"></i>ECG Results
+                            </h4>
+                            @if($examination->ecg)
+                                <p class="text-sm text-red-800 mb-3">{{ $examination->ecg }}</p>
+                            @else
+                                <p class="text-sm text-red-600 italic">No ECG results recorded</p>
                             @endif
                         </div>
-                        @endforeach
+                        
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-900 mb-3">
+                                <i class="fas fa-info-circle mr-2"></i>ECG Information
+                            </h4>
+                            <div class="space-y-2">
+                                @if($examination->ecg_date)
+                                <div class="flex items-center text-sm">
+                                    <i class="fas fa-calendar text-gray-500 mr-2 w-4"></i>
+                                    <span class="text-gray-600">Date:</span>
+                                    <span class="ml-2 font-medium text-gray-900">{{ \Carbon\Carbon::parse($examination->ecg_date)->format('F j, Y') }}</span>
+                                </div>
+                                @endif
+                                @if($examination->ecg_technician)
+                                <div class="flex items-center text-sm">
+                                    <i class="fas fa-user-md text-gray-500 mr-2 w-4"></i>
+                                    <span class="text-gray-600">Technician:</span>
+                                    <span class="ml-2 font-medium text-gray-900">{{ $examination->ecg_technician }}</span>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+
+                <!-- Medical Assessment & Fitness to Work -->
+                @if($examination->fitness_assessment || $examination->drug_positive_count !== null || $examination->medical_abnormal_count !== null || $examination->physical_abnormal_count !== null)
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-clipboard-check text-purple-600 text-sm"></i>
+                        </div>
+                        <h3 class="text-base font-medium text-gray-900">Medical Assessment & Fitness to Work</h3>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <!-- Fitness Assessment -->
+                        <div class="bg-white rounded-lg p-4 border-l-4 {{ $examination->fitness_assessment === 'Fit to work' ? 'border-green-400' : ($examination->fitness_assessment === 'Not fit for work' ? 'border-red-400' : 'border-gray-400') }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-sm font-medium text-gray-900">
+                                    <i class="fas fa-stethoscope text-gray-600 mr-2"></i>Fitness Assessment
+                                </h4>
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $examination->fitness_assessment === 'Fit to work' ? 'bg-green-100 text-green-800' : ($examination->fitness_assessment === 'Not fit for work' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800') }}">
+                                    @if($examination->fitness_assessment === 'Fit to work')
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                    @elseif($examination->fitness_assessment === 'Not fit for work')
+                                        <i class="fas fa-times-circle mr-1"></i>
+                                    @else
+                                        <i class="fas fa-clock mr-1"></i>
+                                    @endif
+                                    {{ $examination->fitness_assessment ?? 'For evaluation' }}
+                                </span>
+                            </div>
+                            @if($examination->drug_positive_count !== null || $examination->medical_abnormal_count !== null || $examination->physical_abnormal_count !== null)
+                            <div class="text-xs text-gray-600 mt-2">
+                                <div class="grid grid-cols-1 gap-1">
+                                    <div>Drug Tests: {{ $examination->drug_positive_count ?? 0 }} positive</div>
+                                    <div>Medical Tests: {{ $examination->medical_abnormal_count ?? 0 }} abnormal</div>
+                                    <div>Physical Exam: {{ $examination->physical_abnormal_count ?? 0 }} abnormal</div>
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                        
+                        <!-- Assessment Summary -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-sm font-medium text-gray-900 mb-3">
+                                <i class="fas fa-info-circle text-blue-600 mr-2"></i>Assessment Summary
+                            </h4>
+                            <div class="text-sm text-gray-700">
+                                @php
+                                    $drugPositive = $examination->drug_positive_count ?? 0;
+                                    $medicalAbnormal = $examination->medical_abnormal_count ?? 0;
+                                    $physicalAbnormal = $examination->physical_abnormal_count ?? 0;
+                                @endphp
+                                
+                                @if($examination->fitness_assessment === 'Fit to work')
+                                    <div class="flex items-center text-green-700 mb-2">
+                                        <i class="fas fa-check-circle mr-2"></i>
+                                        <span class="font-medium">Employee is medically cleared for work</span>
+                                    </div>
+                                    <p class="text-xs text-gray-600">All medical tests, drug screening, and physical examination results are within acceptable parameters for employment.</p>
+                                @elseif($examination->fitness_assessment === 'Not fit for work')
+                                    <div class="flex items-center text-red-700 mb-2">
+                                        <i class="fas fa-times-circle mr-2"></i>
+                                        <span class="font-medium">Employee is not medically cleared for work</span>
+                                    </div>
+                                    <p class="text-xs text-gray-600">Medical examination results indicate conditions that may affect work performance or safety.</p>
+                                @else
+                                    <div class="flex items-center text-gray-700 mb-2">
+                                        <i class="fas fa-clock mr-2"></i>
+                                        <span class="font-medium">Medical assessment for evaluation</span>
+                                    </div>
+                                    <p class="text-xs text-gray-600">The examination results require further medical evaluation by the doctor to determine fitness for work.</p>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </div>
                 @endif

@@ -301,7 +301,7 @@
         @endif
 
         <!-- Laboratory Results -->
-        @if($examination->lab_findings && is_array($examination->lab_findings))
+        @if(($examination->lab_findings && is_array($examination->lab_findings)) || ($examination->lab_report && is_array($examination->lab_report)))
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center space-x-3">
@@ -313,27 +313,96 @@
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    @foreach($examination->lab_findings as $test => $results)
-                        @if(is_array($results) && (isset($results['result']) || isset($results['findings'])))
-                        <div class="bg-pink-50 rounded-lg p-4 border border-pink-200">
-                            <h4 class="text-sm font-semibold text-pink-900 mb-3">{{ ucfirst(str_replace('_', ' ', $test)) }}</h4>
-                            @if(isset($results['result']))
-                                <div class="mb-2">
-                                    <span class="text-xs text-pink-700 font-medium">Result:</span>
-                                    <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $results['result'] === 'Normal' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                        {{ $results['result'] }}
-                                    </span>
+                    {{-- Radiologist Results (from lab_findings) --}}
+                    @if($examination->lab_findings && is_array($examination->lab_findings))
+                        @foreach($examination->lab_findings as $test => $results)
+                            @if(is_array($results) && (isset($results['result']) || isset($results['finding']) || isset($results['findings'])))
+                            <div class="bg-pink-50 rounded-lg p-4 border border-pink-200">
+                                <h4 class="text-sm font-semibold text-pink-900 mb-3">{{ ucfirst(str_replace('_', ' ', $test)) }}</h4>
+                                @if(isset($results['result']))
+                                    <div class="mb-2">
+                                        <span class="text-xs text-pink-700 font-medium">Result:</span>
+                                        <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $results['result'] === 'Normal' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                            {{ $results['result'] }}
+                                        </span>
+                                    </div>
+                                @endif
+                                @if((isset($results['finding']) && $results['finding'] && $results['finding'] !== '—') || (isset($results['findings']) && $results['findings']))
+                                    <div>
+                                        <span class="text-xs text-pink-700 font-medium">Findings:</span>
+                                        <p class="text-sm text-pink-800 mt-1">{{ $results['finding'] ?? $results['findings'] }}</p>
+                                    </div>
+                                @endif
+                                @if(isset($results['reviewed_at']))
+                                    <div class="mt-2 pt-2 border-t border-pink-200">
+                                        <span class="text-xs text-pink-600">Reviewed: {{ \Carbon\Carbon::parse($results['reviewed_at'])->format('M d, Y \a\t h:i A') }}</span>
+                                    </div>
+                                @endif
+                            </div>
+                            @endif
+                        @endforeach
+                    @endif
+
+                    {{-- Pathologist Results (from lab_report) --}}
+                    @if($examination->lab_report && is_array($examination->lab_report))
+                        @php
+                            $labTestMapping = [
+                                'cbc' => 'CBC',
+                                'fecalysis' => 'Fecalysis',
+                                'stool_exam' => 'Fecalysis',
+                                'urinalysis' => 'Urinalysis',
+                                'hba1c' => 'HBA1C',
+                                'sodium' => 'Sodium',
+                                'calcium' => 'Calcium',
+                                'fbs' => 'FBS',
+                                'bun' => 'BUN',
+                                'creatinine' => 'Creatinine'
+                            ];
+                            
+                            // Fields to skip (metadata, not test results)
+                            $skipFields = [
+                                'collection_completed_at',
+                                'blood_extraction_completed',
+                                'phlebotomist',
+                                'additional_notes'
+                            ];
+                        @endphp
+                        @php
+                            // Get all test keys that have results
+                            $processedTests = [];
+                        @endphp
+                        @foreach($examination->lab_report as $key => $value)
+                            @if(!in_array($key, $skipFields) && str_ends_with($key, '_result') && $value && $value !== 'Not available' && $value !== '')
+                                @php
+                                    // Extract test name from key (remove _result suffix)
+                                    $testKey = str_replace('_result', '', $key);
+                                    $testName = $labTestMapping[$testKey] ?? ucfirst(str_replace('_', ' ', $testKey));
+                                    
+                                    // Skip if already processed
+                                    if (in_array($testKey, $processedTests)) {
+                                        continue;
+                                    }
+                                    $processedTests[] = $testKey;
+                                @endphp
+                                
+                                <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                                    <h4 class="text-sm font-semibold text-blue-900 mb-3">{{ $testName }}</h4>
+                                    <div class="mb-2">
+                                        <span class="text-xs text-blue-700 font-medium">Result:</span>
+                                        <span class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $value === 'Normal' ? 'bg-green-100 text-green-800' : ($value === 'Not normal' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800') }}">
+                                            {{ $value }}
+                                        </span>
+                                    </div>
+                                    @if(isset($examination->lab_report[$testKey . '_findings']) && $examination->lab_report[$testKey . '_findings'])
+                                        <div>
+                                            <span class="text-xs text-blue-700 font-medium">Findings:</span>
+                                            <p class="text-sm text-blue-800 mt-1">{{ $examination->lab_report[$testKey . '_findings'] }}</p>
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
-                            @if(isset($results['findings']) && $results['findings'])
-                                <div>
-                                    <span class="text-xs text-pink-700 font-medium">Findings:</span>
-                                    <p class="text-sm text-pink-800 mt-1">{{ $results['findings'] }}</p>
-                                </div>
-                            @endif
-                        </div>
-                        @endif
-                    @endforeach
+                        @endforeach
+                    @endif
                 </div>
             </div>
         </div>
