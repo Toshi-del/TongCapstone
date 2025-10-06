@@ -21,11 +21,63 @@ class Patient extends Model
         'appointment_id',
         'company_name',
         'status',
+        'medical_test_id',
     ];
 
     public function appointment(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Appointment::class);
+    }
+
+    public function medicalTest(): BelongsTo
+    {
+        return $this->belongsTo(MedicalTest::class);
+    }
+
+    /**
+     * Many-to-many relationship with medical tests
+     */
+    public function medicalTests(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(MedicalTest::class, 'patient_medical_tests');
+    }
+
+    /**
+     * Get all medical tests for this patient (fallback to appointment if pivot table is empty)
+     */
+    public function getAllMedicalTests()
+    {
+        // First try to get from pivot table
+        $pivotTests = $this->medicalTests;
+        
+        if ($pivotTests->isNotEmpty()) {
+            return $pivotTests;
+        }
+        
+        // Fallback to appointment relationship
+        if ($this->appointment) {
+            return $this->appointment->selected_tests;
+        }
+        
+        return collect();
+    }
+
+    /**
+     * Get medical test names as a comma-separated string
+     */
+    public function getMedicalTestNamesAttribute(): string
+    {
+        $tests = $this->getAllMedicalTests();
+        return $tests->pluck('name')->implode(', ');
+    }
+
+    /**
+     * Get medical test IDs as an array
+     */
+    public function getMedicalTestIdsAttribute(): array
+    {
+        $tests = $this->getAllMedicalTests();
+        return $tests->pluck('id')->toArray();
     }
 
     public function getFullNameAttribute(): string

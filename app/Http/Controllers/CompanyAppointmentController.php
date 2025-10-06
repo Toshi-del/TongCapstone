@@ -346,8 +346,26 @@ class CompanyAppointmentController extends Controller
                     $globalExistingPatient = $globalExistingPatient->first();
                     
                     if (!$globalExistingPatient) {
+                        // Get all medical test IDs from appointment
+                        $medicalTestIds = [];
+                        $firstMedicalTestId = null;
+                        
+                        if ($appointment->medical_test_id) {
+                            $testIds = is_string($appointment->medical_test_id) 
+                                ? json_decode($appointment->medical_test_id, true) 
+                                : $appointment->medical_test_id;
+                            
+                            if (is_array($testIds) && !empty($testIds)) {
+                                $medicalTestIds = $testIds;
+                                $firstMedicalTestId = $testIds[0];
+                            } elseif (!is_array($testIds)) {
+                                $medicalTestIds = [$testIds];
+                                $firstMedicalTestId = $testIds;
+                            }
+                        }
+                        
                         // Create new patient record
-                        Patient::create([
+                        $patient = Patient::create([
                             'first_name' => $firstName,
                             'last_name' => $lastName,
                             'age' => (int) $row[2],
@@ -357,11 +375,35 @@ class CompanyAppointmentController extends Controller
                             'address' => $address,
                             'appointment_id' => $appointment->id,
                             'company_name' => $companyName,
+                            'medical_test_id' => $firstMedicalTestId,
                         ]);
+                        
+                        // Attach all medical tests to the patient
+                        if (!empty($medicalTestIds)) {
+                            $patient->medicalTests()->attach($medicalTestIds);
+                        }
                         $processedCount++;
                     } else {
+                        // Get all medical test IDs from appointment
+                        $medicalTestIds = [];
+                        $firstMedicalTestId = null;
+                        
+                        if ($appointment->medical_test_id) {
+                            $testIds = is_string($appointment->medical_test_id) 
+                                ? json_decode($appointment->medical_test_id, true) 
+                                : $appointment->medical_test_id;
+                            
+                            if (is_array($testIds) && !empty($testIds)) {
+                                $medicalTestIds = $testIds;
+                                $firstMedicalTestId = $testIds[0];
+                            } elseif (!is_array($testIds)) {
+                                $medicalTestIds = [$testIds];
+                                $firstMedicalTestId = $testIds;
+                            }
+                        }
+                        
                         // Patient exists globally but not for this appointment, create a new record for this appointment
-                        Patient::create([
+                        $patient = Patient::create([
                             'first_name' => $firstName,
                             'last_name' => $lastName,
                             'age' => (int) $row[2],
@@ -371,7 +413,13 @@ class CompanyAppointmentController extends Controller
                             'address' => $address,
                             'appointment_id' => $appointment->id,
                             'company_name' => $companyName,
+                            'medical_test_id' => $firstMedicalTestId,
                         ]);
+                        
+                        // Attach all medical tests to the patient
+                        if (!empty($medicalTestIds)) {
+                            $patient->medicalTests()->attach($medicalTestIds);
+                        }
                         $processedCount++;
                     }
                 } else {

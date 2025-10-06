@@ -18,6 +18,7 @@ use App\Http\Controllers\RadiologistController;
 use App\Http\Controllers\PathologistController;
 use App\Http\Controllers\EcgtechController;
 use App\Http\Controllers\OpdController;
+use App\Models\Patient;
 
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -562,6 +563,54 @@ Route::get('/location', function () {
     $locationContent = \App\Models\PageContent::getPageContent('location');
     return view('location', compact('locationContent'));
 })->name('location');
+
+// Test route for patient medical tests
+Route::get('/test-patient-medical-tests', function () {
+    $patients = Patient::with(['medicalTests', 'appointment'])->get();
+    
+    $output = "<h1>Patient Medical Tests Test</h1>";
+    
+    foreach ($patients as $patient) {
+        $output .= "<h3>Patient: {$patient->full_name} (ID: {$patient->id})</h3>";
+        
+        // Test pivot relationship
+        $pivotTests = $patient->medicalTests;
+        $output .= "<p><strong>Pivot Tests ({$pivotTests->count()}):</strong> ";
+        if ($pivotTests->count() > 0) {
+            $output .= $pivotTests->pluck('name')->implode(', ');
+        } else {
+            $output .= "None";
+        }
+        $output .= "</p>";
+        
+        // Test appointment relationship
+        if ($patient->appointment) {
+            $appointmentTests = $patient->appointment->selected_tests;
+            $output .= "<p><strong>Appointment Tests ({$appointmentTests->count()}):</strong> ";
+            if ($appointmentTests->count() > 0) {
+                $output .= $appointmentTests->pluck('name')->implode(', ');
+            } else {
+                $output .= "None";
+            }
+            $output .= "</p>";
+        }
+        
+        // Test the view logic
+        $output .= "<p><strong>View Logic Result:</strong> ";
+        if ($patient->medicalTests->isNotEmpty()) {
+            $output .= $patient->medicalTests->pluck('name')->implode(', ') . " (from pivot)";
+        } elseif ($patient->appointment && $patient->appointment->selected_tests->isNotEmpty()) {
+            $output .= $patient->appointment->selected_tests->pluck('name')->implode(', ') . " (from appointment)";
+        } elseif ($patient->appointment && $patient->appointment->medicalTest) {
+            $output .= $patient->appointment->medicalTest->name . " (from single)";
+        } else {
+            $output .= "N/A";
+        }
+        $output .= "</p><hr>";
+    }
+    
+    return $output;
+});
 
 // Default route - redirect to login
 Route::get('/', function () {

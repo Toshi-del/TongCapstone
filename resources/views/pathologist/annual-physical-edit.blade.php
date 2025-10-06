@@ -107,7 +107,8 @@
                                     
                                     
                                     @php
-                                        $currentMainValue = old(str_replace(['[', ']'], ['.', ''], $fieldName), $examination->lab_report[$cleanFieldName] ?? '');
+                                        $labReport = $examination->lab_report ?? [];
+                                        $currentMainValue = old(str_replace(['[', ']'], ['.', ''], $fieldName), $labReport[$cleanFieldName] ?? '');
                                         $mainOthersFieldName = 'lab_report[' . $standardFieldName . '_main_others]';
                                         $cleanMainOthersFieldName = $standardFieldName . '_main_others';
                                     @endphp
@@ -115,7 +116,7 @@
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown main-dropdown" 
                                             data-test-name="{{ $standardFieldName }}-main"
                                             data-summary-target="summary-{{ $standardFieldName }}">
-                                        <option value="">Not available</option>
+                                        <option value="Not available" {{ $currentMainValue == 'Not available' || $currentMainValue == '' ? 'selected' : '' }}>Not available</option>
                                         <option value="Normal" {{ $currentMainValue == 'Normal' ? 'selected' : '' }}>Normal</option>
                                         <option value="Not Normal" {{ $currentMainValue == 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
                                         <option value="Others" {{ $currentMainValue == 'Others' ? 'selected' : '' }}>Others</option>
@@ -123,7 +124,7 @@
                                     <div class="others-input mt-2" id="others-{{ $standardFieldName }}-main" style="{{ $currentMainValue == 'Others' ? 'display: block;' : 'display: none;' }}">
                                         <input type="text" 
                                                name="{{ $mainOthersFieldName }}" 
-                                               value="{{ old(str_replace(['[', ']'], ['.', ''], $mainOthersFieldName), $examination->lab_report[$cleanMainOthersFieldName] ?? '') }}"
+                                               value="{{ old(str_replace(['[', ']'], ['.', ''], $mainOthersFieldName), $labReport[$cleanMainOthersFieldName] ?? '') }}"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-sm"
                                                placeholder="Specify"></div>
                                 </div>
@@ -144,12 +145,13 @@
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Complete Blood Count (CBC)</label>
                             @php
-                                $cbcValue = old('lab_report.complete_blood_count_cbc', $examination->lab_report['complete_blood_count_cbc'] ?? '');
+                                $labReport = $examination->lab_report ?? [];
+                                $cbcValue = old('lab_report.complete_blood_count_cbc', $labReport['complete_blood_count_cbc'] ?? '');
                             @endphp
                             <select name="lab_report[complete_blood_count_cbc]" 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown" 
                                     data-test-name="complete_blood_count_cbc-fallback">
-                                <option value="">Not available</option>
+                                <option value="Not available" {{ $cbcValue == 'Not available' || $cbcValue == '' ? 'selected' : '' }}>Not available</option>
                                 <option value="Normal" {{ $cbcValue == 'Normal' ? 'selected' : '' }}>Normal</option>
                                 <option value="Not Normal" {{ $cbcValue == 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
                                 <option value="Others" {{ $cbcValue == 'Others' ? 'selected' : '' }}>Others</option>
@@ -157,7 +159,7 @@
                             <div class="others-input mt-2" id="others-complete_blood_count_cbc-fallback" style="{{ $cbcValue == 'Others' ? 'display: block;' : 'display: none;' }}">
                                 <input type="text" 
                                        name="lab_report[complete_blood_count_cbc_others]" 
-                                       value="{{ old('lab_report.complete_blood_count_cbc_others', $examination->lab_report['complete_blood_count_cbc_others'] ?? '') }}"
+                                       value="{{ old('lab_report.complete_blood_count_cbc_others', $labReport['complete_blood_count_cbc_others'] ?? '') }}"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-sm"
                                        placeholder="Specify">
                             </div>
@@ -168,12 +170,12 @@
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Urinalysis</label>
                             @php
-                                $urinalysisValue = old('lab_report.urinalysis', $examination->lab_report['urinalysis'] ?? '');
+                                $urinalysisValue = old('lab_report.urinalysis', $labReport['urinalysis'] ?? '');
                             @endphp
                             <select name="lab_report[urinalysis]" 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown" 
                                     data-test-name="urinalysis-fallback">
-                                <option value="">Not available</option>
+                                <option value="Not available" {{ $urinalysisValue == 'Not available' || $urinalysisValue == '' ? 'selected' : '' }}>Not available</option>
                                 <option value="Normal" {{ $urinalysisValue == 'Normal' ? 'selected' : '' }}>Normal</option>
                                 <option value="Not Normal" {{ $urinalysisValue == 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
                                 <option value="Others" {{ $urinalysisValue == 'Others' ? 'selected' : '' }}>Others</option>
@@ -181,7 +183,7 @@
                             <div class="others-input mt-2" id="others-urinalysis-fallback" style="{{ $urinalysisValue == 'Others' ? 'display: block;' : 'display: none;' }}">
                                 <input type="text" 
                                        name="lab_report[urinalysis_others]" 
-                                       value="{{ old('lab_report.urinalysis_others', $examination->lab_report['urinalysis_others'] ?? '') }}"
+                                       value="{{ old('lab_report.urinalysis_others', $labReport['urinalysis_others'] ?? '') }}"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-sm"
                                        placeholder="Specify">
                             </div>
@@ -192,12 +194,12 @@
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Stool Examination</label>
                             @php
-                                $stoolValue = old('lab_report.stool_examination', $examination->lab_report['stool_examination'] ?? '');
+                                $stoolValue = old('lab_report.stool_examination', $labReport['stool_examination'] ?? '');
                             @endphp
                             <select name="lab_report[stool_examination]" 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown" 
                                     data-test-name="stool_examination-fallback">
-                                <option value="">Not available</option>
+                                <option value="Not available" {{ $stoolValue == 'Not available' || $stoolValue == '' ? 'selected' : '' }}>Not available</option>
                                 <option value="Normal" {{ $stoolValue == 'Normal' ? 'selected' : '' }}>Normal</option>
                                 <option value="Not Normal" {{ $stoolValue == 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
                                 <option value="Others" {{ $stoolValue == 'Others' ? 'selected' : '' }}>Others</option>
@@ -205,7 +207,7 @@
                             <div class="others-input mt-2" id="others-stool_examination-fallback" style="{{ $stoolValue == 'Others' ? 'display: block;' : 'display: none;' }}">
                                 <input type="text" 
                                        name="lab_report[stool_examination_others]" 
-                                       value="{{ old('lab_report.stool_examination_others', $examination->lab_report['stool_examination_others'] ?? '') }}"
+                                       value="{{ old('lab_report.stool_examination_others', $labReport['stool_examination_others'] ?? '') }}"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-sm"
                                        placeholder="Specify">
                             </div>

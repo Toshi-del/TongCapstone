@@ -112,6 +112,18 @@ class MedicalTestSeeder extends Seeder
                 'sort_order' => 16,
                 'is_active' => true,
             ],
+            [
+                'name' => 'Liver Profile',
+                'description' => 'Liver function tests and profiles',
+                'sort_order' => 17,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Lipid Profile',
+                'description' => 'Lipid and cholesterol profile tests',
+                'sort_order' => 18,
+                'is_active' => true,
+            ],
         ];
 
         foreach ($categories as $categoryData) {
@@ -134,9 +146,9 @@ class MedicalTestSeeder extends Seeder
                     break;
                 case 'Appointment':
                     $tests = [
-                        ['name' => 'Annual Medical Examination', 'description' => 'Annual medical exam package', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'Annual Medical with Drug Test', 'description' => 'Annual exam plus drug test', 'sort_order' => 2, 'price' => 0],
-                        ['name' => 'Annual Medical with ECG and Drug test', 'description' => 'Annual exam plus ECG and drug test', 'sort_order' => 3, 'price' => 0],
+                        ['name' => 'Annual Medical Examination', 'description' => 'Annual medical exam package', 'sort_order' => 1, 'price' => 600.00],
+                        ['name' => 'Annual Medical with Drug Test', 'description' => 'Annual exam plus drug test', 'sort_order' => 2, 'price' => 750.00],
+                        ['name' => 'Annual Medical with ECG and Drug test', 'description' => 'Annual exam plus ECG and drug test', 'sort_order' => 3, 'price' => 850.00],
                     ];
                     break;
                 case 'Package':
@@ -150,47 +162,48 @@ class MedicalTestSeeder extends Seeder
                     break;
                 case 'Routine Examinations':
                     $tests = [
-                        ['name' => 'CBC', 'description' => 'Complete Blood Count', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'Urinalysis', 'description' => 'Urine Analysis', 'sort_order' => 2, 'price' => 0],
-                        ['name' => 'Fecalysis', 'description' => 'Stool Analysis', 'sort_order' => 3, 'price' => 0],
-                        ['name' => 'Pregnancy Test', 'description' => 'Pregnancy Test', 'sort_order' => 4, 'price' => 0],
+                        ['name' => 'CBC', 'description' => 'Complete Blood Count', 'sort_order' => 1, 'price' => 250.00],
+                        ['name' => 'Urinalysis', 'description' => 'Urine Analysis', 'sort_order' => 2, 'price' => 150.00],
+                        ['name' => 'Fecalysis', 'description' => 'Stool Analysis', 'sort_order' => 3, 'price' => 150.00],
+                        ['name' => 'Pregnancy Test', 'description' => 'Pregnancy Test', 'sort_order' => 4, 'price' => 200.00],
                     ];
                     break;
                     
                 case 'Histology':
                     $tests = [
-                        ['name' => 'Pap\'s reading only', 'description' => 'Pap smear reading only', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'Papsmear', 'description' => 'Complete Pap smear test', 'sort_order' => 2, 'price' => 0],
+                        ['name' => 'Pap\'s reading only', 'description' => 'Pap smear reading only', 'sort_order' => 1, 'price' => 300.00],
+                        ['name' => 'Papsmear', 'description' => 'Complete Pap smear test', 'sort_order' => 2, 'price' => 300.00],
                     ];
                     break;
                     
                 case 'Special Hematology':
                     $tests = [
-                        ['name' => 'Platelet Count', 'description' => 'Platelet count test', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'Protime', 'description' => 'Prothrombin time test', 'sort_order' => 2, 'price' => 0],
-                        ['name' => 'APTT', 'description' => 'Activated Partial Thromboplastin Time', 'sort_order' => 3, 'price' => 0],
-                        ['name' => 'ESR', 'description' => 'Erythrocyte Sedimentation Rate', 'sort_order' => 4, 'price' => 0],
-                        ['name' => 'ABO Typing w/ RH', 'description' => 'Blood type and Rh factor', 'sort_order' => 5, 'price' => 0],
-                        ['name' => 'L.E. Prep', 'description' => 'Lupus Erythematosus preparation', 'sort_order' => 6, 'price' => 0],
-                        ['name' => 'Malarial Smear', 'description' => 'Malaria detection test', 'sort_order' => 7, 'price' => 0],
-                        ['name' => 'Retic CT', 'description' => 'Reticulocyte count', 'sort_order' => 8, 'price' => 0],
-                        ['name' => 'Peripheral Smear', 'description' => 'Peripheral blood smear', 'sort_order' => 9, 'price' => 0],
-                        ['name' => 'Clotting & Bleeding Time', 'description' => 'Clotting and bleeding time test', 'sort_order' => 10, 'price' => 0],
+                        ['name' => 'Platelet Count', 'description' => 'Platelet count test', 'sort_order' => 1, 'price' => 250.00],
+                        ['name' => 'Protime', 'description' => 'Prothrombin time test', 'sort_order' => 2, 'price' => 450.00],
+                        ['name' => 'APTT', 'description' => 'Activated Partial Thromboplastin Time', 'sort_order' => 3, 'price' => 450.00],
+                        ['name' => 'ESR', 'description' => 'Erythrocyte Sedimentation Rate', 'sort_order' => 4, 'price' => 250.00],
+                        ['name' => 'ABO Typing w/ RH', 'description' => 'Blood type and Rh factor', 'sort_order' => 5, 'price' => 400.00],
+                        ['name' => 'L.E. Prep', 'description' => 'Lupus Erythematosus preparation', 'sort_order' => 6, 'price' => 400.00],
+                        ['name' => 'Malarial Smear', 'description' => 'Malaria detection test', 'sort_order' => 7, 'price' => 400.00],
+                        ['name' => 'Retic CT', 'description' => 'Reticulocyte count', 'sort_order' => 8, 'price' => 350.00],
+                        ['name' => 'Peripheral Smear', 'description' => 'Peripheral blood smear', 'sort_order' => 9, 'price' => 200.00],
+                        ['name' => 'Clotting & Bleeding Time', 'description' => 'Clotting and bleeding time test', 'sort_order' => 10, 'price' => 200.00],
                     ];
                     break;
                     
                 case 'Serology':
                     $tests = [
-                        ['name' => 'VDRL', 'description' => 'Venereal Disease Research Laboratory test', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'ASO Titer', 'description' => 'Anti-Streptolysin O titer', 'sort_order' => 2, 'price' => 0],
-                        ['name' => 'RA Factor', 'description' => 'Rheumatoid factor test', 'sort_order' => 3, 'price' => 0],
-                        ['name' => 'Typhidot', 'description' => 'Typhoid fever test', 'sort_order' => 4, 'price' => 0],
+                        ['name' => 'VDRL', 'description' => 'Venereal Disease Research Laboratory test', 'sort_order' => 1, 'price' => 350.00],
+                        ['name' => 'ASO Titer', 'description' => 'Anti-Streptolysin O titer', 'sort_order' => 2, 'price' => 450.00],
+                        ['name' => 'RA Factor', 'description' => 'Rheumatoid factor test', 'sort_order' => 3, 'price' => 450.00],
+                        ['name' => 'Typhidot', 'description' => 'Typhoid fever test', 'sort_order' => 4, 'price' => 800.00],
+                        ['name' => 'STAT FEE', 'description' => 'Stat fee for urgent tests', 'sort_order' => 5, 'price' => 100.00],
                     ];
                     break;
                     
                 case 'Clinical Microscopy':
                     $tests = [
-                        ['name' => 'Occult Blood', 'description' => 'Occult blood test', 'sort_order' => 1, 'price' => 0],
+                        ['name' => 'Occult Blood', 'description' => 'Occult blood test', 'sort_order' => 1, 'price' => 350.00],
                     ];
                     break;
                     
@@ -236,74 +249,94 @@ class MedicalTestSeeder extends Seeder
                     
                 case 'Immunology':
                     $tests = [
-                        ['name' => 'PSA', 'description' => 'Prostate Specific Antigen', 'sort_order' => 1, 'price' => 0],
+                        ['name' => 'PSA', 'description' => 'Prostate Specific Antigen', 'sort_order' => 1, 'price' => 1000.00],
                     ];
                     break;
                     
                 case 'Tumor Markers':
                     $tests = [
-                        ['name' => 'Alpha Feto Protein', 'description' => 'Alpha Fetoprotein tumor marker', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'CEA', 'description' => 'Carcinoembryonic Antigen', 'sort_order' => 2, 'price' => 0],
-                        ['name' => 'B-HCG Serum', 'description' => 'Beta Human Chorionic Gonadotropin', 'sort_order' => 3, 'price' => 0],
-                        ['name' => 'CA-125', 'description' => 'Cancer Antigen 125', 'sort_order' => 4, 'price' => 0],
-                        ['name' => 'CA-153', 'description' => 'Cancer Antigen 15-3', 'sort_order' => 5, 'price' => 0],
-                        ['name' => 'CA-199', 'description' => 'Cancer Antigen 19-9', 'sort_order' => 6, 'price' => 0],
-                        ['name' => 'CA-72-3', 'description' => 'Cancer Antigen 72-3', 'sort_order' => 7, 'price' => 0],
+                        ['name' => 'Alpha Feto Protein', 'description' => 'Alpha Fetoprotein tumor marker', 'sort_order' => 1, 'price' => 500.00],
+                        ['name' => 'CEA', 'description' => 'Carcinoembryonic Antigen', 'sort_order' => 2, 'price' => 700.00],
+                        ['name' => 'B-HCG Serum', 'description' => 'Beta Human Chorionic Gonadotropin', 'sort_order' => 3, 'price' => 550.00],
+                        ['name' => 'CA-125', 'description' => 'Cancer Antigen 125', 'sort_order' => 4, 'price' => 1500.00],
+                        ['name' => 'CA-153', 'description' => 'Cancer Antigen 15-3', 'sort_order' => 5, 'price' => 1500.00],
+                        ['name' => 'CA-199', 'description' => 'Cancer Antigen 19-9', 'sort_order' => 6, 'price' => 1700.00],
+                        ['name' => 'CA-72-3', 'description' => 'Cancer Antigen 72-3', 'sort_order' => 7, 'price' => 1800.00],
                     ];
                     break;
                     
                 case 'Thyroid Function Test':
                     $tests = [
-                        ['name' => 'T3', 'description' => 'Triiodothyronine', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'T4', 'description' => 'Thyroxine', 'sort_order' => 2, 'price' => 0],
-                        ['name' => 'TSH', 'description' => 'Thyroid Stimulating Hormone', 'sort_order' => 3, 'price' => 0],
-                        ['name' => 'FT3', 'description' => 'Free Triiodothyronine', 'sort_order' => 4, 'price' => 0],
-                        ['name' => 'FT4', 'description' => 'Free Thyroxine', 'sort_order' => 5, 'price' => 0],
+                        ['name' => 'T3', 'description' => 'Triiodothyronine', 'sort_order' => 1, 'price' => 500.00],
+                        ['name' => 'T4', 'description' => 'Thyroxine', 'sort_order' => 2, 'price' => 400.00],
+                        ['name' => 'TSH', 'description' => 'Thyroid Stimulating Hormone', 'sort_order' => 3, 'price' => 500.00],
+                        ['name' => 'FT3', 'description' => 'Free Triiodothyronine', 'sort_order' => 4, 'price' => 500.00],
+                        ['name' => 'FT4', 'description' => 'Free Thyroxine', 'sort_order' => 5, 'price' => 500.00],
                     ];
                     break;
                     
                 case 'Drug Monitoring Assay':
                     $tests = [
-                        ['name' => 'Drugtest (Met & THC)', 'description' => 'Drug test for Methamphetamine and THC', 'sort_order' => 1, 'price' => 0],
+                        ['name' => 'Drugtest (Met & THC)', 'description' => 'Drug test for Methamphetamine and THC', 'sort_order' => 1, 'price' => 350.00],
                     ];
                     break;
                     
                 case 'X-RAY':
                     $tests = [
-                        ['name' => 'CXR-PA 11X14', 'description' => 'Chest X-ray Posteroanterior 11x14', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'Apico Lordotic View', 'description' => 'Apical lordotic chest X-ray view', 'sort_order' => 2, 'price' => 0],
-                        ['name' => 'AP-Lateral Adult', 'description' => 'Anteroposterior and Lateral adult X-ray', 'sort_order' => 3, 'price' => 0],
-                        ['name' => 'AP-Lateral Child', 'description' => 'Anteroposterior and Lateral child X-ray', 'sort_order' => 4, 'price' => 0],
-                        ['name' => 'Electrocardiogram', 'description' => 'ECG/EKG test', 'sort_order' => 5, 'price' => 0],
+                        ['name' => 'CXR-PA 11X14', 'description' => 'Chest X-ray Posteroanterior 11x14', 'sort_order' => 1, 'price' => 400.00],
+                        ['name' => 'Apico Lordotic View', 'description' => 'Apical lordotic chest X-ray view', 'sort_order' => 2, 'price' => 500.00],
+                        ['name' => 'AP-Lateral Adult', 'description' => 'Anteroposterior and Lateral adult X-ray', 'sort_order' => 3, 'price' => 500.00],
+                        ['name' => 'AP-Lateral Child', 'description' => 'Anteroposterior and Lateral child X-ray', 'sort_order' => 4, 'price' => 1000.00],
+                        ['name' => 'Electrocardiogram', 'description' => 'ECG/EKG test', 'sort_order' => 5, 'price' => 400.00],
                         ['name' => 'Chest X-ray with Package', 'description' => 'Additional 300.00 for package with chest X-ray', 'sort_order' => 6, 'price' => 300.00],
                     ];
                     break;
                     
                 case 'Complete Hepa-Profile':
                     $tests = [
-                        ['name' => 'Hepa B Profile', 'description' => 'Hepatitis B profile test', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'Hepa A & B Profile', 'description' => 'Hepatitis A and B profile test', 'sort_order' => 2, 'price' => 0],
-                        ['name' => 'Hepa ABC & Profile', 'description' => 'Hepatitis A, B, and C profile test', 'sort_order' => 3, 'price' => 0],
-                        ['name' => 'HBsAg (Latex)', 'description' => 'Hepatitis B Surface Antigen (Latex)', 'sort_order' => 4, 'price' => 0],
-                        ['name' => 'Elisa', 'description' => 'Enzyme-Linked Immunosorbent Assay', 'sort_order' => 5, 'price' => 0],
-                        ['name' => 'Anti-Hbs', 'description' => 'Anti-Hepatitis B Surface antibody', 'sort_order' => 6, 'price' => 0],
-                        ['name' => 'Anti-Hbc lgG', 'description' => 'Anti-Hepatitis B Core IgG', 'sort_order' => 7, 'price' => 0],
-                        ['name' => 'Anti-Hbc lGM', 'description' => 'Anti-Hepatitis B Core IgM', 'sort_order' => 8, 'price' => 0],
-                        ['name' => 'Anti-Hav lgG', 'description' => 'Anti-Hepatitis A IgG', 'sort_order' => 9, 'price' => 0],
-                        ['name' => 'Anti-Hav lGM', 'description' => 'Anti-Hepatitis A IgM', 'sort_order' => 10, 'price' => 0],
-                        ['name' => 'HBeAg', 'description' => 'Hepatitis B e Antigen', 'sort_order' => 11, 'price' => 0],
-                        ['name' => 'Anti-Hbe', 'description' => 'Anti-Hepatitis B e antibody', 'sort_order' => 12, 'price' => 0],
-                        ['name' => 'Anti-Hcv', 'description' => 'Anti-Hepatitis C antibody', 'sort_order' => 13, 'price' => 0],
+                        ['name' => 'Hepa B Profile', 'description' => 'Hepatitis B profile test', 'sort_order' => 1, 'price' => 1500.00],
+                        ['name' => 'Hepa A & B Profile', 'description' => 'Hepatitis A and B profile test', 'sort_order' => 2, 'price' => 1800.00],
+                        ['name' => 'Hepa ABC & Profile', 'description' => 'Hepatitis A, B, and C profile test', 'sort_order' => 3, 'price' => 2000.00],
+                        ['name' => 'HBsAg (Latex)', 'description' => 'Hepatitis B Surface Antigen (Latex)', 'sort_order' => 4, 'price' => 400.00],
+                        ['name' => 'Elisa', 'description' => 'Enzyme-Linked Immunosorbent Assay', 'sort_order' => 5, 'price' => 500.00],
+                        ['name' => 'Anti-Hbs', 'description' => 'Anti-Hepatitis B Surface antibody', 'sort_order' => 6, 'price' => 500.00],
+                        ['name' => 'Anti-Hbc lgG', 'description' => 'Anti-Hepatitis B Core IgG', 'sort_order' => 7, 'price' => 500.00],
+                        ['name' => 'Anti-Hbc lGM', 'description' => 'Anti-Hepatitis B Core IgM', 'sort_order' => 8, 'price' => 500.00],
+                        ['name' => 'Anti-Hav lgG', 'description' => 'Anti-Hepatitis A IgG', 'sort_order' => 9, 'price' => 500.00],
+                        ['name' => 'Anti-Hav lGM', 'description' => 'Anti-Hepatitis A IgM', 'sort_order' => 10, 'price' => 500.00],
+                        ['name' => 'HBeAg', 'description' => 'Hepatitis B e Antigen', 'sort_order' => 11, 'price' => 500.00],
+                        ['name' => 'Anti-Hbe', 'description' => 'Anti-Hepatitis B e antibody', 'sort_order' => 12, 'price' => 500.00],
+                        ['name' => 'Anti-Hcv', 'description' => 'Anti-Hepatitis C antibody', 'sort_order' => 13, 'price' => 650.00],
                     ];
                     break;
                     
                 case 'Bacteriology':
                     $tests = [
-                        ['name' => 'All culture & Sensitivity', 'description' => 'All culture and sensitivity tests', 'sort_order' => 1, 'price' => 0],
-                        ['name' => 'KOH Mount', 'description' => 'Potassium Hydroxide mount test', 'sort_order' => 2, 'price' => 0],
-                        ['name' => 'Gram Stain', 'description' => 'Gram staining test', 'sort_order' => 3, 'price' => 0],
-                        ['name' => 'AFB', 'description' => 'Acid-Fast Bacilli test', 'sort_order' => 4, 'price' => 0],
-                        ['name' => 'Blood C/S', 'description' => 'Blood Culture and Sensitivity', 'sort_order' => 5, 'price' => 0],
+                        ['name' => 'All culture & Sensitivity', 'description' => 'All culture and sensitivity tests', 'sort_order' => 1, 'price' => 1500.00],
+                        ['name' => 'KOH Mount', 'description' => 'Potassium Hydroxide mount test', 'sort_order' => 2, 'price' => 350.00],
+                        ['name' => 'Gram Stain', 'description' => 'Gram staining test', 'sort_order' => 3, 'price' => 350.00],
+                        ['name' => 'AFB', 'description' => 'Acid-Fast Bacilli test', 'sort_order' => 4, 'price' => 300.00],
+                        ['name' => 'Blood C/S', 'description' => 'Blood Culture and Sensitivity', 'sort_order' => 5, 'price' => 600.00],
+                    ];
+                    break;
+                    
+                case 'Liver Profile':
+                    $tests = [
+                        ['name' => 'Liver Profile', 'description' => 'Complete liver function profile', 'sort_order' => 1, 'price' => 1350.00],
+                        ['name' => 'Bilirubin', 'description' => 'Bilirubin test', 'sort_order' => 2, 'price' => 450.00],
+                        ['name' => 'Alk. Phos', 'description' => 'Alkaline Phosphatase', 'sort_order' => 3, 'price' => 400.00],
+                        ['name' => 'SGOT', 'description' => 'Serum Glutamic Oxaloacetic Transaminase', 'sort_order' => 4, 'price' => 350.00],
+                        ['name' => 'SGPT', 'description' => 'Serum Glutamic Pyruvic Transaminase', 'sort_order' => 5, 'price' => 350.00],
+                        ['name' => 'TPAG', 'description' => 'Total Protein, Albumin, Globulin', 'sort_order' => 6, 'price' => 450.00],
+                    ];
+                    break;
+                    
+                case 'Lipid Profile':
+                    $tests = [
+                        ['name' => 'Lipid Profile', 'description' => 'Complete lipid profile', 'sort_order' => 1, 'price' => 800.00],
+                        ['name' => 'T. Cholesterol', 'description' => 'Total Cholesterol', 'sort_order' => 2, 'price' => 250.00],
+                        ['name' => 'Triglycerides', 'description' => 'Triglycerides test', 'sort_order' => 3, 'price' => 300.00],
+                        ['name' => 'HDL / LDL / VLDL', 'description' => 'High, Low, and Very Low Density Lipoproteins', 'sort_order' => 4, 'price' => 400.00],
                     ];
                     break;
                     

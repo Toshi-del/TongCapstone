@@ -129,7 +129,8 @@ class PleboController extends Controller
             ->count();
 
         // Get annual physical patients that don't have a medical checklist or have an incomplete one
-        $patients = Patient::where('status', 'approved')
+        $patients = Patient::with(['appointment.medicalTestCategory', 'appointment.medicalTest', 'appointment', 'medicalTests'])
+            ->where('status', 'approved')
             ->where(function($query) {
                 // Only show patients without checklist OR with incomplete checklist
                 $query->whereDoesntHave('medicalChecklist')
@@ -365,7 +366,8 @@ class PleboController extends Controller
      */
     public function annualPhysical(Request $request)
     {
-        $query = Patient::where('status', 'approved');
+        $query = Patient::with(['appointment.medicalTestCategory', 'appointment.medicalTest', 'appointment', 'medicalTests'])
+            ->where('status', 'approved');
 
         // Handle tab filtering
         $bloodStatus = $request->get('blood_status', 'needs_attention');

@@ -163,7 +163,7 @@ class NurseController extends Controller
      */
     public function annualPhysical(Request $request)
     {
-        $query = Patient::with(['annualPhysicalExamination', 'appointment'])
+        $query = Patient::with(['annualPhysicalExamination', 'appointment', 'medicalTests'])
             ->where('status', 'approved')
             ->whereHas('appointment', function($q) {
                 $q->where('status', 'approved');
@@ -783,7 +783,7 @@ class NurseController extends Controller
     public function createAnnualPhysical(Request $request)
     {
         $patientId = $request->query('patient_id');
-        $patient = Patient::with(['appointment.medicalTest'])->findOrFail($patientId);
+        $patient = Patient::with(['appointment.medicalTest', 'appointment', 'medicalTests'])->findOrFail($patientId);
         
         // Check if medical checklist exists and is completed
         $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patientId)
@@ -804,7 +804,7 @@ class NurseController extends Controller
     public function storeAnnualPhysical(Request $request)
     {
         // Get patient with medical test information to determine validation rules
-        $patient = Patient::with(['appointment.medicalTest'])->findOrFail($request->patient_id);
+        $patient = Patient::with(['appointment.medicalTest', 'appointment', 'medicalTests'])->findOrFail($request->patient_id);
         $medicalTestName = $patient->appointment->medicalTest->name ?? '';
         $isAnnualMedicalExam = in_array(strtolower($medicalTestName), [
             'annual medical examination',
@@ -869,13 +869,25 @@ class NurseController extends Controller
         $validated['status'] = 'completed';
         $validated['created_by'] = auth()->id();
         
+        // Set default lab_report to ensure it appears in "Completed" tab
+        // The filtering logic requires lab_report to have meaningful data
+        if (!isset($validated['lab_report']) || empty($validated['lab_report'])) {
+            $validated['lab_report'] = [
+                'nurse_examination_completed' => true, 
+                'completed_at' => now()->format('Y-m-d H:i:s'),
+                'status' => 'completed_by_nurse'
+            ];
+        }
+        
         $examination = \App\Models\AnnualPhysicalExamination::create($validated);
         
         // Log created examination data
         \Log::info('Annual Physical Examination created:', [
             'id' => $examination->id,
             'visual' => $examination->visual,
-            'visual_from_db' => $examination->fresh()->visual
+            'visual_from_db' => $examination->fresh()->visual,
+            'lab_report_set' => $validated['lab_report'] ?? 'NOT SET',
+            'lab_report_from_db' => $examination->fresh()->lab_report
         ]);
 
         // Handle drug test form if present

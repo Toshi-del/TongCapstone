@@ -167,7 +167,7 @@
                             <div class="flex items-center space-x-4">
                                 <span class="text-sm text-gray-600">Completed by:</span>
                                 <input type="text" name="{{ $field }}_done_by"
-                                       value="{{ old($field . '_done_by', $medicalChecklist->{$field . '_done_by'} ?? '') }}"
+                                       value="{{ old($field . '_done_by', isset($medicalChecklist) ? $medicalChecklist->{$field . '_done_by'} : '') }}"
                                        placeholder="Initials/Signature"
                                        @if($field === 'stool_exam' || $field === 'urinalysis') 
                                            class="form-input w-32 rounded-lg border-gray-300 text-sm focus:ring-teal-500 focus:border-teal-500" 

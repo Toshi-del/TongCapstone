@@ -250,18 +250,25 @@
                 </div>
 
                 @php
-                    $medicalTestName = $patient->appointment->medicalTest->name ?? '';
-                    $isAnnualMedicalExam = in_array(strtolower($medicalTestName), [
-                        'annual medical examination',
-                        'annual medical examination with drug test',
-                        'annual medical examination with drug test and ecg'
-                    ]);
-                    $hasDrugTest = in_array(strtolower($medicalTestName), [
-                        'annual medical examination with drug test',
-                        'annual medical examination with drug test and ecg',
-                        'annual medical with drug test',
-                        'annual medical with drug test and ecg'
-                    ]);
+                    // Get medical test names from pivot table (fallback to appointment if needed)
+                    $medicalTests = $patient->getAllMedicalTests();
+                    $medicalTestNames = $medicalTests->pluck('name')->map('strtolower')->toArray();
+                    
+                    // Check if any of the medical tests is an annual medical examination
+                    $isAnnualMedicalExam = collect($medicalTestNames)->contains(function($name) {
+                        return in_array($name, [
+                            'annual medical examination',
+                            'annual medical examination with drug test',
+                            'annual medical examination with drug test and ecg',
+                            'annual medical with drug test',
+                            'annual medical with drug test and ecg'
+                        ]);
+                    });
+                    
+                    // Only show drug test for "ANNUAL MEDICAL WITH DRUG TEST" specifically
+                    $hasDrugTest = collect($medicalTestNames)->contains(function($name) {
+                        return $name === 'annual medical with drug test';
+                    });
                 @endphp
                 
                 @if(!$isAnnualMedicalExam)

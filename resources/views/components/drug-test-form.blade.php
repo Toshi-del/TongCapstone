@@ -166,7 +166,7 @@
                 <h4 class="text-lg font-semibold text-gray-900">Examination Details</h4>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="space-y-2">
                     <label class="block text-sm font-semibold text-gray-700">
                         Date and Time of Examination <span class="text-red-500">*</span>
@@ -197,20 +197,6 @@
                     @enderror
                 </div>
 
-                <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-gray-700">
-                        Date of Admission to Program
-                    </label>
-                    <input type="date" name="drug_test[admission_date]" 
-                           value="{{ old('drug_test.admission_date', $connectedResult ? $connectedResult->admission_date?->format('Y-m-d') : ($drugTestData['admission_date'] ?? '')) }}" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg {{ $colors['ring'] }} focus:border-{{ $colors['primary'] }}-500 transition-colors @if(!$isEdit) bg-gray-50 text-gray-700 cursor-not-allowed @endif @error('drug_test.admission_date') border-red-500 ring-2 ring-red-200 @enderror" 
-                           @if(!$isEdit) readonly @endif />
-                    @error('drug_test.admission_date')
-                        <p class="mt-1 text-sm text-red-600 flex items-center">
-                            <i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}
-                        </p>
-                    @enderror
-                </div>
 
                 <div class="space-y-2">
                     <label class="block text-sm font-semibold text-gray-700">

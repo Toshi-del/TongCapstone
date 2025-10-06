@@ -31,7 +31,7 @@ class DoctorController extends Controller
         $appointmentCount = Appointment::count();
 
         // Get all patients
-        $patients = Patient::with('appointment')->where('status', 'pending')->latest()->take(10)->get();
+        $patients = Patient::with(['appointment', 'medicalTests'])->where('status', 'pending')->latest()->take(10)->get();
         $patientCount = Patient::where('status', 'pending')->count();
 
         // Legacy column 'appointment_type' may be absent; compute count without it
@@ -126,7 +126,7 @@ class DoctorController extends Controller
     {
         // Show patients that have examinations ready for doctor (status 'completed' by pathologist)
         // Exclude those already sent by the doctor (status 'sent_to_admin' or 'sent_to_company')
-        $patients = Patient::with(['appointment', 'annualPhysicalExamination'])
+        $patients = Patient::with(['appointment', 'medicalTests', 'annualPhysicalExamination'])
             ->where('status', 'approved')
             ->whereHas('annualPhysicalExamination', function ($q) {
                 $q->whereIn('status', ['completed', 'collection_completed']);

@@ -284,7 +284,11 @@
                                     @endif
                                 </p>
                                 <p class="text-gray-500">
-                                    @if($patient->appointment && $patient->appointment->medicalTest)
+                                    @if($patient->medicalTests->isNotEmpty())
+                                        {{ $patient->medicalTests->pluck('name')->implode(', ') }}
+                                    @elseif($patient->appointment && $patient->appointment->selected_tests->isNotEmpty())
+                                        {{ $patient->appointment->selected_tests->pluck('name')->implode(', ') }}
+                                    @elseif($patient->appointment && $patient->appointment->medicalTest)
                                         {{ $patient->appointment->medicalTest->name }}
                                     @else
                                         N/A

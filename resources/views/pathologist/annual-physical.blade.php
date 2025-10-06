@@ -38,37 +38,50 @@
     <!-- Lab Status Tabs -->
     <div class="content-card rounded-xl overflow-hidden shadow-lg border border-gray-200">
         @php
-            $currentTab = request('lab_status', 'needs_attention');
+            $currentTab = request('lab_status', 'needs_review');
         @endphp
         
         <!-- Tab Navigation -->
         <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
                 <div class="flex space-x-1">
-                    <a href="{{ request()->fullUrlWithQuery(['lab_status' => 'needs_attention']) }}" 
-                       class="px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ $currentTab === 'needs_attention' ? 'bg-purple-600 text-white' : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50' }}">
+                    <a href="{{ request()->fullUrlWithQuery(['lab_status' => 'needs_review']) }}" 
+                       class="px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ $currentTab === 'needs_review' ? 'bg-purple-600 text-white' : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50' }}">
                         <i class="fas fa-exclamation-circle mr-2"></i>
                         Needs Review
                         @php
-                            // Count patients that need pathologist attention - match controller logic
-                            $needsAttentionCount = \App\Models\Patient::where('status', 'approved')
+                            // Count patients that need pathologist review - match controller logic
+                            $needsReviewCount = \App\Models\Patient::where('status', 'approved')
                                 ->whereHas('appointment', function($q) {
                                     $q->where('status', 'approved');
                                 })
                                 ->where(function($mainQuery) {
-                                    // Patients without any annual physical examination record
-                                    $mainQuery->whereDoesntHave('annualPhysicalExamination')
-                                    // OR patients with blood extraction done but incomplete lab results
-                                    ->orWhere(function($subQuery) {
-                                        $subQuery->whereHas('medicalChecklists', function($q) {
-                                            $q->where('examination_type', 'annual_physical')
-                                              ->whereNotNull('blood_extraction_done_by')
-                                              ->where('blood_extraction_done_by', '!=', '');
-                                        })
-                                        ->whereDoesntHave('annualPhysicalExamination', function($q) {
-                                            $q->whereNotNull('lab_report')
-                                              ->where('lab_report', '!=', '[]')
-                                              ->where('lab_report', '!=', '{}');
+                                    // Patients with plebo medical-checklist completed (blood extraction done)
+                                    $mainQuery->whereHas('medicalChecklists', function($q) {
+                                        $q->where('examination_type', 'annual-physical')
+                                          ->whereNotNull('blood_extraction_done_by')
+                                          ->where('blood_extraction_done_by', '!=', '');
+                                    })
+                                    // BUT pathologist hasn't completed the examination yet
+                                    ->where(function($subQuery) {
+                                        // Either no annual physical examination record exists
+                                        $subQuery->whereDoesntHave('annualPhysicalExamination')
+                                        // OR examination exists but pathologist hasn't completed lab results
+                                        ->orWhereHas('annualPhysicalExamination', function($q) {
+                                            $q->where(function($labQuery) {
+                                                $labQuery->whereNull('lab_report')
+                                                         ->orWhere('lab_report', '[]')
+                                                         ->orWhere('lab_report', '{}')
+                                                         ->orWhere('lab_report', 'null')
+                                                         ->orWhereRaw("JSON_LENGTH(lab_report) = 0")
+                                                         ->orWhereRaw("CHAR_LENGTH(lab_report) <= 2")
+                                                         // Check if lab_report only contains nurse completion data
+                                                         ->orWhere(function($nurseQuery) {
+                                                             $nurseQuery->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.nurse_examination_completed')) = 'true'")
+                                                                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.cbc_result')) IS NULL")
+                                                                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis_result')) IS NULL");
+                                                         });
+                                            });
                                         });
                                     });
                                 })
@@ -77,8 +90,8 @@
                                 })
                                 ->count();
                         @endphp
-                        <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $currentTab === 'needs_attention' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600' }}">
-                            {{ $needsAttentionCount }}
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $currentTab === 'needs_review' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600' }}">
+                            {{ $needsReviewCount }}
                         </span>
                     </a>
                     
@@ -87,20 +100,34 @@
                         <i class="fas fa-check-circle mr-2"></i>
                         Lab Completed
                         @php
-                            // Count patients with completed lab results - match controller logic
+                            // Count patients with pathologist-completed lab results - match controller logic
                             $completedCount = \App\Models\Patient::where('status', 'approved')
                                 ->whereHas('appointment', function($q) {
                                     $q->where('status', 'approved');
+                                })
+                                ->whereHas('medicalChecklists', function($q) {
+                                    $q->where('examination_type', 'annual-physical')
+                                      ->whereNotNull('blood_extraction_done_by')
+                                      ->where('blood_extraction_done_by', '!=', '');
                                 })
                                 ->whereHas('annualPhysicalExamination', function($q) {
                                     $q->whereNotNull('lab_report')
                                       ->where('lab_report', '!=', '[]')
                                       ->where('lab_report', '!=', '{}')
                                       ->where('lab_report', '!=', 'null')
+                                      ->whereRaw("JSON_LENGTH(lab_report) > 0")
                                       ->where(function($subQuery) {
-                                          // Additional check for meaningful lab results
-                                          $subQuery->whereRaw("JSON_LENGTH(lab_report) > 0")
-                                                   ->orWhereRaw("CHAR_LENGTH(lab_report) > 2");
+                                          // Must have at least one actual pathologist lab result that is NOT "Not available"
+                                          $subQuery->where(function($actualResults) {
+                                              $actualResults->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.cbc_result')) NOT IN ('Not available', '', 'null')")
+                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis_result')) NOT IN ('Not available', '', 'null')")
+                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_exam_result')) NOT IN ('Not available', '', 'null')")
+                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.fbs_result')) NOT IN ('Not available', '', 'null')")
+                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.blood_chemistry_result')) NOT IN ('Not available', '', 'null')")
+                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.complete_blood_count_cbc')) NOT IN ('Not available', '', 'null')")
+                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis')) NOT IN ('Not available', '', 'null')")
+                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_examination')) NOT IN ('Not available', '', 'null')");
+                                          });
                                       });
                                 })
                                 ->count();
