@@ -134,7 +134,8 @@ class DoctorController extends Controller
      */
     public function preEmployment(Request $request)
     {
-        $filter = $request->get('filter');
+        // Default to 'needs_attention' if no filter is specified
+        $filter = $request->get('filter', 'needs_attention');
         
         // Base query for pre-employment examinations
         $query = \App\Models\PreEmploymentExamination::with(['preEmploymentRecord.medicalTest', 'preEmploymentRecord.medicalTestCategory', 'user']);
@@ -151,21 +152,31 @@ class DoctorController extends Controller
                 $query->whereIn('status', ['sent_to_company', 'Approved', 'sent_to_both']);
                 break;
                 
-            default:
+            case 'all':
                 // Show all examinations (both pending review and submitted)
                 $query->whereIn('status', ['Pending', 'pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company', 'sent_to_both']);
                 break;
+                
+            default:
+                // Default to needs_attention
+                $query->whereIn('status', ['Pending', 'pending', 'collection_completed']);
+                break;
         }
         
-        $preEmploymentExaminations = $query->latest()->paginate(15);
+        $preEmploymentExaminations = $query->latest()->paginate(15)->appends(['filter' => $filter]);
         
-        // Get all examinations for tab counts (without pagination) - don't filter by status for accurate counts
+        // Get all examinations for tab counts (without pagination)
         $allExaminations = \App\Models\PreEmploymentExamination::with(['preEmploymentRecord.medicalTest', 'preEmploymentRecord.medicalTestCategory', 'user'])
             ->get();
+        
+        // Get accurate counts for each tab
+        $needsAttentionCount = \App\Models\PreEmploymentExamination::whereIn('status', ['Pending', 'pending', 'collection_completed'])->count();
+        $submittedCount = \App\Models\PreEmploymentExamination::whereIn('status', ['sent_to_company', 'Approved', 'sent_to_both'])->count();
+        $totalCount = \App\Models\PreEmploymentExamination::whereIn('status', ['Pending', 'pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company', 'sent_to_both'])->count();
             
         // Log the count and statuses for debugging
         \Log::info('Pre-employment examinations count: ' . $preEmploymentExaminations->count());
-        \Log::info('Filter applied: ' . ($filter ?? 'none'));
+        \Log::info('Filter applied: ' . $filter);
         \Log::info('Pre-employment examinations statuses: ' . 
             \App\Models\PreEmploymentExamination::select('status', \DB::raw('count(*) as count'))
                 ->groupBy('status')
@@ -173,7 +184,7 @@ class DoctorController extends Controller
                 ->toJson(JSON_PRETTY_PRINT)
         );
             
-        return view('doctor.pre-employment', compact('preEmploymentExaminations', 'allExaminations'));
+        return view('doctor.pre-employment', compact('preEmploymentExaminations', 'allExaminations', 'needsAttentionCount', 'submittedCount', 'totalCount'));
     }
 
     /**

@@ -16,10 +16,18 @@
                         </h1>
                         <p class="text-blue-100">View annual physical examination and pre-employment examination results</p>
                     </div>
-                    <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
                         <div class="bg-blue-500 rounded-lg px-4 py-2">
                             <p class="text-blue-100 text-sm font-medium">Total Results</p>
                             <p class="text-white text-xl font-bold">{{ ($totalSentAnnualPhysical ?? 0) + ($totalSentPreEmployment ?? 0) }}</p>
+                        </div>
+                        <div class="bg-purple-500 rounded-lg px-4 py-2">
+                            <p class="text-purple-100 text-xs font-medium">Annual Physical Total</p>
+                            <p class="text-white text-lg font-bold">₱{{ number_format($totalPriceAnnualPhysical ?? 0, 2) }}</p>
+                        </div>
+                        <div class="bg-green-500 rounded-lg px-4 py-2">
+                            <p class="text-green-100 text-xs font-medium">Pre-Employment Total</p>
+                            <p class="text-white text-lg font-bold">₱{{ number_format($totalPricePreEmployment ?? 0, 2) }}</p>
                         </div>
                     </div>
                 </div>
@@ -70,7 +78,7 @@
                             </div>
                             <div>
                                 <p class="font-semibold text-gray-900">Annual Physical</p>
-                                <p class="text-sm text-gray-600">Yearly checkups</p>
+                                <p class="text-sm text-gray-600">₱{{ number_format($totalPriceAnnualPhysical ?? 0, 2) }}</p>
                             </div>
                         </div>
                     </a>
@@ -83,7 +91,7 @@
                             </div>
                             <div>
                                 <p class="font-semibold text-gray-900">Pre-Employment</p>
-                                <p class="text-sm text-gray-600">Job requirements</p>
+                                <p class="text-sm text-gray-600">₱{{ number_format($totalPricePreEmployment ?? 0, 2) }}</p>
                             </div>
                         </div>
                     </a>
@@ -183,7 +191,7 @@
                             </span>
                         </div>
                         
-                        <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="grid grid-cols-3 gap-4 mb-4">
                             <div class="bg-white rounded-lg p-3">
                                 <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Examination Date</p>
                                 <p class="text-sm font-semibold text-gray-900">{{ \Carbon\Carbon::parse($exam->date)->format('M d, Y') }}</p>
@@ -192,6 +200,10 @@
                                 <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Sent Date</p>
                                 <p class="text-sm font-semibold text-gray-900">{{ $exam->updated_at->format('M d, Y') }}</p>
                                 <p class="text-xs text-gray-600">{{ $exam->updated_at->format('g:i A') }}</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3">
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Price</p>
+                                <p class="text-sm font-semibold text-purple-900">₱{{ number_format($exam->patient && $exam->patient->appointment ? $exam->patient->appointment->total_price : 0, 2) }}</p>
                             </div>
                         </div>
                         
@@ -233,7 +245,7 @@
                             </span>
                         </div>
                         
-                        <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="grid grid-cols-3 gap-4 mb-4">
                             <div class="bg-white rounded-lg p-3">
                                 <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Examination Date</p>
                                 <p class="text-sm font-semibold text-gray-900">{{ \Carbon\Carbon::parse($exam->date)->format('M d, Y') }}</p>
@@ -242,6 +254,10 @@
                                 <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Sent Date</p>
                                 <p class="text-sm font-semibold text-gray-900">{{ $exam->updated_at->format('M d, Y') }}</p>
                                 <p class="text-xs text-gray-600">{{ $exam->updated_at->format('g:i A') }}</p>
+                            </div>
+                            <div class="bg-white rounded-lg p-3">
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Price</p>
+                                <p class="text-sm font-semibold text-green-900">₱{{ number_format($exam->preEmploymentRecord ? $exam->preEmploymentRecord->total_price : 0, 2) }}</p>
                             </div>
                         </div>
                         

@@ -1230,8 +1230,10 @@ class AdminController extends Controller
     public function getAnnualPhysicalBilling($id)
     {
         try {
-            $examination = AnnualPhysicalExamination::with(['patient.appointment.medicalTest', 'patient.appointment.creator'])
-                ->findOrFail($id);
+            $examination = AnnualPhysicalExamination::with([
+                'patient.appointment.creator',
+                'patient.medicalTests'
+            ])->findOrFail($id);
             
             $patient = $examination->patient;
             $appointment = $patient ? $patient->appointment : null;
@@ -1249,9 +1251,18 @@ class AdminController extends Controller
             // Get company name from appointment creator
             $companyName = $appointment->creator ? $appointment->creator->company : 'Unknown Company';
             
-            // Get test name and calculate total amount
-            $testName = $appointment->medicalTest ? $appointment->medicalTest->name : 'Unknown Test';
-            $totalAmount = $appointment->calculateTotalPrice();
+            // Get all medical tests for this patient
+            $medicalTests = $patient->getAllMedicalTests();
+            $testName = $medicalTests->isNotEmpty() 
+                ? $medicalTests->pluck('name')->implode(', ') 
+                : 'Unknown Test';
+            
+            // Use stored total_price from appointment, or calculate from medical tests
+            $totalAmount = $appointment->total_price;
+            if (!$totalAmount || $totalAmount == 0) {
+                // Fallback: calculate from medical tests
+                $totalAmount = $medicalTests->sum('price');
+            }
             
             return response()->json([
                 'success' => true,
@@ -1263,7 +1274,11 @@ class AdminController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            \Log::error('Error getting annual physical billing: ' . $e->getMessage());
+            \Log::error('Error getting annual physical billing: ' . $e->getMessage(), [
+                'examination_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load billing information'
@@ -1283,12 +1298,13 @@ class AdminController extends Controller
             $sendTo = $request->input('send_to', 'company');
             
             if ($sendTo === 'company') {
-                if ($examination->status === 'sent_to_company' || $examination->status === 'sent_to_both') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Examination has already been sent to company'
-                    ]);
-                }
+                // Log current status for debugging
+                \Log::info('Sending pre-employment examination to company', [
+                    'examination_id' => $examination->id,
+                    'current_status' => $examination->status,
+                    'patient_name' => $examination->name,
+                    'company_name' => $examination->company_name
+                ]);
                 
                 // Update examination status - if already sent to patient, mark as sent to both
                 $newStatus = ($examination->status === 'sent_to_patient') ? 'sent_to_both' : 'sent_to_company';
@@ -1389,15 +1405,14 @@ class AdminController extends Controller
             
             $sendTo = $request->input('send_to', 'company');
             
-            // Allow sending to patient even if already sent to company
-            if ($sendTo === 'company' && $examination->status === 'sent_to_company') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Examination has already been sent to company'
-                ]);
-            }
-            
             if ($sendTo === 'company') {
+                // Log current status for debugging
+                \Log::info('Sending annual physical examination to company', [
+                    'examination_id' => $examination->id,
+                    'current_status' => $examination->status,
+                    'patient_name' => $examination->name
+                ]);
+                
                 // Update examination status
                 $examination->update(['status' => 'sent_to_company']);
                 
@@ -1405,7 +1420,8 @@ class AdminController extends Controller
                 $patient = $examination->patient;
                 $appointment = $patient ? $patient->appointment : null;
                 $companyName = $appointment && $appointment->creator ? $appointment->creator->company : 'Unknown Company';
-                $totalAmount = $appointment ? $appointment->calculateTotalPrice() : 0;
+                // Use stored total_price from appointment
+                $totalAmount = $appointment ? ($appointment->total_price ?: 0) : 0;
                 
                 // Log the billing transaction
                 \Log::info('Annual physical examination sent to company', [

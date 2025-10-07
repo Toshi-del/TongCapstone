@@ -380,7 +380,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @php
                                             $medicalChecklist = \App\Models\MedicalChecklist::where('pre_employment_record_id', $preEmployment->id)
-                                                ->where('examination_type', 'pre-employment')
+                                                ->whereIn('examination_type', ['pre-employment', 'pre_employment'])
                                                 ->first();
                                             $canSendToDoctor = $preEmployment->preEmploymentExamination && $medicalChecklist && !empty($medicalChecklist->physical_exam_done_by);
                                             $hasExamination = !is_null($preEmployment->preEmploymentExamination);

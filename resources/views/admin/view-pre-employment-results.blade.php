@@ -96,6 +96,18 @@
                             @endif
                             
                             @if(isset($details['drug_results']) && is_array($details['drug_results']))
+                                @php
+                                    // Check if there are any actual drug test results (not empty strings)
+                                    $hasDrugResults = false;
+                                    foreach($details['drug_results'] as $drug => $result) {
+                                        if ($drug !== 'positive_count' && !empty($result)) {
+                                            $hasDrugResults = true;
+                                            break;
+                                        }
+                                    }
+                                @endphp
+                                
+                                @if($hasDrugResults)
                                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                                     <div class="flex items-start space-x-3">
                                         <i class="fas fa-vial text-gray-600 mt-0.5"></i>
@@ -103,7 +115,7 @@
                                             <h4 class="font-medium text-gray-900 mb-3">Drug Test Results</h4>
                                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 @foreach($details['drug_results'] as $drug => $result)
-                                                    @if($drug !== 'positive_count')
+                                                    @if($drug !== 'positive_count' && !empty($result))
                                                         <div class="flex items-center justify-between p-2 bg-white rounded border">
                                                             <span class="text-sm font-medium text-gray-700">{{ ucfirst($drug) }}</span>
                                                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $result === 'Positive' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
@@ -116,6 +128,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                @endif
                             @endif
                             
                             @if(isset($details['physical_results']['abnormal_examinations']) && is_array($details['physical_results']['abnormal_examinations']))
@@ -236,10 +249,12 @@
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     @foreach($examination->family_history as $condition => $value)
-                        @if($value && $value !== 'No')
+                        @if($value && $value !== 'No' && $value !== '0' && $value !== 0)
                         <div class="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-                            <span class="text-sm font-medium text-indigo-900">{{ ucfirst(str_replace('_', ' ', $condition)) }}</span>
-                            <span class="text-sm text-indigo-700 font-medium">{{ $value }}</span>
+                            <span class="text-sm font-medium text-indigo-900">{{ is_numeric($condition) ? ucwords(str_replace('_', ' ', $value)) : ucwords(str_replace('_', ' ', $condition)) }}</span>
+                            @if(!is_numeric($condition) && $value !== '1' && $value !== 1 && $value !== true && strtolower($value) !== 'yes')
+                                <span class="text-sm text-indigo-700 font-medium">{{ $value }}</span>
+                            @endif
                         </div>
                         @endif
                     @endforeach
@@ -262,10 +277,12 @@
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     @foreach($examination->personal_habits as $habit => $value)
-                        @if($value && $value !== 'No')
+                        @if($value && $value !== 'No' && $value !== '0' && $value !== 0)
                         <div class="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
-                            <span class="text-sm font-medium text-orange-900">{{ ucfirst(str_replace('_', ' ', $habit)) }}</span>
-                            <span class="text-sm text-orange-700 font-medium">{{ $value }}</span>
+                            <span class="text-sm font-medium text-orange-900">{{ is_numeric($habit) ? ucwords(str_replace('_', ' ', $value)) : ucwords(str_replace('_', ' ', $habit)) }}</span>
+                            @if(!is_numeric($habit) && $value !== '1' && $value !== 1 && $value !== true && strtolower($value) !== 'yes')
+                                <span class="text-sm text-orange-700 font-medium">{{ $value }}</span>
+                            @endif
                         </div>
                         @endif
                     @endforeach
@@ -290,7 +307,7 @@
                     @foreach($examination->physical_exam as $exam => $value)
                         @if($value && $value !== 'Not available')
                         <div class="bg-teal-50 rounded-lg p-4 border border-teal-200">
-                            <label class="block text-xs font-medium text-teal-700 uppercase tracking-wider mb-2">{{ ucfirst(str_replace('_', ' ', $exam)) }}</label>
+                            <label class="block text-xs font-medium text-teal-700 uppercase tracking-wider mb-2">{{ ucwords(str_replace('_', ' ', $exam)) }}</label>
                             <div class="text-sm font-semibold text-teal-900">{{ $value }}</div>
                         </div>
                         @endif
@@ -318,7 +335,7 @@
                         @foreach($examination->lab_findings as $test => $results)
                             @if(is_array($results) && (isset($results['result']) || isset($results['finding']) || isset($results['findings'])))
                             <div class="bg-pink-50 rounded-lg p-4 border border-pink-200">
-                                <h4 class="text-sm font-semibold text-pink-900 mb-3">{{ ucfirst(str_replace('_', ' ', $test)) }}</h4>
+                                <h4 class="text-sm font-semibold text-pink-900 mb-3">{{ ucwords(str_replace('_', ' ', $test)) }}</h4>
                                 @if(isset($results['result']))
                                     <div class="mb-2">
                                         <span class="text-xs text-pink-700 font-medium">Result:</span>
@@ -434,7 +451,7 @@
                                 @if(is_array($findings) && (isset($findings['result']) || isset($findings['findings'])))
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-4 py-3 text-sm font-medium text-gray-900">
-                                        {{ $area }}
+                                        {{ ucwords(str_replace('_', ' ', $area)) }}
                                     </td>
                                     <td class="px-4 py-3 text-sm">
                                         @if(isset($findings['result']))
@@ -460,7 +477,7 @@
         @endif
 
         <!-- Drug Test Results -->
-        @if($examination->drug_test && is_array($examination->drug_test))
+        @if($examination->drug_test && is_array($examination->drug_test) && (isset($examination->drug_test['methamphetamine_result']) || isset($examination->drug_test['marijuana_result'])))
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center space-x-3">
@@ -536,18 +553,55 @@
 
                 <!-- Drug Test Results -->
                 <h4 class="text-sm font-semibold text-gray-700 mb-4">Test Results</h4>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    @foreach($examination->drug_test as $drug => $result)
-                        @if($result && !in_array($drug, ['patient_name', 'address', 'age', 'gender', 'examination_datetime', 'test_method']))
-                        <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                            <span class="text-sm font-medium text-yellow-900">{{ ucfirst(str_replace('_', ' ', $drug)) }}</span>
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $result === 'Negative' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                {{ $result }}
-                            </span>
-                        </div>
-                        @endif
-                    @endforeach
+                @php
+                    // Define which fields are actual drug test results
+                    $drugResultFields = [
+                        'methamphetamine_result' => ['label' => 'METHAMPHETAMINE (Meth)', 'remarks_field' => 'methamphetamine_remarks'],
+                        'marijuana_result' => ['label' => 'TETRAHYDROCANNABINOL (Marijuana)', 'remarks_field' => 'marijuana_remarks']
+                    ];
+                    
+                    // Check if we have any results
+                    $hasResults = false;
+                    foreach ($drugResultFields as $field => $data) {
+                        if (isset($examination->drug_test[$field]) && $examination->drug_test[$field]) {
+                            $hasResults = true;
+                            break;
+                        }
+                    }
+                @endphp
+                
+                @if($hasResults)
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse border-2 border-gray-300 bg-white rounded-lg overflow-hidden">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border border-gray-300 px-6 py-4 text-left font-semibold text-gray-900 text-sm">Drug/Metabolites</th>
+                                <th class="border border-gray-300 px-6 py-4 text-left font-semibold text-gray-900 text-sm">Result</th>
+                                <th class="border border-gray-300 px-6 py-4 text-left font-semibold text-gray-900 text-sm">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($drugResultFields as $field => $data)
+                                @if(isset($examination->drug_test[$field]) && $examination->drug_test[$field])
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="border border-gray-300 px-6 py-4 font-medium text-gray-900">{{ $data['label'] }}</td>
+                                    <td class="border border-gray-300 px-6 py-4">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ $examination->drug_test[$field] === 'Negative' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                            {{ $examination->drug_test[$field] }}
+                                        </span>
+                                    </td>
+                                    <td class="border border-gray-300 px-6 py-4 text-gray-700">
+                                        {{ $examination->drug_test[$data['remarks_field']] ?? '—' }}
+                                    </td>
+                                </tr>
+                                @endif
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
+                @else
+                <p class="text-gray-500 text-sm">No drug test results available.</p>
+                @endif
             </div>
         </div>
         @endif

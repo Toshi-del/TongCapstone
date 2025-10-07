@@ -240,7 +240,7 @@
             foreach($patients as $patient) {
                 $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $patient->id)->first();
                 $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patient->id)
-                    ->where('examination_type', 'annual-physical')
+                    ->whereIn('examination_type', ['annual-physical', 'annual_physical'])
                     ->first();
                 
                 // Check if examination is actually completed (has meaningful lab results)

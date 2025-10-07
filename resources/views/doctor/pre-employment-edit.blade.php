@@ -110,17 +110,13 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-hospital mr-2 text-green-600"></i>Illness / Hospitalization
                             </label>
-                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 min-h-[4rem] text-sm text-gray-700">
-                                {{ $preEmployment->illness_history ?: 'No illness or hospitalization history recorded' }}
-                            </div>
+                            <textarea name="illness_history" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 min-h-[4rem] text-sm text-gray-700" placeholder="Enter illness or hospitalization history">{{ old('illness_history', $preEmployment->illness_history) }}</textarea>
                         </div>
                         <div class="bg-white rounded-lg p-4 border border-gray-200">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-user-injured mr-2 text-orange-600"></i>Accidents / Operations
                             </label>
-                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 min-h-[4rem] text-sm text-gray-700">
-                                {{ $preEmployment->accidents_operations ?: 'No accidents or surgical operations recorded' }}
-                            </div>
+                            <textarea name="accidents_operations" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 min-h-[4rem] text-sm text-gray-700" placeholder="Enter accidents or surgical operations history">{{ old('accidents_operations', $preEmployment->accidents_operations) }}</textarea>
                         </div>
                         <div class="bg-white rounded-lg p-4 border border-gray-200">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -487,6 +483,24 @@
                             } elseif (stripos($testName, 'stool') !== false || stripos($testName, 'fecalysis') !== false) {
                                 $config = ['icon' => 'fas fa-microscope', 'color' => 'brown'];
                                 $slug = 'fecalysis';
+                            } elseif (stripos($testName, 'sodium') !== false) {
+                                $config = ['icon' => 'fas fa-atom', 'color' => 'blue'];
+                                $slug = 'sodium';
+                            } elseif (stripos($testName, 'potassium') !== false) {
+                                $config = ['icon' => 'fas fa-atom', 'color' => 'green'];
+                                $slug = 'potassium';
+                            } elseif (stripos($testName, 'fbs') !== false || stripos($testName, 'fasting blood sugar') !== false) {
+                                $config = ['icon' => 'fas fa-tint-slash', 'color' => 'orange'];
+                                $slug = 'fbs';
+                            } elseif (stripos($testName, 'bua') !== false || stripos($testName, 'blood uric acid') !== false) {
+                                $config = ['icon' => 'fas fa-flask', 'color' => 'purple'];
+                                $slug = 'bua';
+                            } elseif (stripos($testName, 'cholesterol') !== false) {
+                                $config = ['icon' => 'fas fa-heartbeat', 'color' => 'red'];
+                                $slug = 'cholesterol';
+                            } elseif (stripos($testName, 'creatinine') !== false) {
+                                $config = ['icon' => 'fas fa-kidneys', 'color' => 'brown'];
+                                $slug = 'creatinine';
                             } elseif (stripos($testName, 'hbsag') !== false || stripos($testName, 'hepatitis b') !== false) {
                                 $config = ['icon' => 'fas fa-shield-virus', 'color' => 'purple'];
                                 $slug = 'hbsag_screening';

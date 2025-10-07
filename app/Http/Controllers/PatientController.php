@@ -55,20 +55,26 @@ class PatientController extends Controller
         $user = Auth::user();
         $userFullName = trim($user->fname . ' ' . $user->lname);
         
-        // Get pre-employment examinations sent to this patient
-        $preEmploymentResults = PreEmploymentExamination::whereIn('status', ['sent_to_patient', 'sent_to_both'])
-            ->whereHas('patient', function($query) use ($user) {
-                // Only match by exact email - more strict filtering
-                $query->where('email', $user->email);
+        // Get all pre-employment examinations for this patient
+        // Show all completed examinations regardless of status
+        // Check both patient relationship (User model) and preEmploymentRecord relationship
+        $preEmploymentResults = PreEmploymentExamination::where(function($query) use ($user) {
+                // Check patient relationship (patient_id -> users table)
+                $query->whereHas('patient', function($q) use ($user) {
+                    $q->where('email', $user->email);
+                })
+                // OR check preEmploymentRecord relationship
+                ->orWhereHas('preEmploymentRecord', function($q) use ($user) {
+                    $q->where('email', $user->email);
+                });
             })
             ->with(['preEmploymentRecord', 'patient'])
             ->orderBy('updated_at', 'desc')
             ->get();
         
-        // Get annual physical examinations sent to this patient
-        // Include examinations sent to patient only or sent to both patient and company
-        $annualPhysicalResults = AnnualPhysicalExamination::whereIn('status', ['sent_to_patient', 'sent_to_both'])
-            ->whereHas('patient', function($query) use ($user) {
+        // Get all annual physical examinations for this patient
+        // Show all completed examinations regardless of status
+        $annualPhysicalResults = AnnualPhysicalExamination::whereHas('patient', function($query) use ($user) {
                 $query->where('email', $user->email);
             })
             ->with(['patient'])
@@ -86,9 +92,15 @@ class PatientController extends Controller
         $user = Auth::user();
         
         $examination = PreEmploymentExamination::where('id', $id)
-            ->whereIn('status', ['sent_to_patient', 'sent_to_both'])
-            ->whereHas('preEmploymentRecord', function($query) use ($user) {
-                $query->where('email', $user->email);
+            ->where(function($query) use ($user) {
+                // Check patient relationship (patient_id -> users table)
+                $query->whereHas('patient', function($q) use ($user) {
+                    $q->where('email', $user->email);
+                })
+                // OR check preEmploymentRecord relationship
+                ->orWhereHas('preEmploymentRecord', function($q) use ($user) {
+                    $q->where('email', $user->email);
+                });
             })
             ->with(['preEmploymentRecord', 'drugTestResults'])
             ->firstOrFail();
@@ -104,7 +116,6 @@ class PatientController extends Controller
         $user = Auth::user();
         
         $examination = AnnualPhysicalExamination::where('id', $id)
-            ->whereIn('status', ['sent_to_patient', 'sent_to_both'])
             ->whereHas('patient', function($query) use ($user) {
                 $query->where('email', $user->email);
             })

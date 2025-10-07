@@ -26,7 +26,11 @@ class CompanyController extends Controller
             ->get();
             
         // Get pre-employment records for the current company user
+        // Exclude records that have already been sent (have corresponding examination with sent status)
         $preEmploymentRecords = PreEmploymentRecord::where('created_by', $user->id)
+            ->whereDoesntHave('preEmploymentExamination', function($query) {
+                $query->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both']);
+            })
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
@@ -42,8 +46,12 @@ class CompanyController extends Controller
             
         $totalAppointmentsCount = Appointment::where('created_by', $user->id)->count();
         
-        // Calculate pre-employment statistics
-        $totalPreEmploymentCount = PreEmploymentRecord::where('created_by', $user->id)->count();
+        // Calculate pre-employment statistics (exclude sent records)
+        $totalPreEmploymentCount = PreEmploymentRecord::where('created_by', $user->id)
+            ->whereDoesntHave('preEmploymentExamination', function($query) {
+                $query->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both']);
+            })
+            ->count();
         
         return view('company.dashboard', compact(
             'appointments',
@@ -112,12 +120,27 @@ class CompanyController extends Controller
             
         // Get sent examination results from admin
         // Include sent_to_company, sent_to_patient, and sent_to_both for pre-employment
-        $sentPreEmploymentResults = \App\Models\PreEmploymentExamination::where('company_name', $user->company)
+        // Match by company name (case-insensitive) OR by created_by user
+        $sentPreEmploymentResults = \App\Models\PreEmploymentExamination::with('preEmploymentRecord')
+            ->where(function($query) use ($user) {
+                $query->whereRaw('LOWER(TRIM(company_name)) = ?', [strtolower(trim($user->company))])
+                      ->orWhereHas('preEmploymentRecord', function($q) use ($user) {
+                          $q->where('created_by', $user->id);
+                      });
+            })
             ->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both'])
             ->orderBy('updated_at', 'desc')
             ->get();
             
-        $sentAnnualPhysicalResults = \App\Models\AnnualPhysicalExamination::where('status', 'sent_to_company')
+        // Log for debugging
+        \Log::info('Company medical results query', [
+            'user_company' => $user->company,
+            'user_id' => $user->id,
+            'sent_pre_employment_count' => $sentPreEmploymentResults->count()
+        ]);
+            
+        $sentAnnualPhysicalResults = \App\Models\AnnualPhysicalExamination::with('patient.appointment')
+            ->where('status', 'sent_to_company')
             ->whereHas('patient.appointment', function($query) use ($user) {
                 $query->where('created_by', $user->id);
             })
@@ -153,6 +176,15 @@ class CompanyController extends Controller
         $totalSentAnnualPhysical = $sentAnnualPhysicalResults->count();
         $totalSentPreEmployment = $sentPreEmploymentResults->count();
         
+        // Calculate total prices for sent results
+        $totalPriceAnnualPhysical = $sentAnnualPhysicalResults->sum(function($exam) {
+            return $exam->patient && $exam->patient->appointment ? $exam->patient->appointment->total_price : 0;
+        });
+        
+        $totalPricePreEmployment = $sentPreEmploymentResults->sum(function($exam) {
+            return $exam->preEmploymentRecord ? $exam->preEmploymentRecord->total_price : 0;
+        });
+        
         return view('company.medical-results', compact(
             'annualPhysicalResults',
             'preEmploymentResults',
@@ -165,6 +197,8 @@ class CompanyController extends Controller
             'failedPreEmployment',
             'totalSentAnnualPhysical',
             'totalSentPreEmployment',
+            'totalPriceAnnualPhysical',
+            'totalPricePreEmployment',
             'statusFilter'
         ));
     }
@@ -182,7 +216,12 @@ class CompanyController extends Controller
             'preEmploymentRecord.preEmploymentMedicalTests.medicalTestCategory'
         ])
             ->where('id', $id)
-            ->where('company_name', $user->company)
+            ->where(function($query) use ($user) {
+                $query->whereRaw('LOWER(TRIM(company_name)) = ?', [strtolower(trim($user->company))])
+                      ->orWhereHas('preEmploymentRecord', function($q) use ($user) {
+                          $q->where('created_by', $user->id);
+                      });
+            })
             ->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both'])
             ->firstOrFail();
             
@@ -216,7 +255,12 @@ class CompanyController extends Controller
     {
         $user = Auth::user();
         $examination = \App\Models\PreEmploymentExamination::where('id', $id)
-            ->where('company_name', $user->company)
+            ->where(function($query) use ($user) {
+                $query->whereRaw('LOWER(TRIM(company_name)) = ?', [strtolower(trim($user->company))])
+                      ->orWhereHas('preEmploymentRecord', function($q) use ($user) {
+                          $q->where('created_by', $user->id);
+                      });
+            })
             ->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both'])
             ->firstOrFail();
             

@@ -73,6 +73,43 @@ class PreEmploymentExamination extends Model
         return $this->hasMany(DrugTestResult::class);
     }
 
+    /**
+     * Get the total price from the appointment via patient relationship
+     */
+    public function getTotalPriceFromAppointment(): ?float
+    {
+        // Get the patient associated with this examination
+        $patient = $this->patient;
+        
+        if (!$patient) {
+            return null;
+        }
+        
+        // Get the appointment associated with the patient
+        $appointment = $patient->appointment;
+        
+        if (!$appointment) {
+            return null;
+        }
+        
+        // Return the total price from the appointment
+        return $appointment->total_price;
+    }
+
+    /**
+     * Get formatted total price from appointment
+     */
+    public function getFormattedTotalPriceFromAppointment(): string
+    {
+        $totalPrice = $this->getTotalPriceFromAppointment();
+        
+        if ($totalPrice === null) {
+            return 'N/A';
+        }
+        
+        return '₱' . number_format($totalPrice, 2);
+    }
+
     protected function name(): Attribute
     {
         return Attribute::make(
@@ -101,39 +138,61 @@ class PreEmploymentExamination extends Model
     public function calculateFitnessAssessment()
     {
         $lab = $this->lab_report ?? [];
+        $labFindings = $this->lab_findings ?? [];
         $drugTest = $this->drug_test ?? [];
         $physicalFindings = $this->physical_findings ?? [];
         
         // Count drug test positive results
         $drugPositiveCount = 0;
         
-        // Since result fields are not being saved, use remarks to determine results
-        $methRemarks = $drugTest['methamphetamine_remarks'] ?? '';
-        $mariRemarks = $drugTest['marijuana_remarks'] ?? '';
+        // Get actual result fields (methamphetamine_result and marijuana_result)
+        $methResult = $drugTest['methamphetamine_result'] ?? '';
+        $mariResult = $drugTest['marijuana_result'] ?? '';
         
-        // Interpret remarks as results
-        $methResult = '';
-        if (in_array(strtolower(trim($methRemarks)), ['with findings', 'positive', 'abnormal', 'detected'])) {
-            $methResult = 'Positive';
+        // Count positive results
+        if (strtolower(trim($methResult)) === 'positive') {
             $drugPositiveCount++;
-        } elseif (in_array(strtolower(trim($methRemarks)), ['normal', 'negative', 'no findings', 'not detected'])) {
-            $methResult = 'Negative';
         }
         
-        $mariResult = '';
-        if (in_array(strtolower(trim($mariRemarks)), ['with findings', 'positive', 'abnormal', 'detected'])) {
-            $mariResult = 'Positive';
+        if (strtolower(trim($mariResult)) === 'positive') {
             $drugPositiveCount++;
-        } elseif (in_array(strtolower(trim($mariRemarks)), ['normal', 'negative', 'no findings', 'not detected'])) {
-            $mariResult = 'Negative';
         }
         
         // Count "Not normal" results from medical tests (excluding drug test)
+        // Check both lab_report (legacy) and lab_findings (current Laboratory Test Results section)
         $medicalNotNormalCount = 0;
-        $medicalTests = ['chest_xray_result', 'urinalysis_result', 'fecalysis_result', 'cbc_result', 'hbsag_screening_result', 'hepa_a_igg_igm_result', 'fbs_result', 'bua_result', 'additional_exams_results'];
         
-        foreach($medicalTests as $test) {
-            $result = data_get($lab, $test, '');
+        // Laboratory Test Results section stores data in lab_report with _result suffix
+        $labTestFields = [
+            'cbc' => 'CBC',
+            'urinalysis' => 'Urinalysis', 
+            'fecalysis' => 'Fecalysis',
+            'sodium' => 'Sodium',
+            'potassium' => 'Potassium',
+            'fbs' => 'FBS',
+            'bua' => 'BUA',
+            'cholesterol' => 'Cholesterol',
+            'creatinine' => 'Creatinine',
+            'hbsag_screening' => 'HBsAg Screening',
+            'hepa_a_igg_igm' => 'HEPA A IGG & IGM',
+            'xray' => 'Chest X-Ray' // Note: chest_x_ray becomes 'xray' in the view
+        ];
+        
+        foreach($labTestFields as $fieldKey => $displayName) {
+            $result = '';
+            
+            // Check lab_findings first (for radiologist data like chest x-ray)
+            if ($fieldKey === 'xray') {
+                $result = data_get($labFindings, 'chest_xray.result', '');
+            } else {
+                $result = data_get($labFindings, $fieldKey . '.result', '');
+            }
+            
+            // If not found in lab_findings, check lab_report with _result suffix (current Laboratory Test Results section)
+            if (empty($result)) {
+                $result = data_get($lab, $fieldKey . '_result', '') ?: data_get($lab, $fieldKey, '');
+            }
+            
             if (in_array(strtolower(trim($result)), ['not normal', 'abnormal', 'positive'])) {
                 $medicalNotNormalCount++;
             }
@@ -189,11 +248,24 @@ class PreEmploymentExamination extends Model
         ];
         
         // Add abnormal test details
-        foreach($medicalTests as $test) {
-            $result = data_get($lab, $test, '');
+        foreach($labTestFields as $fieldKey => $displayName) {
+            $result = '';
+            
+            // Check lab_findings first (for radiologist data like chest x-ray)
+            if ($fieldKey === 'xray') {
+                $result = data_get($labFindings, 'chest_xray.result', '');
+            } else {
+                $result = data_get($labFindings, $fieldKey . '.result', '');
+            }
+            
+            // If not found in lab_findings, check lab_report with _result suffix (current Laboratory Test Results section)
+            if (empty($result)) {
+                $result = data_get($lab, $fieldKey . '_result', '') ?: data_get($lab, $fieldKey, '');
+            }
+            
             if (in_array(strtolower(trim($result)), ['not normal', 'abnormal', 'positive'])) {
                 $details['medical_results']['abnormal_tests'][] = [
-                    'test' => $test,
+                    'test' => $displayName,
                     'result' => $result
                 ];
             }
