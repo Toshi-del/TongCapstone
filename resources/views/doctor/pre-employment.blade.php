@@ -50,7 +50,7 @@
                     <i class="fas fa-exclamation-triangle mr-2 text-xs"></i>
                     Needs Attention
                     <span class="ml-2 inline-flex items-center justify-center w-5 h-5 bg-yellow-500 text-white rounded-full text-xs font-bold">
-                        {{ isset($allExaminations) ? $allExaminations->whereIn('status', ['pending', 'collection_completed', 'Pending'])->count() : 0 }}
+                        {{ isset($allExaminations) ? $allExaminations->whereIn('status', ['Pending', 'pending', 'collection_completed'])->count() : 0 }}
                     </span>
                 </a>
                 <a href="{{ route('doctor.pre-employment', ['filter' => 'submitted']) }}" 

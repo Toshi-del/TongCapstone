@@ -137,14 +137,14 @@ class RadtechController extends Controller
         if ($xrayStatus === 'needs_attention') {
             // Records that need X-ray imaging (no chest_xray_done_by)
             $query->whereDoesntHave('medicalChecklists', function ($q) {
-                $q->where('examination_type', 'annual-physical')
+                $q->where('examination_type', 'annual_physical')
                   ->whereNotNull('chest_xray_done_by')
                   ->where('chest_xray_done_by', '!=', '');
             });
         } elseif ($xrayStatus === 'xray_completed') {
             // Records where X-ray imaging is completed
             $query->whereHas('medicalChecklists', function ($q) {
-                $q->where('examination_type', 'annual-physical')
+                $q->where('examination_type', 'annual_physical')
                   ->whereNotNull('chest_xray_done_by')
                   ->where('chest_xray_done_by', '!=', '');
             });
@@ -210,8 +210,29 @@ class RadtechController extends Controller
     public function showMedicalChecklistAnnualPhysical($patientId)
     {
         $patient = Patient::findOrFail($patientId);
-        $medicalChecklist = MedicalChecklist::where('patient_id', $patientId)->first();
-        $examinationType = 'annual-physical';
+        
+        // Find the most recent examination record for this patient
+        $annualPhysicalExamination = \App\Models\AnnualPhysicalExamination::where('patient_id', $patientId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        // Try to find checklist linked to this examination
+        $medicalChecklist = null;
+        if ($annualPhysicalExamination) {
+            $medicalChecklist = MedicalChecklist::where('annual_physical_examination_id', $annualPhysicalExamination->id)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->first();
+        }
+        
+        // Fallback: check by patient_id for unlinked checklists
+        if (!$medicalChecklist) {
+            $medicalChecklist = MedicalChecklist::where('patient_id', $patientId)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->whereNull('annual_physical_examination_id')
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        $examinationType = 'annual_physical';
         
         $examinations = [
             'chest_xray' => ['name' => 'Chest X-Ray', 'icon' => 'fas fa-x-ray', 'color' => 'cyan'],
@@ -317,9 +338,9 @@ class RadtechController extends Controller
     {
         try {
             $validated = $request->validate([
-                'examination_type' => 'required|in:pre-employment,annual-physical',
+                'examination_type' => 'required|in:pre-employment,annual_physical',
                 'pre_employment_record_id' => 'required_if:examination_type,pre-employment|nullable|exists:pre_employment_records,id',
-                'patient_id' => 'required_if:examination_type,annual-physical|nullable|exists:patients,id',
+                'patient_id' => 'required_if:examination_type,annual_physical|nullable|exists:patients,id',
                 'name' => 'required|string|max:255',
                 'date' => 'required|date',
                 'age' => 'required|integer|min:0',
@@ -339,16 +360,44 @@ class RadtechController extends Controller
         if ($validated['examination_type'] === 'pre-employment' && $request->filled('pre_employment_record_id')) {
             $validated['pre_employment_record_id'] = (int)$request->input('pre_employment_record_id');
         }
-        if ($validated['examination_type'] === 'annual-physical') {
-            if ($request->filled('annual_physical_examination_id')) {
-                $validated['annual_physical_examination_id'] = (int)$request->input('annual_physical_examination_id');
-            }
+        if ($validated['examination_type'] === 'annual_physical') {
             if ($request->filled('patient_id')) {
                 $validated['patient_id'] = (int)$request->input('patient_id');
+                
+                // Find or create annual physical examination and link it
+                $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $validated['patient_id'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if (!$annualPhysicalExam) {
+                    $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::create([
+                        'patient_id' => $validated['patient_id'],
+                        'status' => 'Pending'
+                    ]);
+                }
+                
+                $validated['annual_physical_examination_id'] = $annualPhysicalExam->id;
             }
         }
 
-        $medicalChecklist = MedicalChecklist::create($validated);
+        // Check for existing checklist to update instead of creating duplicate
+        $existingChecklist = null;
+        if (!empty($validated['annual_physical_examination_id'])) {
+            $existingChecklist = MedicalChecklist::where('annual_physical_examination_id', $validated['annual_physical_examination_id'])
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->first();
+        } elseif (!empty($validated['pre_employment_record_id'])) {
+            $existingChecklist = MedicalChecklist::where('pre_employment_record_id', $validated['pre_employment_record_id'])
+                ->whereIn('examination_type', ['pre_employment', 'pre-employment'])
+                ->first();
+        }
+        
+        if ($existingChecklist) {
+            $existingChecklist->update($validated);
+            $medicalChecklist = $existingChecklist;
+        } else {
+            $medicalChecklist = MedicalChecklist::create($validated);
+        }
 
         // Create notification for admin when X-ray is completed
         if (!empty($validated['chest_xray_done_by'])) {
@@ -378,7 +427,7 @@ class RadtechController extends Controller
         if ($validated['examination_type'] === 'pre-employment') {
             return redirect()->route('radtech.pre-employment-xray')
                 ->with('success', 'X-ray information saved successfully.');
-        } elseif ($validated['examination_type'] === 'annual-physical') {
+        } elseif ($validated['examination_type'] === 'annual_physical') {
             return redirect()->route('radtech.annual-physical-xray')
                 ->with('success', 'X-ray information saved successfully.');
         }

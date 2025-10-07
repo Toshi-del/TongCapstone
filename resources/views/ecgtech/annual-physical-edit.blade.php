@@ -67,7 +67,8 @@
                     <h3 class="text-lg font-bold text-gray-900">Patient Information</h3>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- First Row: Name and Age -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                     <div class="bg-white rounded-lg p-4 border border-gray-200">
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Patient Name</label>
                         <div class="text-lg font-semibold text-gray-900">{{ $annualPhysical->patient->first_name }} {{ $annualPhysical->patient->last_name }}</div>
@@ -76,13 +77,17 @@
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Age</label>
                         <div class="text-lg font-semibold text-gray-900">{{ $annualPhysical->patient->age }} years</div>
                     </div>
+                </div>
+
+                <!-- Second Row: Gender and Email -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white rounded-lg p-4 border border-gray-200">
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Gender</label>
                         <div class="text-lg font-semibold text-gray-900">{{ $annualPhysical->patient->sex }}</div>
                     </div>
                     <div class="bg-white rounded-lg p-4 border border-gray-200">
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
-                        <div class="text-lg font-semibold text-gray-900">{{ $annualPhysical->patient->email }}</div>
+                        <div class="text-sm font-semibold text-gray-900 break-all">{{ $annualPhysical->patient->email }}</div>
                     </div>
                 </div>
             </div>

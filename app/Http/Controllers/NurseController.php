@@ -185,35 +185,67 @@ class NurseController extends Controller
         
         switch ($examStatus) {
             case 'needs_attention':
-                // Patients that need attention (no examination record OR examination with no meaningful lab results)
+                // Patients that need attention (no examination OR examination with no meaningful data)
                 $query->where(function($mainQuery) {
                     // Patients without any annual physical examination record
                     $mainQuery->whereDoesntHave('annualPhysicalExamination')
-                    // OR patients with examination record but no meaningful lab results
+                    // OR patients with examination but no meaningful data filled
                     ->orWhereHas('annualPhysicalExamination', function($q) {
                         $q->where(function($subQuery) {
-                            $subQuery->whereNull('lab_report')
-                                     ->orWhere('lab_report', '[]')
-                                     ->orWhere('lab_report', '{}')
-                                     ->orWhere('lab_report', 'null')
-                                     ->orWhereRaw("JSON_LENGTH(lab_report) = 0")
-                                     ->orWhereRaw("CHAR_LENGTH(lab_report) <= 2");
+                            // No physical exam data
+                            $subQuery->where(function($sq) {
+                                $sq->whereNull('physical_exam')
+                                   ->orWhere('physical_exam', '[]')
+                                   ->orWhere('physical_exam', '{}');
+                            })
+                            // AND no lab report data
+                            ->where(function($sq) {
+                                $sq->whereNull('lab_report')
+                                   ->orWhere('lab_report', '[]')
+                                   ->orWhere('lab_report', '{}');
+                            })
+                            // AND no findings
+                            ->where(function($sq) {
+                                $sq->whereNull('findings')
+                                   ->orWhere('findings', '');
+                            })
+                            // AND no illness history
+                            ->where(function($sq) {
+                                $sq->whereNull('illness_history')
+                                   ->orWhere('illness_history', '');
+                            });
                         });
                     });
                 });
                 break;
                 
             case 'exam_completed':
-                // Patients with meaningful lab results (completed examinations)
+                // Patients with completed examinations (has meaningful data)
                 $query->whereHas('annualPhysicalExamination', function($q) {
-                    $q->whereNotNull('lab_report')
-                      ->where('lab_report', '!=', '[]')
-                      ->where('lab_report', '!=', '{}')
-                      ->where('lab_report', '!=', 'null')
-                      ->where(function($subQuery) {
-                          $subQuery->whereRaw("JSON_LENGTH(lab_report) > 0")
-                                   ->orWhereRaw("CHAR_LENGTH(lab_report) > 2");
-                      });
+                    $q->where(function($subQuery) {
+                        // Has physical exam data OR
+                        $subQuery->where(function($sq) {
+                            $sq->whereNotNull('physical_exam')
+                               ->where('physical_exam', '!=', '[]')
+                               ->where('physical_exam', '!=', '{}');
+                        })
+                        // Has lab report data OR
+                        ->orWhere(function($sq) {
+                            $sq->whereNotNull('lab_report')
+                               ->where('lab_report', '!=', '[]')
+                               ->where('lab_report', '!=', '{}');
+                        })
+                        // Has findings OR
+                        ->orWhere(function($sq) {
+                            $sq->whereNotNull('findings')
+                               ->where('findings', '!=', '');
+                        })
+                        // Has illness history
+                        ->orWhere(function($sq) {
+                            $sq->whereNotNull('illness_history')
+                               ->where('illness_history', '!=', '');
+                        });
+                    });
                 });
                 break;
                 
@@ -364,12 +396,14 @@ class NurseController extends Controller
     public function showMedicalChecklistPreEmployment($recordId)
     {
         $preEmploymentRecord = PreEmploymentRecord::findOrFail($recordId);
-        $medicalChecklist = \App\Models\MedicalChecklist::where('pre_employment_record_id', $recordId)->first();
-        $examinationType = 'pre-employment';
-        $number = 'EMP-' . str_pad($preEmploymentRecord->id, 4, '0', STR_PAD_LEFT);
+        $medicalChecklist = \App\Models\MedicalChecklist::where('pre_employment_record_id', $recordId)
+            ->where('examination_type', 'pre_employment')
+            ->first();
+        $examinationType = 'pre_employment';
+        $number = $medicalChecklist->number ?? ('PPEP-' . str_pad($preEmploymentRecord->id, 4, '0', STR_PAD_LEFT));
         $name = trim(($preEmploymentRecord->first_name ?? '') . ' ' . ($preEmploymentRecord->last_name ?? ''));
         $age = $preEmploymentRecord->age ?? null;
-        $date = now()->format('Y-m-d');
+        $date = $medicalChecklist->date ?? now()->format('Y-m-d');
         
         return view('nurse.medical-checklist', compact('medicalChecklist', 'preEmploymentRecord', 'examinationType', 'number', 'name', 'age', 'date'));
     }
@@ -380,11 +414,36 @@ class NurseController extends Controller
     public function showMedicalChecklistAnnualPhysical($patientId)
     {
         $patient = Patient::findOrFail($patientId);
-        $annualPhysicalExamination = \App\Models\AnnualPhysicalExamination::where('patient_id', $patientId)->first();
-        $medicalChecklist = \App\Models\MedicalChecklist::where('annual_physical_examination_id', $annualPhysicalExamination->id ?? 0)->first();
-        $examinationType = 'annual-physical';
         
-        return view('nurse.medical-checklist', compact('medicalChecklist', 'patient', 'annualPhysicalExamination', 'examinationType'));
+        // Find the most recent examination record for this patient
+        $annualPhysicalExamination = \App\Models\AnnualPhysicalExamination::where('patient_id', $patientId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        // Try to find checklist linked to this examination
+        $medicalChecklist = null;
+        if ($annualPhysicalExamination) {
+            $medicalChecklist = \App\Models\MedicalChecklist::where('annual_physical_examination_id', $annualPhysicalExamination->id)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->first();
+        }
+        
+        // If no checklist found, also check by patient_id (for legacy records)
+        if (!$medicalChecklist) {
+            $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patientId)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->whereNull('annual_physical_examination_id') // Only unlinked checklists
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        
+        $examinationType = 'annual_physical';
+        $number = $medicalChecklist->number ?? ('APMC-' . str_pad($patient->id, 4, '0', STR_PAD_LEFT) . '-' . date('Ymd'));
+        $name = $patient->full_name;
+        $age = $patient->age;
+        $date = $medicalChecklist->date ?? now()->format('Y-m-d');
+        
+        return view('nurse.medical-checklist', compact('medicalChecklist', 'patient', 'annualPhysicalExamination', 'examinationType', 'number', 'name', 'age', 'date'));
     }
 
     /**
@@ -402,6 +461,13 @@ class NurseController extends Controller
             'patient_id' => 'nullable|integer',
             'annual_physical_examination_id' => 'nullable|integer',
             'opd_examination_id' => 'nullable|integer',
+            // All examination fields
+            'chest_xray_done_by' => 'nullable|string',
+            'stool_exam_done_by' => 'nullable|string',
+            'urinalysis_done_by' => 'nullable|string',
+            'drug_test_done_by' => 'nullable|string',
+            'blood_extraction_done_by' => 'nullable|string',
+            'ecg_done_by' => 'nullable|string',
             'physical_exam_done_by' => 'nullable|string',
             'optional_exam' => 'nullable|string',
             'nurse_signature' => 'nullable|string',
@@ -409,7 +475,59 @@ class NurseController extends Controller
 
         $validated['user_id'] = Auth::id();
 
-        $checklist = \App\Models\MedicalChecklist::create($validated);
+        // For annual physical: create examination record if it doesn't exist and link it
+        if (($validated['examination_type'] === 'annual_physical' || $validated['examination_type'] === 'annual-physical') 
+            && !empty($validated['patient_id'])) {
+            
+            // Find or create the examination record
+            $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $validated['patient_id'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            if (!$annualPhysicalExam) {
+                // Create new examination record
+                $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::create([
+                    'patient_id' => $validated['patient_id'],
+                    'status' => 'Pending'
+                ]);
+            }
+            
+            // Link the checklist to this examination
+            $validated['annual_physical_examination_id'] = $annualPhysicalExam->id;
+        }
+
+        // Check for existing checklist to prevent duplicates
+        $existingChecklist = null;
+        
+        if (!empty($validated['pre_employment_record_id'])) {
+            $existingChecklist = \App\Models\MedicalChecklist::where('pre_employment_record_id', $validated['pre_employment_record_id'])
+                ->whereIn('examination_type', [$validated['examination_type'], str_replace('_', '-', $validated['examination_type'])])
+                ->first();
+        } elseif (!empty($validated['annual_physical_examination_id'])) {
+            $existingChecklist = \App\Models\MedicalChecklist::where('annual_physical_examination_id', $validated['annual_physical_examination_id'])
+                ->whereIn('examination_type', [$validated['examination_type'], str_replace('_', '-', $validated['examination_type'])])
+                ->first();
+        } elseif (!empty($validated['patient_id'])) {
+            $existingChecklist = \App\Models\MedicalChecklist::where('patient_id', $validated['patient_id'])
+                ->whereIn('examination_type', [$validated['examination_type'], str_replace('_', '-', $validated['examination_type'])])
+                ->whereNull('annual_physical_examination_id') // Only unlinked checklists
+                ->first();
+        } elseif (!empty($validated['opd_examination_id'])) {
+            $existingChecklist = \App\Models\MedicalChecklist::where('opd_examination_id', $validated['opd_examination_id'])
+                ->whereIn('examination_type', [$validated['examination_type'], str_replace('_', '-', $validated['examination_type'])])
+                ->first();
+        }
+
+        if ($existingChecklist) {
+            // Update existing checklist
+            $existingChecklist->update($validated);
+            $checklist = $existingChecklist;
+            $action = 'updated';
+        } else {
+            // Create new checklist
+            $checklist = \App\Models\MedicalChecklist::create($validated);
+            $action = 'created';
+        }
 
         // Create notification for admin when medical checklist is completed
         if (!empty($validated['physical_exam_done_by'])) {
@@ -438,15 +556,22 @@ class NurseController extends Controller
         $workflowService = new MedicalWorkflowService();
         $workflowService->onMedicalChecklistUpdated($checklist);
 
-        // Redirect out of the checklist page back to the appropriate list
+        // Redirect back to the same checklist page with success message
         $redirectRoute = match($validated['examination_type']) {
-            'pre-employment' => 'nurse.pre-employment',
-            'annual-physical' => 'nurse.annual-physical',
-            'opd' => 'nurse.opd',
+            'pre-employment', 'pre_employment' => 'nurse.medical-checklist.pre-employment',
+            'annual-physical', 'annual_physical' => 'nurse.medical-checklist.annual-physical',
+            'opd' => 'nurse.medical-checklist.opd',
             default => 'nurse.dashboard'
         };
+        
+        $redirectParams = match($validated['examination_type']) {
+            'pre-employment', 'pre_employment' => $validated['pre_employment_record_id'] ?? null,
+            'annual-physical', 'annual_physical' => $validated['patient_id'] ?? null,
+            'opd' => $validated['opd_examination_id'] ?? null,
+            default => null
+        };
 
-        return redirect()->route($redirectRoute)->with('success', 'Medical checklist created successfully.');
+        return redirect()->route($redirectRoute, $redirectParams)->with('success', 'Medical checklist ' . $action . ' successfully. You can now proceed to create the examination form.');
     }
 
     /**
@@ -461,6 +586,13 @@ class NurseController extends Controller
             'date' => 'required|date',
             'age' => 'required|integer',
             'number' => 'nullable|string',
+            // All examination fields
+            'chest_xray_done_by' => 'nullable|string',
+            'stool_exam_done_by' => 'nullable|string',
+            'urinalysis_done_by' => 'nullable|string',
+            'drug_test_done_by' => 'nullable|string',
+            'blood_extraction_done_by' => 'nullable|string',
+            'ecg_done_by' => 'nullable|string',
             'physical_exam_done_by' => 'nullable|string',
             'optional_exam' => 'nullable|string',
             'nurse_signature' => 'nullable|string',
@@ -495,15 +627,23 @@ class NurseController extends Controller
         $workflowService = new MedicalWorkflowService();
         $workflowService->onMedicalChecklistUpdated($medicalChecklist);
 
-        // Redirect out of the checklist page back to the appropriate list
-        $redirectRoute = match($request->input('examination_type')) {
-            'pre-employment' => 'nurse.pre-employment',
-            'annual-physical' => 'nurse.annual-physical',
-            'opd' => 'nurse.opd',
+        // Redirect back to the same checklist page with success message
+        $examinationType = $request->input('examination_type');
+        $redirectRoute = match($examinationType) {
+            'pre-employment', 'pre_employment' => 'nurse.medical-checklist.pre-employment',
+            'annual-physical', 'annual_physical' => 'nurse.medical-checklist.annual-physical',
+            'opd' => 'nurse.medical-checklist.opd',
             default => 'nurse.dashboard'
         };
+        
+        $redirectParams = match($examinationType) {
+            'pre-employment', 'pre_employment' => $medicalChecklist->pre_employment_record_id ?? null,
+            'annual-physical', 'annual_physical' => $medicalChecklist->patient_id ?? null,
+            'opd' => $medicalChecklist->opd_examination_id ?? null,
+            default => null
+        };
 
-        return redirect()->route($redirectRoute)->with('success', 'Medical checklist updated successfully.');
+        return redirect()->route($redirectRoute, $redirectParams)->with('success', 'Medical checklist updated successfully. You can now proceed to create the examination form.');
     }
 
     /**
@@ -668,14 +808,30 @@ class NurseController extends Controller
         $recordId = $request->query('record_id');
         $preEmploymentRecord = PreEmploymentRecord::with(['medicalTest'])->findOrFail($recordId);
         
-        // Check if medical checklist exists and is completed
+        // Check if medical checklist exists and is completed (check both formats)
         $medicalChecklist = \App\Models\MedicalChecklist::where('pre_employment_record_id', $recordId)
-            ->where('examination_type', 'pre-employment')
+            ->whereIn('examination_type', ['pre-employment', 'pre_employment'])
             ->first();
         
-        if (!$medicalChecklist || empty($medicalChecklist->physical_exam_done_by)) {
+        // Check if checklist exists
+        if (!$medicalChecklist) {
             return redirect()->route('nurse.medical-checklist.pre-employment', $recordId)
-                ->with('error', 'Please complete the medical checklist before creating the examination form.');
+                ->with('error', 'Medical checklist not found. Please create and complete the checklist first.');
+        }
+        
+        // Check if physical exam is signed
+        if (empty($medicalChecklist->physical_exam_done_by)) {
+            return redirect()->route('nurse.medical-checklist.pre-employment', $recordId)
+                ->with('error', 'Please sign the Physical Examination field in the medical checklist before creating the examination form.');
+        }
+        
+        // For drug test examinations, also check if drug test is signed
+        $medicalTestName = strtolower($preEmploymentRecord->medicalTest->name ?? '');
+        $requiresDrugTest = str_contains($medicalTestName, 'drug test');
+        
+        if ($requiresDrugTest && empty($medicalChecklist->drug_test_done_by)) {
+            return redirect()->route('nurse.medical-checklist.pre-employment', $recordId)
+                ->with('error', 'Please sign the Drug Test field in the medical checklist before creating the examination form.');
         }
         
         return view('nurse.pre-employment-create', compact('preEmploymentRecord'));
@@ -785,14 +941,47 @@ class NurseController extends Controller
         $patientId = $request->query('patient_id');
         $patient = Patient::with(['appointment.medicalTest', 'appointment', 'medicalTests'])->findOrFail($patientId);
         
-        // Check if medical checklist exists and is completed
-        $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patientId)
-            ->where('examination_type', 'annual-physical')
+        // Get the most recent examination record
+        $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $patientId)
+            ->orderBy('created_at', 'desc')
             ->first();
         
-        if (!$medicalChecklist || empty($medicalChecklist->physical_exam_done_by)) {
+        // Check if medical checklist exists and is completed (linked to examination)
+        $medicalChecklist = null;
+        if ($annualPhysicalExam) {
+            $medicalChecklist = \App\Models\MedicalChecklist::where('annual_physical_examination_id', $annualPhysicalExam->id)
+                ->whereIn('examination_type', ['annual-physical', 'annual_physical'])
+                ->first();
+        }
+        
+        // Fallback: check by patient_id for unlinked checklists
+        if (!$medicalChecklist) {
+            $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patientId)
+                ->whereIn('examination_type', ['annual-physical', 'annual_physical'])
+                ->whereNull('annual_physical_examination_id')
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        
+        // Check if checklist exists
+        if (!$medicalChecklist) {
             return redirect()->route('nurse.medical-checklist.annual-physical', $patientId)
-                ->with('error', 'Please complete the medical checklist before creating the examination form.');
+                ->with('error', 'Medical checklist not found. Please create and complete the checklist first.');
+        }
+        
+        // Check if physical exam is signed
+        if (empty($medicalChecklist->physical_exam_done_by)) {
+            return redirect()->route('nurse.medical-checklist.annual-physical', $patientId)
+                ->with('error', 'Please sign the Physical Examination field in the medical checklist before creating the examination form.');
+        }
+        
+        // For drug test examinations, also check if drug test is signed
+        $medicalTestName = strtolower($patient->appointment->medicalTest->name ?? '');
+        $requiresDrugTest = str_contains($medicalTestName, 'drug test');
+        
+        if ($requiresDrugTest && empty($medicalChecklist->drug_test_done_by)) {
+            return redirect()->route('nurse.medical-checklist.annual-physical', $patientId)
+                ->with('error', 'Please sign the Drug Test field in the medical checklist before creating the examination form.');
         }
         
         return view('nurse.annual-physical-create', compact('patient'));
@@ -833,6 +1022,7 @@ class NurseController extends Controller
             'physical_findings' => 'nullable|array',
             'lab_findings' => 'nullable|array',
             'ecg' => 'nullable|string',
+            'drug_test' => 'nullable|array',
         ];
 
         // Dynamic validation messages

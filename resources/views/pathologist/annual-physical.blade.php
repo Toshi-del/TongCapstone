@@ -58,7 +58,7 @@
                                 ->where(function($mainQuery) {
                                     // Patients with plebo medical-checklist completed (blood extraction done)
                                     $mainQuery->whereHas('medicalChecklists', function($q) {
-                                        $q->where('examination_type', 'annual-physical')
+                                        $q->where('examination_type', 'annual_physical')
                                           ->whereNotNull('blood_extraction_done_by')
                                           ->where('blood_extraction_done_by', '!=', '');
                                     })
@@ -75,11 +75,16 @@
                                                          ->orWhere('lab_report', 'null')
                                                          ->orWhereRaw("JSON_LENGTH(lab_report) = 0")
                                                          ->orWhereRaw("CHAR_LENGTH(lab_report) <= 2")
-                                                         // Check if lab_report only contains nurse completion data
-                                                         ->orWhere(function($nurseQuery) {
-                                                             $nurseQuery->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.nurse_examination_completed')) = 'true'")
-                                                                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.cbc_result')) IS NULL")
-                                                                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis_result')) IS NULL");
+                                                         // OR lab_report exists but has NO actual pathologist results (only nurse/system data)
+                                                         ->orWhere(function($noActualData) {
+                                                             $noActualData->whereNotNull('lab_report')
+                                                                          ->whereRaw("JSON_LENGTH(lab_report) > 0")
+                                                                          // Check that it does NOT have any actual lab result values
+                                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Normal') IS NULL")
+                                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Not Normal') IS NULL")
+                                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Abnormal') IS NULL")
+                                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Positive') IS NULL")
+                                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Negative') IS NULL");
                                                          });
                                             });
                                         });
@@ -106,7 +111,7 @@
                                     $q->where('status', 'approved');
                                 })
                                 ->whereHas('medicalChecklists', function($q) {
-                                    $q->where('examination_type', 'annual-physical')
+                                    $q->where('examination_type', 'annual_physical')
                                       ->whereNotNull('blood_extraction_done_by')
                                       ->where('blood_extraction_done_by', '!=', '');
                                 })
@@ -116,18 +121,18 @@
                                       ->where('lab_report', '!=', '{}')
                                       ->where('lab_report', '!=', 'null')
                                       ->whereRaw("JSON_LENGTH(lab_report) > 0")
+                                      // Check if lab_report has ANY field with actual data (not just nurse completion flags)
                                       ->where(function($subQuery) {
-                                          // Must have at least one actual pathologist lab result that is NOT "Not available"
-                                          $subQuery->where(function($actualResults) {
-                                              $actualResults->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.cbc_result')) NOT IN ('Not available', '', 'null')")
-                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis_result')) NOT IN ('Not available', '', 'null')")
-                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_exam_result')) NOT IN ('Not available', '', 'null')")
-                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.fbs_result')) NOT IN ('Not available', '', 'null')")
-                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.blood_chemistry_result')) NOT IN ('Not available', '', 'null')")
-                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.complete_blood_count_cbc')) NOT IN ('Not available', '', 'null')")
-                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis')) NOT IN ('Not available', '', 'null')")
-                                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_examination')) NOT IN ('Not available', '', 'null')");
-                                          });
+                                          // Exclude records that only have nurse/system flags
+                                          $subQuery->whereRaw("JSON_LENGTH(lab_report) > 1")
+                                                   // And ensure it's not just nurse completion data
+                                                   ->where(function($hasActualData) {
+                                                       $hasActualData->whereRaw("JSON_SEARCH(lab_report, 'one', 'Normal') IS NOT NULL")
+                                                                    ->orWhereRaw("JSON_SEARCH(lab_report, 'one', 'Not Normal') IS NOT NULL")
+                                                                    ->orWhereRaw("JSON_SEARCH(lab_report, 'one', 'Abnormal') IS NOT NULL")
+                                                                    ->orWhereRaw("JSON_SEARCH(lab_report, 'one', 'Positive') IS NOT NULL")
+                                                                    ->orWhereRaw("JSON_SEARCH(lab_report, 'one', 'Negative') IS NOT NULL");
+                                                   });
                                       });
                                 })
                                 ->count();
@@ -366,7 +371,7 @@
                                 @php
                                     $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $patient->id)->first();
                                     $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patient->id)
-                                        ->where('examination_type', 'annual-physical')
+                                        ->where('examination_type', 'annual_physical')
                                         ->first();
                                     $isCompleted = $annualPhysicalExam && $medicalChecklist;
                                     $canSendToDoctor = $isCompleted;

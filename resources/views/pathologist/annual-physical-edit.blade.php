@@ -367,14 +367,24 @@
 
         <!-- Status and Actions -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <!-- Info Message about Workflow -->
+            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-start space-x-3">
+                    <i class="fas fa-info-circle text-blue-600 mt-1"></i>
+                    <div class="flex-1">
+                        <p class="text-sm text-blue-800 font-medium mb-1">Pathologist Workflow</p>
+                        <p class="text-sm text-blue-700">After completing lab work, the status will remain <strong>Pending</strong> until the doctor reviews and submits the examination to admin. This ensures proper workflow separation.</p>
+                    </div>
+                </div>
+            </div>
+            
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
                     <label class="block text-sm font-semibold text-gray-700">Status:</label>
-                    <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500">
-                        <option value="Pending" {{ old('status', $examination->status) == 'Pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="completed" {{ old('status', $examination->status) == 'completed' ? 'selected' : '' }}>Completed</option>
-                        <option value="sent_to_company" {{ old('status', $examination->status) == 'sent_to_company' ? 'selected' : '' }}>Sent to Company</option>
+                    <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 bg-gray-100" readonly disabled>
+                        <option value="Pending" selected>Pending (Lab Work Completed)</option>
                     </select>
+                    <input type="hidden" name="status" value="Pending">
                 </div>
                 
                 <div class="flex items-center space-x-3">
@@ -383,7 +393,7 @@
                         <i class="fas fa-arrow-left mr-2"></i>Back to List
                     </a>
                     <button type="submit" class="bg-gradient-to-r from-teal-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-teal-700 hover:to-blue-700 transition-all font-semibold">
-                        <i class="fas fa-save mr-2"></i>Update Examination
+                        <i class="fas fa-save mr-2"></i>Save Lab Results
                     </button>
                 </div>
             </div>

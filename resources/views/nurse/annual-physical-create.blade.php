@@ -218,7 +218,7 @@
         </div>
         
         <!-- Vision and Tests Card -->
-        <div class="content-card rounded-xl p-8 shadow-lg border border-gray-200">
+        <div class="mb-6 content-card rounded-xl p-8 shadow-lg border border-gray-200">
             <div class="flex items-center space-x-3 mb-6">
                 <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
                     <i class="fas fa-eye text-emerald-600"></i>
@@ -265,9 +265,9 @@
                         ]);
                     });
                     
-                    // Only show drug test for "ANNUAL MEDICAL WITH DRUG TEST" specifically
+                    // Show drug test if any medical test contains "drug test" in the name
                     $hasDrugTest = collect($medicalTestNames)->contains(function($name) {
-                        return $name === 'annual medical with drug test';
+                        return str_contains($name, 'drug test');
                     });
                 @endphp
                 
@@ -319,7 +319,7 @@
         @endif
 
         <!-- Signature Section -->
-        <div class="content-card rounded-xl p-8 shadow-lg border border-gray-200">
+        <div class="mt-6 content-card rounded-xl p-8 shadow-lg border border-gray-200">
             <div class="flex items-center space-x-3 mb-6">
                 <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                     <i class="fas fa-signature text-gray-600"></i>

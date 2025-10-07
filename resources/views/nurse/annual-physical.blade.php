@@ -104,17 +104,21 @@
                                     $q->where('status', 'approved');
                                 })
                                 ->where(function($mainQuery) {
-                                    // Patients without any annual physical examination record
                                     $mainQuery->whereDoesntHave('annualPhysicalExamination')
-                                    // OR patients with examination record but no meaningful lab results
                                     ->orWhereHas('annualPhysicalExamination', function($q) {
                                         $q->where(function($subQuery) {
-                                            $subQuery->whereNull('lab_report')
-                                                     ->orWhere('lab_report', '[]')
-                                                     ->orWhere('lab_report', '{}')
-                                                     ->orWhere('lab_report', 'null')
-                                                     ->orWhereRaw("JSON_LENGTH(lab_report) = 0")
-                                                     ->orWhereRaw("CHAR_LENGTH(lab_report) <= 2");
+                                            $subQuery->where(function($sq) {
+                                                $sq->whereNull('physical_exam')->orWhere('physical_exam', '[]')->orWhere('physical_exam', '{}');
+                                            })
+                                            ->where(function($sq) {
+                                                $sq->whereNull('lab_report')->orWhere('lab_report', '[]')->orWhere('lab_report', '{}');
+                                            })
+                                            ->where(function($sq) {
+                                                $sq->whereNull('findings')->orWhere('findings', '');
+                                            })
+                                            ->where(function($sq) {
+                                                $sq->whereNull('illness_history')->orWhere('illness_history', '');
+                                            });
                                         });
                                     });
                                 })
@@ -135,14 +139,20 @@
                                     $q->where('status', 'approved');
                                 })
                                 ->whereHas('annualPhysicalExamination', function($q) {
-                                    $q->whereNotNull('lab_report')
-                                      ->where('lab_report', '!=', '[]')
-                                      ->where('lab_report', '!=', '{}')
-                                      ->where('lab_report', '!=', 'null')
-                                      ->where(function($subQuery) {
-                                          $subQuery->whereRaw("JSON_LENGTH(lab_report) > 0")
-                                                   ->orWhereRaw("CHAR_LENGTH(lab_report) > 2");
-                                      });
+                                    $q->where(function($subQuery) {
+                                        $subQuery->where(function($sq) {
+                                            $sq->whereNotNull('physical_exam')->where('physical_exam', '!=', '[]')->where('physical_exam', '!=', '{}');
+                                        })
+                                        ->orWhere(function($sq) {
+                                            $sq->whereNotNull('lab_report')->where('lab_report', '!=', '[]')->where('lab_report', '!=', '{}');
+                                        })
+                                        ->orWhere(function($sq) {
+                                            $sq->whereNotNull('findings')->where('findings', '!=', '');
+                                        })
+                                        ->orWhere(function($sq) {
+                                            $sq->whereNotNull('illness_history')->where('illness_history', '!=', '');
+                                        });
+                                    });
                                 })
                                 ->count();
                         @endphp
@@ -335,20 +345,30 @@
                         <tbody class="bg-white divide-y divide-gray-100">
                             @foreach($patients as $patient)
                                 @php
-                                    $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $patient->id)->first();
-                                    $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patient->id)
-                                        ->where('examination_type', 'annual-physical')
+                                    $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $patient->id)
+                                        ->orderBy('created_at', 'desc')
                                         ->first();
                                     
-                                    // Check if examination is actually completed (has meaningful lab results)
-                                    $isExamCompleted = $annualPhysicalExam && 
-                                        $annualPhysicalExam->lab_report && 
-                                        !empty($annualPhysicalExam->lab_report) && 
-                                        $annualPhysicalExam->lab_report != '[]' && 
-                                        $annualPhysicalExam->lab_report != '{}' &&
-                                        (is_array($annualPhysicalExam->lab_report) ? count(array_filter($annualPhysicalExam->lab_report)) > 0 : true);
-                                    $isCompleted = $annualPhysicalExam && $medicalChecklist;
-                                    $canSendToDoctor = $isCompleted;
+                                    // Find checklist by patient_id only
+                                    $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patient->id)
+                                        ->whereIn('examination_type', ['annual-physical', 'annual_physical'])
+                                        ->orderBy('created_at', 'desc')
+                                        ->first();
+                                    
+                                    // Check if examination form has been created and has data
+                                    $isExamCompleted = $annualPhysicalExam && (
+                                        // Has physical exam data
+                                        (!empty($annualPhysicalExam->physical_exam) && $annualPhysicalExam->physical_exam != '[]' && $annualPhysicalExam->physical_exam != '{}') ||
+                                        // Has lab report data
+                                        (!empty($annualPhysicalExam->lab_report) && $annualPhysicalExam->lab_report != '[]' && $annualPhysicalExam->lab_report != '{}') ||
+                                        // Has findings
+                                        !empty($annualPhysicalExam->findings) ||
+                                        // Has illness history
+                                        !empty($annualPhysicalExam->illness_history)
+                                    );
+                                    
+                                    // Status is "Completed" when examination form has been filled
+                                    $isCompleted = $isExamCompleted;
                                 @endphp
                                 <tr class="hover:bg-gray-50 transition-colors duration-150">
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -395,43 +415,17 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center space-x-2">
-                                            <!-- Examination Status Badge -->
-                                            @if($isExamCompleted)
-                                                <span class="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full mr-2">
-                                                    <i class="fas fa-check-circle mr-1"></i>Lab Completed
-                                                </span>
-                                            @elseif($annualPhysicalExam)
-                                                <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full mr-2">
-                                                    <i class="fas fa-flask mr-1"></i>Lab In Progress
-                                                </span>
-                                            @else
-                                                <span class="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full mr-2">
-                                                    <i class="fas fa-clock mr-1"></i>Pending Lab
-                                                </span>
-                                            @endif
-
-                                            <!-- Examination Action Buttons -->
+                                            <!-- Edit Examination (if exists) -->
                                             @if($annualPhysicalExam)
                                                 <a href="{{ route('nurse.annual-physical.edit', $annualPhysicalExam->id) }}" 
-                                                   class="p-2 text-emerald-600 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors" 
+                                                   class="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-colors" 
                                                    title="Edit Examination">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                
-                                                @if($isExamCompleted)
-                                                    <!-- Send to Doctor Button -->
-                                                    <form action="{{ route('nurse.annual-physical.send-to-doctor', $annualPhysicalExam->id) }}" 
-                                                          method="POST" 
-                                                          class="inline-block">
-                                                        @csrf
-                                                        <button type="submit" 
-                                                                class="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-colors" 
-                                                                title="Send to Doctor">
-                                                            <i class="fas fa-user-md"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                            @else
+                                            @endif
+
+                                            <!-- Create Examination (if checklist completed) -->
+                                            @if(!$annualPhysicalExam)
                                                 @if($medicalChecklist && !empty($medicalChecklist->physical_exam_done_by))
                                                     <a href="{{ route('nurse.annual-physical.create', ['patient_id' => $patient->id]) }}" 
                                                        class="p-2 text-emerald-600 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors" 

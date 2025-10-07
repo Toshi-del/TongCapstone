@@ -367,7 +367,7 @@ class AdminController extends Controller
         // Annual Physical: Doctor submits with status 'sent_to_admin' -> Admin can send to company/patient
         
         $preEmploymentResults = \App\Models\PreEmploymentExamination::whereIn('status', ['sent_to_admin', 'sent_to_company', 'sent_to_patient', 'sent_to_both', 'Approved'])->get();
-        $annualPhysicalResults = \App\Models\AnnualPhysicalExamination::whereIn('status', ['sent_to_admin', 'sent_to_company'])->get();
+        $annualPhysicalResults = \App\Models\AnnualPhysicalExamination::whereIn('status', ['sent_to_admin', 'sent_to_company', 'sent_to_patient', 'sent_to_both'])->get();
         
         return view('admin.tests', compact('preEmploymentResults', 'annualPhysicalResults'));
     }
@@ -1430,19 +1430,56 @@ class AdminController extends Controller
                 // Get patient information
                 $patient = $examination->patient;
                 $patientName = $patient ? $patient->first_name . ' ' . $patient->last_name : $examination->name;
+                $patientEmail = $patient ? $patient->email : null;
                 
-                // Log the transaction
-                \Log::info('Annual physical examination sent to patient', [
-                    'examination_id' => $examination->id,
-                    'patient_name' => $patientName,
-                    'sent_by' => Auth::id(),
-                    'sent_at' => now()
-                ]);
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Annual physical examination sent to patient successfully'
-                ]);
+                // Send email notification to patient
+                if ($patientEmail) {
+                    try {
+                        Mail::to($patientEmail)->send(new MedicalResultsNotification(
+                            $examination,
+                            'annual_physical',
+                            $patientEmail,
+                            $patientName
+                        ));
+                        
+                        // Log successful email send
+                        \Log::info('Annual physical examination sent to patient via email', [
+                            'examination_id' => $examination->id,
+                            'patient_name' => $patientName,
+                            'patient_email' => $patientEmail,
+                            'sent_by' => Auth::id(),
+                            'sent_at' => now()
+                        ]);
+                        
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Annual physical examination sent to patient (' . $patientName . ') at ' . $patientEmail . ' successfully.'
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send medical results email to patient: ' . $e->getMessage(), [
+                            'examination_id' => $examination->id,
+                            'patient_email' => $patientEmail
+                        ]);
+                        
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Annual physical examination status updated, but email could not be sent. Error: ' . $e->getMessage()
+                        ]);
+                    }
+                } else {
+                    // Log the transaction without email
+                    \Log::warning('Annual physical examination sent to patient but no email address found', [
+                        'examination_id' => $examination->id,
+                        'patient_name' => $patientName,
+                        'sent_by' => Auth::id(),
+                        'sent_at' => now()
+                    ]);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No email address found for patient (' . $patientName . '). Status updated but email not sent.'
+                    ]);
+                }
             }
             
         } catch (\Exception $e) {
@@ -1721,7 +1758,9 @@ class AdminController extends Controller
             
             if ($sendTo === 'company') {
                 // Update status to indicate it's been sent to company
-                $examination->update(['status' => 'sent_to_company']);
+                // If already sent to patient, mark as sent to both
+                $newStatus = ($examination->status === 'sent_to_patient') ? 'sent_to_both' : 'sent_to_company';
+                $examination->update(['status' => $newStatus]);
                 
                 // Create notification for company if needed
                 // You can add notification logic here
@@ -1740,7 +1779,9 @@ class AdminController extends Controller
                     ->with('success', 'Annual physical examination sent to ' . $companyName . ' successfully.');
             } else {
                 // Send to patient
-                $examination->update(['status' => 'sent_to_patient']);
+                // If already sent to company, mark as sent to both
+                $newStatus = ($examination->status === 'sent_to_company') ? 'sent_to_both' : 'sent_to_patient';
+                $examination->update(['status' => $newStatus]);
                 
                 // Get patient email and name from related patient record
                 $patientEmail = null;

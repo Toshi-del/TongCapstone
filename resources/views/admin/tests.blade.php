@@ -135,15 +135,25 @@
                                             <i class="fas fa-check-circle mr-1.5 text-xs"></i>
                                             Ready to Send
                                         </span>
+                                    @elseif($status === 'sent_to_both')
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                            <i class="fas fa-check-double mr-1.5 text-xs"></i>
+                                            Sent to Both
+                                        </span>
                                     @elseif($status === 'sent_to_company')
                                         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
-                                            <i class="fas fa-paper-plane mr-1.5 text-xs"></i>
-                                            Submitted by Doctor
+                                            <i class="fas fa-building mr-1.5 text-xs"></i>
+                                            Sent to Company
                                         </span>
                                     @elseif($status === 'sent_to_patient')
                                         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
                                             <i class="fas fa-user mr-1.5 text-xs"></i>
                                             Sent to Patient
+                                        </span>
+                                    @elseif($status === 'sent_to_admin')
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-200">
+                                            <i class="fas fa-paper-plane mr-1.5 text-xs"></i>
+                                            Submitted by Doctor
                                         </span>
                                     @elseif($status === 'completed')
                                         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
@@ -269,7 +279,27 @@
                                     @php
                                         $status = $exam->status ?? 'Pending';
                                     @endphp
-                                    @if($status === 'Completed')
+                                    @if($status === 'sent_to_both')
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                            <i class="fas fa-check-double mr-1.5 text-xs"></i>
+                                            Sent to Both
+                                        </span>
+                                    @elseif($status === 'sent_to_company')
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                            <i class="fas fa-building mr-1.5 text-xs"></i>
+                                            Sent to Company
+                                        </span>
+                                    @elseif($status === 'sent_to_patient')
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                            <i class="fas fa-user mr-1.5 text-xs"></i>
+                                            Sent to Patient
+                                        </span>
+                                    @elseif($status === 'sent_to_admin')
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-200">
+                                            <i class="fas fa-paper-plane mr-1.5 text-xs"></i>
+                                            Submitted by Doctor
+                                        </span>
+                                    @elseif($status === 'Completed')
                                         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
                                             <i class="fas fa-check-circle mr-1.5 text-xs"></i>
                                             Completed
@@ -287,7 +317,7 @@
                                     @else
                                         <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200">
                                             <i class="fas fa-clock mr-1.5 text-xs"></i>
-                                            Pending
+                                            {{ ucfirst(str_replace('_', ' ', $status)) }}
                                         </span>
                                     @endif
                                 </td>

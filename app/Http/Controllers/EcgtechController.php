@@ -258,14 +258,36 @@ class EcgtechController extends Controller
     public function showMedicalChecklistAnnualPhysical($patientId)
     {
         $patient = Patient::findOrFail($patientId);
-        $medicalChecklist = MedicalChecklist::where('patient_id', $patientId)->first();
+        
+        // Find the most recent examination record for this patient
+        $annualPhysicalExamination = \App\Models\AnnualPhysicalExamination::where('patient_id', $patientId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        // Try to find checklist linked to this examination
+        $medicalChecklist = null;
+        if ($annualPhysicalExamination) {
+            $medicalChecklist = MedicalChecklist::where('annual_physical_examination_id', $annualPhysicalExamination->id)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->first();
+        }
+        
+        // Fallback: check by patient_id for unlinked checklists
+        if (!$medicalChecklist) {
+            $medicalChecklist = MedicalChecklist::where('patient_id', $patientId)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->whereNull('annual_physical_examination_id')
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        
         $examinationType = 'annual-physical';
         $number = 'PAT-' . str_pad($patient->id, 4, '0', STR_PAD_LEFT);
         $name = trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? ''));
         $age = $patient->age ?? null;
         $date = now()->format('Y-m-d');
 
-        return view('ecgtech.medical-checklist', compact('medicalChecklist', 'patient', 'examinationType', 'number', 'name', 'age', 'date'));
+        return view('ecgtech.medical-checklist', compact('medicalChecklist', 'patient', 'annualPhysicalExamination', 'examinationType', 'number', 'name', 'age', 'date'));
     }
 
     /**
@@ -308,14 +330,36 @@ class EcgtechController extends Controller
     {
         $patient = Patient::findOrFail($patientId);
         $record = $patient; // For consistency with the blade template
-        $medicalChecklist = MedicalChecklist::where('patient_id', $patientId)->first();
+        
+        // Find the most recent examination record for this patient
+        $annualPhysicalExamination = \App\Models\AnnualPhysicalExamination::where('patient_id', $patientId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        // Try to find checklist linked to this examination
+        $medicalChecklist = null;
+        if ($annualPhysicalExamination) {
+            $medicalChecklist = MedicalChecklist::where('annual_physical_examination_id', $annualPhysicalExamination->id)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->first();
+        }
+        
+        // Fallback: check by patient_id for unlinked checklists
+        if (!$medicalChecklist) {
+            $medicalChecklist = MedicalChecklist::where('patient_id', $patientId)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->whereNull('annual_physical_examination_id')
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        
         $examinationType = 'annual-physical';
         $number = 'PAT-' . str_pad($patient->id, 4, '0', STR_PAD_LEFT);
         $name = trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? ''));
         $age = $patient->age ?? null;
         $date = now()->format('Y-m-d');
 
-        return view('ecgtech.medical-checklist-page', compact('medicalChecklist', 'patient', 'record', 'examinationType', 'number', 'name', 'age', 'date'));
+        return view('ecgtech.medical-checklist-page', compact('medicalChecklist', 'patient', 'record', 'annualPhysicalExamination', 'examinationType', 'number', 'name', 'age', 'date'));
     }
 
     /**
@@ -350,20 +394,30 @@ class EcgtechController extends Controller
 
         $data['user_id'] = Auth::id();
 
+        // For annual physical: find or create examination and link it
+        if ($data['examination_type'] === 'annual-physical' && $data['patient_id']) {
+            $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $data['patient_id'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            if (!$annualPhysicalExam) {
+                $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::create([
+                    'patient_id' => $data['patient_id'],
+                    'status' => 'Pending'
+                ]);
+            }
+            
+            $data['annual_physical_examination_id'] = $annualPhysicalExam->id;
+        }
+
         // Prepare the search criteria based on examination type
         $searchCriteria = [];
-        if ($data['examination_type'] === 'annual-physical' && $data['patient_id']) {
-            $searchCriteria['patient_id'] = $data['patient_id'];
-            $searchCriteria['pre_employment_record_id'] = null;
-            $searchCriteria['opd_examination_id'] = null;
+        if ($data['examination_type'] === 'annual-physical' && !empty($data['annual_physical_examination_id'])) {
+            $searchCriteria['annual_physical_examination_id'] = $data['annual_physical_examination_id'];
         } elseif ($data['examination_type'] === 'pre-employment' && $data['pre_employment_record_id']) {
             $searchCriteria['pre_employment_record_id'] = $data['pre_employment_record_id'];
-            $searchCriteria['patient_id'] = null;
-            $searchCriteria['opd_examination_id'] = null;
         } elseif ($data['examination_type'] === 'opd' && $data['opd_examination_id']) {
             $searchCriteria['opd_examination_id'] = $data['opd_examination_id'];
-            $searchCriteria['patient_id'] = null;
-            $searchCriteria['pre_employment_record_id'] = null;
         }
 
         MedicalChecklist::updateOrCreate(

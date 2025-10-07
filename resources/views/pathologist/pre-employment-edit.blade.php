@@ -379,11 +379,14 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
                     <label class="block text-sm font-semibold text-gray-700">Status:</label>
-                    <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500">
-                        <option value="Pending" {{ old('status', $examination->status) == 'Pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="Approved" {{ old('status', $examination->status) == 'Approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="sent_to_company" {{ old('status', $examination->status) == 'sent_to_company' ? 'selected' : '' }}>Sent to Company</option>
+                    <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 bg-gray-100" readonly disabled>
+                        <option value="Pending" selected>Pending - Awaiting Doctor Review</option>
                     </select>
+                    <input type="hidden" name="status" value="Pending">
+                    <div class="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                        <i class="fas fa-info-circle text-blue-600 mr-1"></i>
+                        Status will remain <strong>Pending</strong> until doctor submits to admin
+                    </div>
                 </div>
                 
                 <div class="flex items-center space-x-3">

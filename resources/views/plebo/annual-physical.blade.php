@@ -48,19 +48,22 @@
                     <i class="fas fa-exclamation-circle mr-2"></i>
                     Needs Attention
                     @php
-                        $needsAttentionCount = \App\Models\Patient::where('status', 'approved')
-                            ->whereHas('medicalChecklists', function($q) {
-                                $q->where('examination_type', 'annual-physical')
-                                  ->whereNotNull('stool_exam_done_by')
-                                  ->where('stool_exam_done_by', '!=', '')
-                                  ->whereNotNull('urinalysis_done_by')
-                                  ->where('urinalysis_done_by', '!=', '');
-                            })
-                            ->whereDoesntHave('annualPhysicalExamination', function($q) {
-                                $q->whereNotNull('lab_report')
-                                  ->where('lab_report', '!=', '');
-                            })
-                            ->count();
+                        // Needs Attention: All approved annual physical patients who haven't had blood extracted yet
+                        $allApprovedPatients = \App\Models\Patient::where('status', 'approved')->get();
+                        $needsAttentionCount = 0;
+                        
+                        foreach ($allApprovedPatients as $patient) {
+                            // Check if they have a medical checklist (by patient_id only)
+                            $checklist = \App\Models\MedicalChecklist::where('patient_id', $patient->id)
+                                ->whereIn('examination_type', ['annual-physical', 'annual_physical'])
+                                ->orderBy('created_at', 'desc')
+                                ->first();
+                            
+                            // Count if: no checklist exists OR checklist exists but blood extraction is not done
+                            if (!$checklist || empty($checklist->blood_extraction_done_by)) {
+                                $needsAttentionCount++;
+                            }
+                        }
                     @endphp
                     <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $currentTab === 'needs_attention' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600' }}">
                         {{ $needsAttentionCount }}
@@ -72,19 +75,21 @@
                     <i class="fas fa-check-circle mr-2"></i>
                     Collection Completed
                     @php
-                        $completedCount = \App\Models\Patient::where('status', 'approved')
-                            ->whereHas('medicalChecklists', function($q) {
-                                $q->where('examination_type', 'annual-physical')
-                                  ->whereNotNull('stool_exam_done_by')
-                                  ->where('stool_exam_done_by', '!=', '')
-                                  ->whereNotNull('urinalysis_done_by')
-                                  ->where('urinalysis_done_by', '!=', '');
-                            })
-                            ->whereHas('annualPhysicalExamination', function($q) {
-                                $q->whereNotNull('lab_report')
-                                  ->where('lab_report', '!=', '');
-                            })
-                            ->count();
+                        // Collection Completed: All approved annual physical patients who have had blood extracted
+                        $completedCount = 0;
+                        
+                        foreach ($allApprovedPatients as $patient) {
+                            // Check if they have a medical checklist (by patient_id only)
+                            $checklist = \App\Models\MedicalChecklist::where('patient_id', $patient->id)
+                                ->whereIn('examination_type', ['annual-physical', 'annual_physical'])
+                                ->orderBy('created_at', 'desc')
+                                ->first();
+                            
+                            // If checklist exists and blood extraction is done, count it
+                            if ($checklist && !empty($checklist->blood_extraction_done_by)) {
+                                $completedCount++;
+                            }
+                        }
                     @endphp
                     <span class="ml-2 px-2 py-1 text-xs rounded-full {{ $currentTab === 'collection_completed' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600' }}">
                         {{ $completedCount }}

@@ -100,18 +100,73 @@
                     </div>
                     
                     <!-- Medical Information -->
-                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
-                        <div class="flex items-center mb-2">
-                            <i class="fas fa-stethoscope text-purple-600 mr-2"></i>
-                            <span class="text-sm font-medium text-purple-800">Medical Test Information</span>
+                    @php
+                        $appointment = $patient->appointment;
+                        $medicalTests = collect();
+                        
+                        // Get primary medical test from appointment
+                        if ($appointment && $appointment->medicalTest) {
+                            $medicalTests->push($appointment->medicalTest);
+                        }
+                        
+                        // Get all additional medical tests from patient's medicalTests relationship
+                        if ($patient->medicalTests && $patient->medicalTests->count() > 0) {
+                            foreach ($patient->medicalTests as $test) {
+                                // Avoid duplicates
+                                if (!$medicalTests->contains('id', $test->id)) {
+                                    $medicalTests->push($test);
+                                }
+                            }
+                        }
+                    @endphp
+                    <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 mb-6 border border-purple-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-stethoscope text-purple-600"></i>
+                                </div>
+                                <span class="text-sm font-bold text-purple-900">Medical Test Information</span>
+                            </div>
+                            @if($medicalTests->count() > 0)
+                                <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+                                    {{ $medicalTests->count() }} {{ $medicalTests->count() === 1 ? 'Test' : 'Tests' }}
+                                </span>
+                            @endif
                         </div>
-                        <p class="text-sm font-semibold text-gray-900 mb-1">
-                            {{ optional($patient->appointment->medicalTestCategory)->name ?? 'Not Assigned' }}
-                        </p>
-                        @if(optional($patient->appointment)->medicalTest)
-                            <p class="text-xs text-gray-600">
-                                Specific Test: {{ $patient->appointment->medicalTest->name }}
-                            </p>
+                        @if($medicalTests->count() > 0)
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                @foreach($medicalTests as $index => $medicalTest)
+                                    <div class="bg-white rounded-lg p-3 border border-purple-100 hover:shadow-md transition-shadow">
+                                        <div class="flex items-start mb-2">
+                                            <div class="flex-shrink-0 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center mr-2">
+                                                <span class="text-purple-700 font-bold text-xs">{{ $index + 1 }}</span>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-xs font-semibold text-gray-900 truncate" title="{{ $medicalTest->name }}">
+                                                    {{ $medicalTest->name }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        @if($medicalTest->medicalTestCategory)
+                                            <div class="flex items-center text-xs text-gray-600 mb-1">
+                                                <i class="fas fa-folder text-purple-500 mr-1.5 text-xs"></i>
+                                                <span class="truncate">{{ $medicalTest->medicalTestCategory->name }}</span>
+                                            </div>
+                                        @endif
+                                        @if($medicalTest->description)
+                                            <div class="flex items-start text-xs text-gray-500">
+                                                <i class="fas fa-info-circle text-purple-500 mr-1.5 text-xs mt-0.5"></i>
+                                                <span class="line-clamp-2">{{ $medicalTest->description }}</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="flex items-center justify-center py-3">
+                                <i class="fas fa-exclamation-triangle text-amber-500 mr-2"></i>
+                                <p class="text-sm text-gray-600">No medical test assigned</p>
+                            </div>
                         @endif
                     </div>
                     

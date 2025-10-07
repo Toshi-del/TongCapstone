@@ -229,13 +229,14 @@
 
         @php
             // Check if this annual physical examination requires drug test
-            $medicalTestName = $annualPhysical->patient->appointment->medicalTest->name ?? '';
-            $hasDrugTest = in_array(strtolower($medicalTestName), [
-                'annual medical with drug test',
-                'annual medical with drug test and ecg',
-                'annual medical examination with drug test',
-                'annual medical examination with drug test and ecg'
-            ]);
+            // Get all medical tests for the patient
+            $medicalTests = $annualPhysical->patient->getAllMedicalTests();
+            $medicalTestNames = $medicalTests->pluck('name')->map('strtolower')->toArray();
+            
+            // Show drug test if any medical test contains "drug test" in the name
+            $hasDrugTest = collect($medicalTestNames)->contains(function($name) {
+                return str_contains($name, 'drug test');
+            });
             
             // Get existing drug test data and connected drug test results
             $drugTest = $annualPhysical->drug_test ?? [];
@@ -303,8 +304,8 @@
                                     <select name="drug_test[methamphetamine_result]" 
                                             class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500 @error('drug_test.methamphetamine_result') border-red-500 ring-2 ring-red-200 @enderror">
                                         <option value="">Select Result</option>
-                                        <option value="Negative" {{ old('drug_test.methamphetamine_result', $drugTestResults->methamphetamine_result ?? $drugTest['methamphetamine'] ?? '') == 'Negative' ? 'selected' : '' }}>Negative</option>
-                                        <option value="Positive" {{ old('drug_test.methamphetamine_result', $drugTestResults->methamphetamine_result ?? $drugTest['methamphetamine'] ?? '') == 'Positive' ? 'selected' : '' }}>Positive</option>
+                                        <option value="Negative" {{ old('drug_test.methamphetamine_result', $drugTestResults->methamphetamine_result ?? $drugTest['methamphetamine_result'] ?? '') == 'Negative' ? 'selected' : '' }}>Negative</option>
+                                        <option value="Positive" {{ old('drug_test.methamphetamine_result', $drugTestResults->methamphetamine_result ?? $drugTest['methamphetamine_result'] ?? '') == 'Positive' ? 'selected' : '' }}>Positive</option>
                                     </select>
                                     @error('drug_test.methamphetamine_result')
                                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -323,8 +324,8 @@
                                     <select name="drug_test[marijuana_result]" 
                                             class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-purple-500 @error('drug_test.marijuana_result') border-red-500 ring-2 ring-red-200 @enderror">
                                         <option value="">Select Result</option>
-                                        <option value="Negative" {{ old('drug_test.marijuana_result', $drugTestResults->marijuana_result ?? $drugTest['marijuana'] ?? '') == 'Negative' ? 'selected' : '' }}>Negative</option>
-                                        <option value="Positive" {{ old('drug_test.marijuana_result', $drugTestResults->marijuana_result ?? $drugTest['marijuana'] ?? '') == 'Positive' ? 'selected' : '' }}>Positive</option>
+                                        <option value="Negative" {{ old('drug_test.marijuana_result', $drugTestResults->marijuana_result ?? $drugTest['marijuana_result'] ?? '') == 'Negative' ? 'selected' : '' }}>Negative</option>
+                                        <option value="Positive" {{ old('drug_test.marijuana_result', $drugTestResults->marijuana_result ?? $drugTest['marijuana_result'] ?? '') == 'Positive' ? 'selected' : '' }}>Positive</option>
                                     </select>
                                     @error('drug_test.marijuana_result')
                                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>

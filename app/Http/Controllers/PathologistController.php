@@ -208,7 +208,7 @@ class PathologistController extends Controller
                 $query->where(function($mainQuery) {
                     // Patients with plebo medical-checklist completed (blood extraction done)
                     $mainQuery->whereHas('medicalChecklists', function($q) {
-                        $q->where('examination_type', 'annual-physical')
+                        $q->where('examination_type', 'annual_physical')
                           ->whereNotNull('blood_extraction_done_by')
                           ->where('blood_extraction_done_by', '!=', '');
                     })
@@ -225,26 +225,16 @@ class PathologistController extends Controller
                                          ->orWhere('lab_report', 'null')
                                          ->orWhereRaw("JSON_LENGTH(lab_report) = 0")
                                          ->orWhereRaw("CHAR_LENGTH(lab_report) <= 2")
-                                         // Check if lab_report only contains nurse completion data (not pathologist results)
-                                         ->orWhere(function($nurseQuery) {
-                                             $nurseQuery->whereRaw("JSON_CONTAINS_PATH(lab_report, 'one', '$.nurse_examination_completed') = 1")
-                                                        ->whereRaw("JSON_CONTAINS_PATH(lab_report, 'one', '$.cbc_result') = 0")
-                                                        ->whereRaw("JSON_CONTAINS_PATH(lab_report, 'one', '$.urinalysis_result') = 0")
-                                                        ->whereRaw("JSON_CONTAINS_PATH(lab_report, 'one', '$.stool_exam_result') = 0")
-                                                        ->whereRaw("JSON_CONTAINS_PATH(lab_report, 'one', '$.fbs_result') = 0");
-                                         })
-                                         // OR pathologist has only submitted "Not available" results (still needs attention)
-                                         ->orWhere(function($notAvailableQuery) {
-                                             $notAvailableQuery->whereNotNull('lab_report')
-                                                              ->whereRaw("JSON_LENGTH(lab_report) > 0")
-                                                              ->where(function($allNotAvailable) {
-                                                                  $allNotAvailable->whereRaw("(JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.cbc_result')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.cbc_result')) IN ('Not available', ''))")
-                                                                                 ->whereRaw("(JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis_result')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis_result')) IN ('Not available', ''))")
-                                                                                 ->whereRaw("(JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_exam_result')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_exam_result')) IN ('Not available', ''))")
-                                                                                 ->whereRaw("(JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.complete_blood_count_cbc')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.complete_blood_count_cbc')) IN ('Not available', ''))")
-                                                                                 ->whereRaw("(JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis')) IN ('Not available', ''))")
-                                                                                 ->whereRaw("(JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_examination')) IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_examination')) IN ('Not available', ''))");
-                                                              });
+                                         // OR lab_report exists but has NO actual pathologist results (only nurse/system data)
+                                         ->orWhere(function($noActualData) {
+                                             $noActualData->whereNotNull('lab_report')
+                                                          ->whereRaw("JSON_LENGTH(lab_report) > 0")
+                                                          // Check that it does NOT have any actual lab result values
+                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Normal') IS NULL")
+                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Not Normal') IS NULL")
+                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Abnormal') IS NULL")
+                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Positive') IS NULL")
+                                                          ->whereRaw("JSON_SEARCH(lab_report, 'one', 'Negative') IS NULL");
                                          });
                             });
                         });
@@ -255,7 +245,7 @@ class PathologistController extends Controller
             case 'lab_completed':
                 // Show patients with pathologist-completed lab results
                 $query->whereHas('medicalChecklists', function($q) {
-                    $q->where('examination_type', 'annual-physical')
+                    $q->where('examination_type', 'annual_physical')
                       ->whereNotNull('blood_extraction_done_by')
                       ->where('blood_extraction_done_by', '!=', '');
                 })
@@ -265,18 +255,18 @@ class PathologistController extends Controller
                       ->where('lab_report', '!=', '{}')
                       ->where('lab_report', '!=', 'null')
                       ->whereRaw("JSON_LENGTH(lab_report) > 0")
+                      // Check if lab_report has ANY field with actual data (not just nurse completion flags)
                       ->where(function($subQuery) {
-                          // Must have at least one actual pathologist lab result that is NOT "Not available"
-                          $subQuery->where(function($actualResults) {
-                              $actualResults->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.cbc_result')) NOT IN ('Not available', '', 'null')")
-                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis_result')) NOT IN ('Not available', '', 'null')")
-                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_exam_result')) NOT IN ('Not available', '', 'null')")
-                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.fbs_result')) NOT IN ('Not available', '', 'null')")
-                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.blood_chemistry_result')) NOT IN ('Not available', '', 'null')")
-                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.complete_blood_count_cbc')) NOT IN ('Not available', '', 'null')")
-                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.urinalysis')) NOT IN ('Not available', '', 'null')")
-                                           ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_report, '$.stool_examination')) NOT IN ('Not available', '', 'null')");
-                          });
+                          // Exclude records that only have nurse/system flags
+                          $subQuery->whereRaw("JSON_LENGTH(lab_report) > 1")
+                                   // And ensure it's not just nurse completion data
+                                   ->where(function($hasActualData) {
+                                       $hasActualData->whereRaw("JSON_SEARCH(lab_report, 'one', 'Normal') IS NOT NULL")
+                                                    ->orWhereRaw("JSON_SEARCH(lab_report, 'one', 'Not Normal') IS NOT NULL")
+                                                    ->orWhereRaw("JSON_SEARCH(lab_report, 'one', 'Abnormal') IS NOT NULL")
+                                                    ->orWhereRaw("JSON_SEARCH(lab_report, 'one', 'Positive') IS NOT NULL")
+                                                    ->orWhereRaw("JSON_SEARCH(lab_report, 'one', 'Negative') IS NOT NULL");
+                                   });
                       });
                 });
                 break;
@@ -380,17 +370,24 @@ class PathologistController extends Controller
                 $age = $patient->age;
                 $number = 'APEP-' . str_pad($patient->id, 4, '0', STR_PAD_LEFT);
                 
-                // Try to find existing medical checklist for this patient
-                if (!$medicalChecklist) {
-                    $medicalChecklist = MedicalChecklist::where('patient_id', $patient->id)
-                        ->where('examination_type', 'annual-physical')
+                // Find the most recent examination record
+                $annualPhysicalExamination = \App\Models\AnnualPhysicalExamination::where('patient_id', $patient->id)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                // Try to find checklist linked to this examination
+                if (!$medicalChecklist && $annualPhysicalExamination) {
+                    $medicalChecklist = MedicalChecklist::where('annual_physical_examination_id', $annualPhysicalExamination->id)
+                        ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
                         ->first();
                 }
                 
-                // If still not found, try with underscore version for backward compatibility
+                // Fallback: check by patient_id for unlinked checklists
                 if (!$medicalChecklist) {
                     $medicalChecklist = MedicalChecklist::where('patient_id', $patient->id)
-                        ->where('examination_type', 'annual_physical')
+                        ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                        ->whereNull('annual_physical_examination_id')
+                        ->orderBy('created_at', 'desc')
                         ->first();
                 }
             }
@@ -518,10 +515,42 @@ class PathologistController extends Controller
             // Set the appropriate foreign key
             if ($patient) {
                 $data['patient_id'] = $patient->id;
+                
+                // Find or create annual physical examination and link it
+                $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $patient->id)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if (!$annualPhysicalExam) {
+                    $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::create([
+                        'patient_id' => $patient->id,
+                        'status' => 'Pending'
+                    ]);
+                }
+                
+                $data['annual_physical_examination_id'] = $annualPhysicalExam->id;
             } elseif ($preEmploymentRecord) {
                 $data['pre_employment_record_id'] = $preEmploymentRecord->id;
             }
-            $medicalChecklist = MedicalChecklist::create($data);
+            
+            // Check for existing checklist to update instead of creating duplicate
+            $existingChecklist = null;
+            if (!empty($data['annual_physical_examination_id'])) {
+                $existingChecklist = MedicalChecklist::where('annual_physical_examination_id', $data['annual_physical_examination_id'])
+                    ->whereIn('examination_type', [$request->examination_type, str_replace('_', '-', $request->examination_type)])
+                    ->first();
+            } elseif (!empty($data['pre_employment_record_id'])) {
+                $existingChecklist = MedicalChecklist::where('pre_employment_record_id', $data['pre_employment_record_id'])
+                    ->whereIn('examination_type', [$request->examination_type, str_replace('_', '-', $request->examination_type)])
+                    ->first();
+            }
+            
+            if ($existingChecklist) {
+                $existingChecklist->update($data);
+                $medicalChecklist = $existingChecklist;
+            } else {
+                $medicalChecklist = MedicalChecklist::create($data);
+            }
 
             DB::commit();
 
@@ -983,7 +1012,7 @@ class PathologistController extends Controller
         ]);
 
         $request->validate([
-            'status' => 'required|string|in:Pending,completed,sent_to_company',
+            'status' => 'required|string|in:Pending',
             'lab_report' => 'nullable|array',
             'lab_report.*' => 'nullable|string|max:1000',
             'visual' => 'nullable|string|max:255',
@@ -1011,8 +1040,10 @@ class PathologistController extends Controller
             // Merge the arrays, with filtered new data taking precedence
             $mergedLabReport = array_merge($existingLabReport, $filteredNewLabReport);
             
+            // Force status to always be 'Pending' for pathologist workflow
+            // Doctor will change status to 'sent_to_company' after review
             $updateData = [
-                'status' => $request->status,
+                'status' => 'Pending',
                 'lab_report' => $mergedLabReport,
             ];
             
@@ -1163,7 +1194,7 @@ class PathologistController extends Controller
         ]);
 
         $request->validate([
-            'status' => 'required|string|in:Pending,Approved,sent_to_company',
+            'status' => 'required|string|in:Pending',
             'lab_report' => 'nullable|array',
             'lab_report.*' => 'nullable|string|max:1000',
             'visual' => 'nullable|string|max:255',
@@ -1182,9 +1213,10 @@ class PathologistController extends Controller
         try {
             DB::beginTransaction();
 
-            // Only update lab_report and status - don't overwrite nurse's data
+            // Only update lab_report - force status to always be 'Pending' for pathologist workflow
+            // Doctor will change status to 'sent_to_company' after review
             $updateData = [
-                'status' => $request->status,
+                'status' => 'Pending',
                 'lab_report' => $request->lab_report ?? [],
             ];
             

@@ -175,8 +175,8 @@
                     </div>
                 </div>
                 <!-- Physical Examination Section -->
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 bg-orange-600">
+                <div class="bg-red rounded-xl border border-gray-re shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 bg-red-600">
                         <div class="flex items-center space-x-3">
                             <div class="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
                                 <i class="fas fa-stethoscope text-white"></i>
@@ -482,7 +482,8 @@
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Result</label>
                                     @php
-                                        $testKey = strtolower(str_replace([' ', '-', '&'], ['_', '_', '_'], $row));
+                                        // Match pathologist's key conversion logic: remove spaces, hyphens, ampersands, parentheses (but NOT dots)
+                                        $testKey = strtolower(str_replace([' ', '-', '&', '(', ')'], '_', $row));
                                         $testKey = str_replace('chest_x_ray', 'xray', $testKey);
                                         $testKey = str_replace('hepa_a_igg___igm', 'hepa_a_igg_igm', $testKey);
                                         
@@ -515,22 +516,16 @@
                                                 $resultValue = 'Not available';
                                             }
                                         } else {
-                                            $resultValue = data_get($annualPhysical->lab_report, $testKey, '');
+                                            // Pathologist saves as testKey_result, so check both with and without _result suffix
+                                            // Use direct array access instead of data_get() because dots in keys cause issues
+                                            $labReport = $annualPhysical->lab_report ?? [];
+                                            $resultValue = $labReport[$testKey . '_result'] ?? $labReport[$testKey] ?? '';
                                         }
                                     @endphp
                                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700">
-                                        @if($row === 'Chest X-Ray' && $resultValue)
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
-                                                {{ strtolower($resultValue) === 'normal' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-yellow-100 text-yellow-800 border border-yellow-200' }}">
-                                                @if(strtolower($resultValue) === 'normal')
-                                                    <i class="fas fa-check-circle mr-1"></i>
-                                                @else
-                                                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                                                @endif
-                                                {{ $resultValue }}
-                                            </span>
-                                        @else
-                                            {{ $resultValue ?: 'Not available' }}
+                                        {{ $resultValue ?: 'Not available' }}
+                                        @if(isset($debugInfo))
+                                            <div class="text-xs text-red-600 mt-1 font-mono">{{ $debugInfo }}</div>
                                         @endif
                                     </div>
                                 </div>
@@ -560,8 +555,10 @@
                                             
                                             $findingsValue = !empty($findings) ? implode(', ', $findings) : 'No findings';
                                         } else {
+                                            // Use direct array access instead of data_get() because dots in keys cause issues
                                             $findingsKey = $testKey . '_findings';
-                                            $findingsValue = data_get($annualPhysical->lab_report, $findingsKey, '');
+                                            $labReport = $annualPhysical->lab_report ?? [];
+                                            $findingsValue = $labReport[$findingsKey] ?? '';
                                         }
                                     @endphp
                                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700 min-h-[2.5rem]">

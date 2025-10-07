@@ -240,14 +240,36 @@ class PleboController extends Controller
     public function showMedicalChecklistAnnualPhysical($patientId)
     {
         $patient = Patient::findOrFail($patientId);
-        $medicalChecklist = MedicalChecklist::where('patient_id', $patientId)->first();
+        
+        // Find the most recent examination record for this patient
+        $annualPhysicalExamination = \App\Models\AnnualPhysicalExamination::where('patient_id', $patientId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        // Try to find checklist linked to this examination
+        $medicalChecklist = null;
+        if ($annualPhysicalExamination) {
+            $medicalChecklist = MedicalChecklist::where('annual_physical_examination_id', $annualPhysicalExamination->id)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->first();
+        }
+        
+        // Fallback: check by patient_id for unlinked checklists
+        if (!$medicalChecklist) {
+            $medicalChecklist = MedicalChecklist::where('patient_id', $patientId)
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->whereNull('annual_physical_examination_id')
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        
         $examinationType = 'annual-physical';
         $number = 'PAT-' . str_pad($patient->id, 4, '0', STR_PAD_LEFT);
         $name = trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? ''));
         $age = $patient->age ?? null;
         $date = now()->format('Y-m-d');
 
-        return view('plebo.medical-checklist', compact('medicalChecklist', 'patient', 'examinationType', 'number', 'name', 'age', 'date'));
+        return view('plebo.medical-checklist', compact('medicalChecklist', 'patient', 'annualPhysicalExamination', 'examinationType', 'number', 'name', 'age', 'date'));
     }
 
     /**
@@ -495,12 +517,26 @@ class PleboController extends Controller
         $medicalChecklist = null;
         
         if ($data['examination_type'] === 'pre_employment' && $data['pre_employment_record_id']) {
-            $medicalChecklist = MedicalChecklist::where('pre_employment_record_id', $data['pre_employment_record_id'])->first();
-        } elseif ($data['examination_type'] === 'annual_physical' && $data['patient_id']) {
-            $medicalChecklist = MedicalChecklist::where('patient_id', $data['patient_id'])->first();
+            $medicalChecklist = MedicalChecklist::where('pre_employment_record_id', $data['pre_employment_record_id'])
+                ->whereIn('examination_type', ['pre_employment', 'pre-employment'])
+                ->first();
+        } elseif (($data['examination_type'] === 'annual_physical' || $data['examination_type'] === 'annual-physical')) {
+            // Try to find by annual_physical_examination_id first
+            if (!empty($data['annual_physical_examination_id'])) {
+                $medicalChecklist = MedicalChecklist::where('annual_physical_examination_id', $data['annual_physical_examination_id'])
+                    ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                    ->first();
+            }
+            // Fallback to patient_id for unlinked checklists
+            if (!$medicalChecklist && !empty($data['patient_id'])) {
+                $medicalChecklist = MedicalChecklist::where('patient_id', $data['patient_id'])
+                    ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                    ->whereNull('annual_physical_examination_id')
+                    ->first();
+            }
         } elseif ($data['examination_type'] === 'opd' && $data['opd_examination_id']) {
             $medicalChecklist = MedicalChecklist::where('opd_examination_id', $data['opd_examination_id'])
-                ->orWhere('user_id', $data['opd_examination_id'])
+                ->where('examination_type', 'opd')
                 ->first();
         }
 

@@ -22,20 +22,98 @@ class DoctorController extends Controller
      */
     public function dashboard()
     {
-        // Get pre-employment records
-        $preEmployments = PreEmploymentRecord::where('status', 'approved')->latest()->take(5)->get();
-        $preEmploymentCount = PreEmploymentRecord::where('status', 'approved')->count();
+        // Get pre-employment records - count ALL records, not just approved
+        $preEmployments = PreEmploymentRecord::latest()->take(5)->get();
+        $preEmploymentCount = PreEmploymentRecord::count();
 
         // Get appointments with patients
         $appointments = Appointment::with('patients')->latest()->take(10)->get();
         $appointmentCount = Appointment::count();
 
-        // Get all patients
-        $patients = Patient::with(['appointment', 'medicalTests'])->where('status', 'pending')->latest()->take(10)->get();
-        $patientCount = Patient::where('status', 'pending')->count();
+        // Get all patients - count ALL patients, not just pending
+        $patients = Patient::with(['appointment', 'medicalTests'])->latest()->take(10)->get();
+        $patientCount = Patient::count();
 
         // Legacy column 'appointment_type' may be absent; compute count without it
         $annualPhysicals = Appointment::count();
+
+        // Get monthly examination trends for the current year
+        $currentYear = now()->year;
+        $monthlyData = [];
+        
+        for ($month = 1; $month <= 12; $month++) {
+            $monthlyData['annual_physical'][$month - 1] = Patient::whereYear('created_at', $currentYear)
+                ->whereMonth('created_at', $month)
+                ->count();
+            
+            $monthlyData['pre_employment'][$month - 1] = PreEmploymentRecord::whereYear('created_at', $currentYear)
+                ->whereMonth('created_at', $month)
+                ->count();
+        }
+
+        // Get recent patients (last 5 from both types)
+        $recentPatients = collect();
+        
+        // Get recent annual physical patients
+        $recentAnnualPatients = Patient::with('appointment')
+            ->latest()
+            ->take(3)
+            ->get()
+            ->map(function($patient) {
+                return [
+                    'name' => $patient->full_name,
+                    'type' => 'Annual Physical',
+                    'time' => $patient->created_at->diffForHumans(),
+                    'date' => $patient->created_at->format('M d, Y'),
+                    'color' => 'purple'
+                ];
+            });
+        
+        // Get recent pre-employment patients
+        $recentPreEmployment = PreEmploymentRecord::latest()
+            ->take(2)
+            ->get()
+            ->map(function($record) {
+                return [
+                    'name' => $record->first_name . ' ' . $record->last_name,
+                    'type' => 'Pre-Employment',
+                    'time' => $record->created_at->diffForHumans(),
+                    'date' => $record->created_at->format('M d, Y'),
+                    'color' => 'green'
+                ];
+            });
+        
+        $recentPatients = $recentAnnualPatients->concat($recentPreEmployment)->sortByDesc('date')->take(5);
+
+        // Get health conditions data from annual physical examinations
+        $annualPhysicalExaminations = \App\Models\AnnualPhysicalExamination::all();
+        
+        $healthConditions = [
+            'hypertension' => $annualPhysicalExaminations->filter(function($exam) {
+                return isset($exam->medical_history['hypertension']) && $exam->medical_history['hypertension'] === 'yes';
+            })->count(),
+            'diabetes' => $annualPhysicalExaminations->filter(function($exam) {
+                return isset($exam->medical_history['diabetes']) && $exam->medical_history['diabetes'] === 'yes';
+            })->count(),
+            'respiratory' => $annualPhysicalExaminations->filter(function($exam) {
+                return isset($exam->medical_history['asthma']) && $exam->medical_history['asthma'] === 'yes';
+            })->count(),
+            'cardiac' => $annualPhysicalExaminations->filter(function($exam) {
+                return isset($exam->medical_history['heart_disease']) && $exam->medical_history['heart_disease'] === 'yes';
+            })->count(),
+            'others' => $annualPhysicalExaminations->filter(function($exam) {
+                $hasOther = false;
+                if (isset($exam->medical_history)) {
+                    foreach ($exam->medical_history as $key => $value) {
+                        if (!in_array($key, ['hypertension', 'diabetes', 'asthma', 'heart_disease']) && $value === 'yes') {
+                            $hasOther = true;
+                            break;
+                        }
+                    }
+                }
+                return $hasOther;
+            })->count()
+        ];
 
         return view('doctor.dashboard', compact(
             'preEmployments',
@@ -44,7 +122,10 @@ class DoctorController extends Controller
             'appointmentCount',
             'patients',
             'patientCount',
-            'annualPhysicals'
+            'annualPhysicals',
+            'monthlyData',
+            'recentPatients',
+            'healthConditions'
         ));
     }
 
@@ -61,18 +142,18 @@ class DoctorController extends Controller
         // Apply filtering based on the tab selected
         switch ($filter) {
             case 'needs_attention':
-                // Show examinations that need doctor's attention (pending status)
-                $query->whereIn('status', ['pending', 'collection_completed', 'Pending']);
+                // Show examinations that need doctor's attention (Pending status from pathologist)
+                $query->whereIn('status', ['Pending', 'pending', 'collection_completed']);
                 break;
                 
             case 'submitted':
-                // Show examinations that have been submitted to admin
+                // Show examinations that have been submitted to admin by doctor
                 $query->whereIn('status', ['sent_to_company', 'Approved', 'sent_to_both']);
                 break;
                 
             default:
-                // Show all examinations that are ready for doctor review
-                $query->whereIn('status', ['pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company', 'Pending', 'sent_to_both']);
+                // Show all examinations (both pending review and submitted)
+                $query->whereIn('status', ['Pending', 'pending', 'completed', 'Approved', 'collection_completed', 'sent_to_company', 'sent_to_both']);
                 break;
         }
         
@@ -124,12 +205,12 @@ class DoctorController extends Controller
      */
     public function annualPhysical()
     {
-        // Show patients that have examinations ready for doctor (status 'completed' by pathologist)
-        // Exclude those already sent by the doctor (status 'sent_to_admin' or 'sent_to_company')
+        // Show patients that have examinations ready for doctor review (status 'Pending' from pathologist)
+        // Exclude those already sent by the doctor (status 'sent_to_company')
         $patients = Patient::with(['appointment', 'medicalTests', 'annualPhysicalExamination'])
             ->where('status', 'approved')
             ->whereHas('annualPhysicalExamination', function ($q) {
-                $q->whereIn('status', ['completed', 'collection_completed']);
+                $q->whereIn('status', ['Pending', 'pending', 'completed', 'collection_completed']);
             })
             ->latest()
             ->get();
@@ -627,14 +708,21 @@ class DoctorController extends Controller
     {
         $patient = \App\Models\Patient::findOrFail($patientId);
         
-        // Find or create annual physical examination record
-        $annualPhysicalExamination = \App\Models\AnnualPhysicalExamination::firstOrCreate(
-            ['patient_id' => $patientId],
-            ['patient_id' => $patientId]
-        );
+        // Get the most recent checklist for this patient (by patient_id)
+        $medicalChecklist = \App\Models\MedicalChecklist::where('patient_id', $patientId)
+            ->whereIn('examination_type', ['annual-physical', 'annual_physical'])
+            ->orderBy('created_at', 'desc')
+            ->first();
         
-        // Find existing medical checklist or create empty one
-        $medicalChecklist = \App\Models\MedicalChecklist::where('annual_physical_examination_id', $annualPhysicalExamination->id)->first() ?? new \App\Models\MedicalChecklist();
+        // Get annual physical examination if it exists (for reference only)
+        $annualPhysicalExamination = \App\Models\AnnualPhysicalExamination::where('patient_id', $patientId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        // If no checklist found, create empty one for display
+        if (!$medicalChecklist) {
+            $medicalChecklist = new \App\Models\MedicalChecklist();
+        }
         
         return view('doctor.medical-checklist', [
             'examinationType' => 'annual_physical',
@@ -675,13 +763,35 @@ class DoctorController extends Controller
 
         $data['user_id'] = auth()->id();
 
+        // For annual physical: find or create examination and link it
+        if ($data['examination_type'] === 'annual_physical' && !empty($data['patient_id'])) {
+            if (empty($data['annual_physical_examination_id'])) {
+                $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::where('patient_id', $data['patient_id'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if (!$annualPhysicalExam) {
+                    $annualPhysicalExam = \App\Models\AnnualPhysicalExamination::create([
+                        'patient_id' => $data['patient_id'],
+                        'status' => 'Pending'
+                    ]);
+                }
+                
+                $data['annual_physical_examination_id'] = $annualPhysicalExam->id;
+            }
+        }
+
         // Find existing medical checklist or create new one
         $medicalChecklist = null;
         
         if ($data['examination_type'] === 'pre_employment' && $data['pre_employment_record_id']) {
-            $medicalChecklist = \App\Models\MedicalChecklist::where('pre_employment_record_id', $data['pre_employment_record_id'])->first();
-        } elseif ($data['examination_type'] === 'annual_physical' && $data['annual_physical_examination_id']) {
-            $medicalChecklist = \App\Models\MedicalChecklist::where('annual_physical_examination_id', $data['annual_physical_examination_id'])->first();
+            $medicalChecklist = \App\Models\MedicalChecklist::where('pre_employment_record_id', $data['pre_employment_record_id'])
+                ->whereIn('examination_type', ['pre_employment', 'pre-employment'])
+                ->first();
+        } elseif ($data['examination_type'] === 'annual_physical' && !empty($data['annual_physical_examination_id'])) {
+            $medicalChecklist = \App\Models\MedicalChecklist::where('annual_physical_examination_id', $data['annual_physical_examination_id'])
+                ->whereIn('examination_type', ['annual_physical', 'annual-physical'])
+                ->first();
         }
 
         if ($medicalChecklist) {

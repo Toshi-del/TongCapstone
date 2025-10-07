@@ -66,6 +66,11 @@ class AnnualPhysicalExamination extends Model
         return $this->hasMany(DrugTestResult::class);
     }
 
+    public function medicalChecklist()
+    {
+        return $this->hasOne(MedicalChecklist::class, 'annual_physical_examination_id');
+    }
+
     protected function name(): Attribute
     {
         return Attribute::make(

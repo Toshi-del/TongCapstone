@@ -35,6 +35,27 @@
         </div>
     @endif
 
+    <!-- Back Button -->
+    <div class="mb-6">
+        <a href="{{ route(
+            (isset($examinationType) && ($examinationType === 'pre_employment' || $examinationType === 'pre-employment')) ? 'nurse.pre-employment' : 
+            ((isset($examinationType) && ($examinationType === 'annual_physical' || $examinationType === 'annual-physical')) ? 'nurse.annual-physical' : 
+            ((isset($examinationType) && $examinationType === 'opd') ? 'nurse.opd' : 'nurse.dashboard'))
+        ) }}" 
+           class="inline-flex items-center px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors shadow-sm border border-gray-300">
+            <i class="fas fa-arrow-left mr-2 text-sm"></i>
+            @if(isset($examinationType) && ($examinationType === 'pre_employment' || $examinationType === 'pre-employment'))
+                Back to Pre-Employment
+            @elseif(isset($examinationType) && ($examinationType === 'annual_physical' || $examinationType === 'annual-physical'))
+                Back to Annual Physical
+            @elseif(isset($examinationType) && $examinationType === 'opd')
+                Back to OPD
+            @else
+                Back to Dashboard
+            @endif
+        </a>
+    </div>
+
     <!-- Header Section -->
     <div class="content-card rounded-xl overflow-hidden shadow-xl border-2 border-gray-200">
         <div class="bg-gradient-to-r from-teal-600 to-teal-700 px-10 py-8">
@@ -67,9 +88,6 @@
             @endif
             @if(isset($patient))
                 <input type="hidden" name="patient_id" value="{{ $patient->id }}">
-            @endif
-            @if(isset($annualPhysicalExamination))
-                <input type="hidden" name="annual_physical_examination_id" value="{{ $annualPhysicalExamination->id }}">
             @endif
 
             @php
@@ -186,19 +204,30 @@
                                 
                                 <div class="flex items-center space-x-6">
                                     <div class="text-right">
-                                        <label class="block text-sm font-bold text-gray-700 mb-2">Completed by:</label>
+                                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                                            Completed by:
+                                            @if($field === 'physical_exam')
+                                                <span class="text-red-500">*</span>
+                                            @endif
+                                        </label>
                                         <input type="text" name="{{ $field }}_done_by"
                                                value="{{ old($field . '_done_by', $medicalChecklist->{$field . '_done_by'} ?? '') }}"
                                                placeholder="Enter initials or signature"
-                                               @if($field !== 'physical_exam') 
+                                               @if($field === 'physical_exam' || $field === 'drug_test') 
+                                                   @if($field === 'physical_exam') required @endif
+                                                   class="w-48 px-4 py-3 rounded-xl border-2 border-teal-300 bg-white text-gray-900 font-medium text-center focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors shadow-sm"
+                                               @else 
                                                    readonly disabled 
                                                    class="w-48 px-4 py-3 rounded-xl border-2 border-gray-300 bg-gray-100 text-gray-600 font-medium text-center cursor-not-allowed shadow-inner"
-                                               @else 
-                                                   class="w-48 px-4 py-3 rounded-xl border-2 border-teal-300 bg-white text-gray-900 font-medium text-center focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors shadow-sm"
                                                @endif>
                                     </div>
                                     
-                                    @if($field !== 'physical_exam')
+                                    @if($field === 'physical_exam')
+                                        <div class="flex items-center space-x-2 text-teal-600">
+                                            <i class="fas fa-check-circle text-sm"></i>
+                                            <span class="text-sm font-medium">Required</span>
+                                        </div>
+                                    @elseif($field !== 'drug_test')
                                         <div class="flex items-center space-x-2 text-gray-500">
                                             <i class="fas fa-lock text-sm"></i>
                                             <span class="text-sm font-medium">Locked</span>
@@ -245,12 +274,6 @@
 
             <!-- Action Buttons -->
             <div class="flex justify-between items-center pt-6">
-                <a href="{{ route('nurse.dashboard') }}" 
-                   class="inline-flex items-center px-8 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors shadow-lg border-2 border-gray-300">
-                    <i class="fas fa-arrow-left mr-3"></i>
-                    Back to Dashboard
-                </a>
-                
                 <button type="submit" 
                         class="inline-flex items-center px-12 py-4 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-bold rounded-xl transition-all duration-200 shadow-xl border-2 border-teal-500 transform hover:scale-105">
                     <i class="fas fa-save mr-3"></i>

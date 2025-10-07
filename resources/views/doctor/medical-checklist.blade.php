@@ -101,14 +101,20 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     <div class="space-y-3">
                         <label class="block text-sm font-bold uppercase tracking-wide text-gray-700">Patient Name</label>
-                        <input type="text" name="name" value="{{ old('name', $medicalChecklist->name ?? $name ?? '') }}" 
-                               class="w-full rounded-xl border-2 border-violet-300 bg-white px-5 py-4 text-gray-800 font-medium text-base focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors shadow-sm" 
-                               required placeholder="Enter patient name">
+                        @php
+                            $currentName = old('name', $medicalChecklist->name ?? $name ?? 'N/A');
+                        @endphp
+                        <div class="w-full rounded-xl border-2 border-gray-300 bg-gray-50 px-5 py-4 text-gray-800 font-medium text-base shadow-inner">
+                            {{ $currentName }}
+                        </div>
+                        <input type="hidden" name="name" value="{{ $currentName }}" />
                     </div>
                     
                     <div class="space-y-3">
                         <label class="block text-sm font-bold uppercase tracking-wide text-gray-700">Examination Date</label>
-                        @php($currentDate = old('date', $medicalChecklist->date ?? $date ?? now()->format('Y-m-d')))
+                        @php
+                            $currentDate = old('date', $medicalChecklist->date ?? $date ?? now()->format('Y-m-d'));
+                        @endphp
                         <div class="w-full rounded-xl border-2 border-gray-300 bg-gray-50 px-5 py-4 text-gray-800 font-medium text-base shadow-inner">
                             {{ \Carbon\Carbon::parse($currentDate)->format('F j, Y') }}
                         </div>
@@ -117,9 +123,13 @@
                     
                     <div class="space-y-3">
                         <label class="block text-sm font-bold uppercase tracking-wide text-gray-700">Patient Age</label>
-                        <input type="number" name="age" value="{{ old('age', $medicalChecklist->age ?? $age ?? '') }}" 
-                               class="w-full rounded-xl border-2 border-violet-300 bg-white px-5 py-4 text-gray-800 font-medium text-base focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors shadow-sm" 
-                               required placeholder="Enter age">
+                        @php
+                            $currentAge = old('age', $medicalChecklist->age ?? $age ?? 0);
+                        @endphp
+                        <div class="w-full rounded-xl border-2 border-gray-300 bg-gray-50 px-5 py-4 text-gray-800 font-medium text-base shadow-inner">
+                            {{ $currentAge }}
+                        </div>
+                        <input type="hidden" name="age" value="{{ $currentAge }}" />
                     </div>
                     
                     <div class="space-y-3">
@@ -167,12 +177,36 @@
                                 </div>
                                 
                                 <div class="flex items-center space-x-6">
+                                    @php
+                                        $completedBy = null;
+                                        if (isset($medicalChecklist) && $medicalChecklist) {
+                                            // Get the value directly from the object
+                                            $doneByField = $field . '_done_by';
+                                            $completedField = $field . '_completed';
+                                            
+                                            // Try to get the value
+                                            if (isset($medicalChecklist->$doneByField) && !empty($medicalChecklist->$doneByField)) {
+                                                $completedBy = $medicalChecklist->$doneByField;
+                                            } elseif (isset($medicalChecklist->$completedField) && !empty($medicalChecklist->$completedField)) {
+                                                $completedBy = $medicalChecklist->$completedField;
+                                            }
+                                        }
+                                        
+                                        if (!$completedBy) {
+                                            $completedBy = old($field . '_done_by') ?? old($field . '_completed');
+                                        }
+                                        
+                                        $borderClass = $completedBy ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50';
+                                    @endphp
                                     <div class="text-right">
                                         <label class="block text-sm font-bold text-gray-700 mb-2">Completed by:</label>
-                                        <input type="text" name="{{ $field }}_done_by"
-                                               value="{{ old($field . '_done_by', $medicalChecklist->{$field . '_done_by'} ?? '') }}"
-                                               placeholder="Enter initials or signature"
-                                               class="w-48 px-4 py-3 rounded-xl border-2 border-violet-300 bg-white text-gray-900 font-medium text-center focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors shadow-sm">
+                                        <div class="w-48 px-4 py-3 rounded-xl border-2 {{ $borderClass }} text-gray-900 font-medium text-center shadow-sm">
+                                            @if($completedBy)
+                                                <i class="fas fa-check-circle text-green-600 mr-2"></i>{{ $completedBy }}
+                                            @else
+                                                <i class="fas fa-clock text-gray-400 mr-2"></i>Not completed
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -202,11 +236,9 @@
                             <label class="text-lg font-bold text-gray-900">Additional Tests</label>
                         </div>
                         
-                        <input type="text" 
-                               name="optional_exam" 
-                               value="{{ old('optional_exam', $medicalChecklist->optional_exam ?? $optionalExam ?? 'Audiometry/Ishihara') }}" 
-                               placeholder="Enter additional examinations (e.g., Audiometry, Ishihara, etc.)"
-                               class="w-full px-6 py-4 rounded-xl border-2 border-purple-300 bg-white text-gray-900 font-medium text-base focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors shadow-sm" />
+                        <div class="w-full px-6 py-4 rounded-xl border-2 border-gray-300 bg-gray-50 text-gray-900 font-medium text-base shadow-inner">
+                            {{ $medicalChecklist->optional_exam ?? $optionalExam ?? 'Audiometry/Ishihara' }}
+                        </div>
                         
                         <div class="mt-4 text-sm text-gray-600">
                             <p><strong>Common optional tests:</strong> Audiometry, Ishihara Color Vision Test, Spirometry, Vision Screening</p>

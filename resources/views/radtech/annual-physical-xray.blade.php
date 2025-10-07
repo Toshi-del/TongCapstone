@@ -43,7 +43,7 @@
                         @php
                             $needsAttentionCount = \App\Models\Patient::where('status', 'approved')
                                 ->whereDoesntHave('medicalChecklists', function($q) {
-                                    $q->where('examination_type', 'annual-physical')
+                                    $q->where('examination_type', 'annual_physical')
                                       ->whereNotNull('chest_xray_done_by')
                                       ->where('chest_xray_done_by', '!=', '');
                                 })
@@ -61,7 +61,7 @@
                         @php
                             $completedCount = \App\Models\Patient::where('status', 'approved')
                                 ->whereHas('medicalChecklists', function($q) {
-                                    $q->where('examination_type', 'annual-physical')
+                                    $q->where('examination_type', 'annual_physical')
                                       ->whereNotNull('chest_xray_done_by')
                                       ->where('chest_xray_done_by', '!=', '');
                                 })
