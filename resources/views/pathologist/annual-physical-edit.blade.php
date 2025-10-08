@@ -51,6 +51,9 @@
         @php
             $pathologistTests = $examination->patient->pathologist_tests ?? collect();
             $groupedTests = $pathologistTests->groupBy('category_name');
+            
+            // For annual physical examinations, always show standard laboratory tests
+            $showStandardTests = true;
         @endphp
 
         @if($pathologistTests->isNotEmpty())
@@ -133,11 +136,13 @@
                     </div>
                 </div>
             @endforeach
-        @else
-            <!-- Fallback: Standard Laboratory Tests when no specific tests are detected -->
+        @endif
+        
+        @if($showStandardTests)
+            <!-- Standard Laboratory Tests for Annual Physical Examinations -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                    <i class="fas fa-flask mr-2 text-teal-600"></i>Standard Laboratory Tests
+                    <i class="fas fa-flask mr-2 text-teal-600"></i>Annual Physical Laboratory Tests
                 </h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -149,8 +154,9 @@
                                 $cbcValue = old('lab_report.complete_blood_count_cbc', $labReport['complete_blood_count_cbc'] ?? '');
                             @endphp
                             <select name="lab_report[complete_blood_count_cbc]" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown" 
-                                    data-test-name="complete_blood_count_cbc-fallback">
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown main-dropdown" 
+                                    data-test-name="complete_blood_count_cbc-fallback"
+                                    data-summary-target="summary-cbc_result-table">
                                 <option value="Not available" {{ $cbcValue == 'Not available' || $cbcValue == '' ? 'selected' : '' }}>Not available</option>
                                 <option value="Normal" {{ $cbcValue == 'Normal' ? 'selected' : '' }}>Normal</option>
                                 <option value="Not Normal" {{ $cbcValue == 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
@@ -164,17 +170,41 @@
                                        placeholder="Specify">
                             </div>
                         </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">FECA (Fecalysis)</label>
+                            @php
+                                $fecaValue = old('lab_report.feca', $labReport['feca'] ?? '');
+                            @endphp
+                            <select name="lab_report[feca]" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown main-dropdown" 
+                                    data-test-name="feca-fallback"
+                                    data-summary-target="summary-feca_result-table">
+                                <option value="Not available" {{ $fecaValue == 'Not available' || $fecaValue == '' ? 'selected' : '' }}>Not available</option>
+                                <option value="Normal" {{ $fecaValue == 'Normal' ? 'selected' : '' }}>Normal</option>
+                                <option value="Not Normal" {{ $fecaValue == 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
+                                <option value="Others" {{ $fecaValue == 'Others' ? 'selected' : '' }}>Others</option>
+                            </select>
+                            <div class="others-input mt-2" id="others-feca-fallback" style="{{ $fecaValue == 'Others' ? 'display: block;' : 'display: none;' }}">
+                                <input type="text" 
+                                       name="lab_report[feca_others]" 
+                                       value="{{ old('lab_report.feca_others', $labReport['feca_others'] ?? '') }}"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-sm"
+                                       placeholder="Specify">
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="space-y-3">
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Urinalysis</label>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Urinalysis (URINE)</label>
                             @php
                                 $urinalysisValue = old('lab_report.urinalysis', $labReport['urinalysis'] ?? '');
                             @endphp
                             <select name="lab_report[urinalysis]" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown" 
-                                    data-test-name="urinalysis-fallback">
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown main-dropdown" 
+                                    data-test-name="urinalysis-fallback"
+                                    data-summary-target="summary-urinalysis_result-table">
                                 <option value="Not available" {{ $urinalysisValue == 'Not available' || $urinalysisValue == '' ? 'selected' : '' }}>Not available</option>
                                 <option value="Normal" {{ $urinalysisValue == 'Normal' ? 'selected' : '' }}>Normal</option>
                                 <option value="Not Normal" {{ $urinalysisValue == 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
@@ -184,30 +214,6 @@
                                 <input type="text" 
                                        name="lab_report[urinalysis_others]" 
                                        value="{{ old('lab_report.urinalysis_others', $labReport['urinalysis_others'] ?? '') }}"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-sm"
-                                       placeholder="Specify">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Stool Examination</label>
-                            @php
-                                $stoolValue = old('lab_report.stool_examination', $labReport['stool_examination'] ?? '');
-                            @endphp
-                            <select name="lab_report[stool_examination]" 
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 result-dropdown" 
-                                    data-test-name="stool_examination-fallback">
-                                <option value="Not available" {{ $stoolValue == 'Not available' || $stoolValue == '' ? 'selected' : '' }}>Not available</option>
-                                <option value="Normal" {{ $stoolValue == 'Normal' ? 'selected' : '' }}>Normal</option>
-                                <option value="Not Normal" {{ $stoolValue == 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
-                                <option value="Others" {{ $stoolValue == 'Others' ? 'selected' : '' }}>Others</option>
-                            </select>
-                            <div class="others-input mt-2" id="others-stool_examination-fallback" style="{{ $stoolValue == 'Others' ? 'display: block;' : 'display: none;' }}">
-                                <input type="text" 
-                                       name="lab_report[stool_examination_others]" 
-                                       value="{{ old('lab_report.stool_examination_others', $labReport['stool_examination_others'] ?? '') }}"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-sm"
                                        placeholder="Specify">
                             </div>
@@ -266,19 +272,6 @@
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700">
                                         <div class="font-semibold">{{ $test['test_name'] }}</div>
-                                        <div class="text-xs text-blue-600 mt-1">
-                                            @if($test['is_package_component'] ?? false)
-                                                <div><i class="fas fa-box mr-1"></i>{{ $test['package_name'] }} ({{ $test['package_category'] ?? 'Package' }}: ₱{{ number_format($test['package_price'], 2) }})</div>
-                                            @endif
-                                            @if(!empty($test['blood_chemistry_sources']))
-                                                @foreach($test['blood_chemistry_sources'] as $bcSource)
-                                                    <div><i class="fas fa-flask mr-1"></i>{{ $bcSource['name'] }} (Blood Chemistry: ₱{{ number_format($bcSource['price'], 2) }})</div>
-                                                @endforeach
-                                            @endif
-                                            @if($test['price'] > 0 && !($test['is_package_component'] ?? false))
-                                                <div><i class="fas fa-tag mr-1"></i>Individual Test: ₱{{ number_format($test['price'], 2) }}</div>
-                                            @endif
-                                        </div>
                                     </td>
                                     <td class="border border-gray-300 px-4 py-3">
                                         @php
@@ -303,8 +296,10 @@
                                     </td>
                                 </tr>
                             @endforeach
-                        @else
-                            <!-- Fallback rows when no specific tests are detected -->
+                        @endif
+                        
+                        @if($showStandardTests)
+                            <!-- Standard Laboratory Test Rows for Annual Physical -->
                             <tr>
                                 <td class="border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700">
                                     <div class="font-semibold">Complete Blood Count (CBC)</div>
@@ -355,6 +350,33 @@
                                 <td class="border border-gray-300 px-4 py-3">
                                     <input type="text" name="lab_report[urinalysis_findings]" 
                                            value="{{ old('lab_report.urinalysis_findings', $examination->lab_report['urinalysis_findings'] ?? '') }}"
+                                           class="w-full px-2 py-1 border-0 focus:ring-0 focus:outline-none text-sm"
+                                           placeholder="Enter findings">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700">
+                                    <div class="font-semibold">FECA (Fecalysis)</div>
+                                    <div class="text-xs text-blue-600 mt-1">
+                                        <div><i class="fas fa-microscope mr-1"></i>Standard Laboratory Test</div>
+                                    </div>
+                                </td>
+                                <td class="border border-gray-300 px-4 py-3">
+                                    @php
+                                        $fecaResultValue = old('lab_report.feca_result', $examination->lab_report['feca_result'] ?? '');
+                                    @endphp
+                                    <input type="text" 
+                                           name="lab_report[feca_result]" 
+                                           id="summary-feca_result-table"
+                                           value="{{ $fecaResultValue }}"
+                                           class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500 text-sm summary-input bg-gray-100" 
+                                           data-test-name="feca_result-table"
+                                           readonly
+                                           placeholder="Not available">
+                                </td>
+                                <td class="border border-gray-300 px-4 py-3">
+                                    <input type="text" name="lab_report[feca_findings]" 
+                                           value="{{ old('lab_report.feca_findings', $examination->lab_report['feca_findings'] ?? '') }}"
                                            class="w-full px-2 py-1 border-0 focus:ring-0 focus:outline-none text-sm"
                                            placeholder="Enter findings">
                                 </td>
@@ -524,12 +546,36 @@
                 // Find the corresponding main dropdown
                 const othersDiv = this.closest('.others-input');
                 if (othersDiv) {
-                    const testNameMatch = othersDiv.id.match(/others-(.+)-main/);
+                    const testNameMatch = othersDiv.id.match(/others-(.+)-fallback/);
                     if (testNameMatch) {
                         const testName = testNameMatch[1];
-                        const summaryInput = document.getElementById('summary-' + testName);
+                        let summaryInputId = '';
+                        
+                        // Map test names to their corresponding summary input IDs
+                        if (testName === 'complete_blood_count_cbc') {
+                            summaryInputId = 'summary-cbc_result-table';
+                        } else if (testName === 'urinalysis') {
+                            summaryInputId = 'summary-urinalysis_result-table';
+                        } else if (testName === 'feca') {
+                            summaryInputId = 'summary-feca_result-table';
+                        } else if (testName === 'stool_examination') {
+                            summaryInputId = 'summary-stool_result-table';
+                        }
+                        
+                        const summaryInput = document.getElementById(summaryInputId);
                         if (summaryInput) {
                             summaryInput.value = this.value || 'Others (specify)';
+                            // Update visual state
+                            summaryInput.readOnly = false;
+                            summaryInput.classList.remove('bg-gray-100');
+                            summaryInput.classList.add('bg-white');
+                            
+                            // Make it read-only again after a brief moment
+                            setTimeout(() => {
+                                summaryInput.readOnly = true;
+                                summaryInput.classList.remove('bg-white');
+                                summaryInput.classList.add('bg-gray-50');
+                            }, 100);
                         }
                     }
                 }

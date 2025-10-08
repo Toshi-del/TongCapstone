@@ -59,7 +59,7 @@
                     </div>
                 </div>
                 <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div class="bg-gray-50 rounded-lg p-4 border-l-4 border-blue-400">
                             <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Patient Name</label>
                             <div class="text-base font-semibold text-gray-900">{{ $examination->name }}</div>
@@ -68,10 +68,29 @@
                             <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Patient ID</label>
                             <div class="text-base font-semibold text-gray-900">{{ $examination->patient_id }}</div>
                         </div>
+                        @if($examination->patient && $examination->patient->age)
+                        <div class="bg-gray-50 rounded-lg p-4 border-l-4 {{ $examination->patient->age_adjusted ? 'border-blue-400' : 'border-gray-400' }}">
+                            <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Patient Age</label>
+                            <div class="text-base font-semibold text-gray-900">{{ $examination->patient->age }} years old</div>
+                            @if($examination->patient->age_adjusted)
+                                <div class="mt-2">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                        <i class="fas fa-exchange-alt mr-1 text-xs"></i>
+                                        Test Adjusted (Under 34)
+                                    </span>
+                                </div>
+                            @endif
+                        </div>
+                        @endif
                         <div class="bg-gray-50 rounded-lg p-4 border-l-4 border-purple-400">
                             <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Examination Date</label>
                             <div class="text-base font-semibold text-gray-900">
-                                @if($examination->date)
+                                @if($examination->patient && $examination->patient->appointment && $examination->patient->appointment->appointment_date)
+                                    @php
+                                        $examDate = \Carbon\Carbon::parse($examination->patient->appointment->appointment_date);
+                                    @endphp
+                                    {{ $examDate->format('F j, Y \a\t g:i A') }}
+                                @elseif($examination->date)
                                     @php
                                         $examDate = \Carbon\Carbon::parse($examination->date);
                                     @endphp
@@ -91,32 +110,75 @@
 
             <!-- Billing Summary -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200 rounded-t-lg">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-receipt text-green-600 text-sm"></i>
+                <div class="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200 rounded-t-lg">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-receipt text-green-600 text-xs"></i>
                         </div>
-                        <h2 class="text-lg font-medium text-gray-900">Billing Summary</h2>
+                        <h2 class="text-sm font-medium text-gray-900">Billing Summary</h2>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-4">
                     @php
                         $totalAmount = 0;
                         $selectedTests = [];
+                        $patient = $examination->patient;
+                        $isAgeAdjusted = $patient && $patient->age_adjusted;
                         
                         // Get tests from the appointment
                         if ($examination->patient && $examination->patient->appointment) {
                             $appointment = $examination->patient->appointment;
-                            if ($appointment->medicalTest) {
+                            
+                            // Check for selected_tests first (multiple tests)
+                            if ($appointment->selected_tests && count($appointment->selected_tests) > 0) {
+                                foreach ($appointment->selected_tests as $test) {
+                                    $testPrice = $test->price ?? 0;
+                                    $testName = $test->name;
+                                    $wasAdjusted = false;
+                                    
+                                    // Check if this patient was age-adjusted for ECG test
+                                    if ($isAgeAdjusted && stripos($test->name, 'Annual Medical with ECG and Drug test') !== false) {
+                                        $testPrice = 750; // Adjusted price for Drug Test only
+                                        $testName = $patient->adjusted_test_name ?? 'Annual Medical with Drug Test';
+                                        $wasAdjusted = true;
+                                    }
+                                    
+                                    $selectedTests[] = [
+                                        'category' => $test->category->name ?? 'Medical Test',
+                                        'test' => $testName,
+                                        'price' => $testPrice,
+                                        'original_test' => $wasAdjusted ? $test->name : null,
+                                        'original_price' => $wasAdjusted ? ($test->price ?? 0) : null,
+                                        'was_adjusted' => $wasAdjusted
+                                    ];
+                                    $totalAmount += $testPrice;
+                                }
+                            }
+                            // Fallback to single medicalTest
+                            elseif ($appointment->medicalTest) {
+                                $testPrice = $appointment->medicalTest->price ?? 0;
+                                $testName = $appointment->medicalTest->name;
+                                $wasAdjusted = false;
+                                
+                                // Check if this patient was age-adjusted for ECG test
+                                if ($isAgeAdjusted && stripos($appointment->medicalTest->name, 'Annual Medical with ECG and Drug test') !== false) {
+                                    $testPrice = 750; // Adjusted price for Drug Test only
+                                    $testName = $patient->adjusted_test_name ?? 'Annual Medical with Drug Test';
+                                    $wasAdjusted = true;
+                                }
+                                
                                 $selectedTests[] = [
                                     'category' => $appointment->medicalTestCategory->name ?? 'Annual Physical',
-                                    'test' => $appointment->medicalTest->name,
-                                    'price' => $appointment->medicalTest->price ?? 0
+                                    'test' => $testName,
+                                    'price' => $testPrice,
+                                    'original_test' => $wasAdjusted ? $appointment->medicalTest->name : null,
+                                    'original_price' => $wasAdjusted ? ($appointment->medicalTest->price ?? 0) : null,
+                                    'was_adjusted' => $wasAdjusted
                                 ];
-                                $totalAmount += $appointment->medicalTest->price ?? 0;
+                                $totalAmount += $testPrice;
                             }
                             
-                            // Use stored total_price if available and different
+                            // Use stored total_price if available (it should already reflect age adjustments)
                             if ($appointment->total_price > 0) {
                                 $totalAmount = $appointment->total_price;
                             }
@@ -125,33 +187,55 @@
                     
                     @if(!empty($selectedTests))
                         @foreach($selectedTests as $test)
-                        <div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
                             <div class="flex-1">
-                                <p class="font-medium text-gray-900">{{ $test['test'] }}</p>
-                                <p class="text-sm text-gray-500">{{ $test['category'] }}</p>
+                                <p class="text-sm font-medium text-gray-900">{{ $test['test'] }}</p>
+                                <p class="text-xs text-gray-500">{{ $test['category'] }}</p>
+                                @if($test['was_adjusted'])
+                                    <div class="mt-1">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                            <i class="fas fa-exchange-alt mr-1 text-xs"></i>
+                                            Age-adjusted (Under 34)
+                                        </span>
+                                    </div>
+                                    @if($test['original_test'])
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            <span class="line-through text-red-500">{{ $test['original_test'] }} (₱{{ number_format($test['original_price'], 2) }})</span>
+                                            <br>
+                                            <span class="text-green-600 font-medium">
+                                                <i class="fas fa-calculator mr-1"></i>Saved ₱{{ number_format($test['original_price'] - $test['price'], 2) }}
+                                            </span>
+                                        </div>
+                                    @endif
+                                @endif
                             </div>
                             <div class="text-right">
-                                <p class="font-semibold text-gray-900">₱{{ number_format($test['price'], 2) }}</p>
+                                <p class="text-sm font-semibold text-gray-900">₱{{ number_format($test['price'], 2) }}</p>
+                                @if($test['was_adjusted'])
+                                    <p class="text-xs text-green-600 font-medium">
+                                        <i class="fas fa-arrow-down mr-1"></i>Adjusted Price
+                                    </p>
+                                @endif
                             </div>
                         </div>
                         @endforeach
                         
-                        <div class="pt-4 border-t border-gray-200">
+                        <div class="pt-2 mt-2 border-t border-gray-200">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-base font-medium text-gray-900">Total Amount</p>
+                                    <p class="text-sm font-medium text-gray-900">Total Amount</p>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-xl font-bold text-green-600">₱{{ number_format($totalAmount, 2) }}</p>
+                                    <p class="text-lg font-bold text-green-600">₱{{ number_format($totalAmount, 2) }}</p>
                                 </div>
                             </div>
                         </div>
                     @else
-                        <div class="text-center py-8">
-                            <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i class="fas fa-receipt text-gray-400"></i>
+                        <div class="text-center py-4">
+                            <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <i class="fas fa-receipt text-gray-400 text-sm"></i>
                             </div>
-                            <p class="text-gray-500 text-sm">No billing information available</p>
+                            <p class="text-gray-500 text-xs">No billing information available</p>
                         </div>
                     @endif
                 </div>
@@ -282,7 +366,19 @@
                         </div>
                         <div class="bg-gray-50 rounded-lg p-4">
                             <label class="block text-sm font-medium text-gray-700 mb-2">ECG</label>
-                            <div class="text-sm text-gray-900">{{ $examination->ecg ?: 'Not performed' }}</div>
+                            <div class="text-sm text-gray-900">
+                                @if($examination->patient && $examination->patient->age_adjusted)
+                                    <span class="text-gray-500 italic">Not required (Age under 34)</span>
+                                    <div class="mt-2">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                            <i class="fas fa-info-circle mr-1 text-xs"></i>
+                                            ECG excluded due to age restriction
+                                        </span>
+                                    </div>
+                                @else
+                                    {{ $examination->ecg ?: 'Not performed' }}
+                                @endif
+                            </div>
                         </div>
                     </div>
                     @if($examination->skin_marks)
@@ -393,7 +489,47 @@
                 @endif
 
                 <!-- ECG Report -->
-                @if($examination->ecg || $examination->ecg_date || $examination->ecg_technician)
+                @if($examination->patient && $examination->patient->age_adjusted)
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-info-circle text-blue-600 text-sm"></i>
+                            </div>
+                            <h3 class="text-base font-medium text-gray-900">ECG Report</h3>
+                        </div>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                            <i class="fas fa-exchange-alt mr-2 text-xs"></i>
+                            Not Required (Under 34)
+                        </span>
+                    </div>
+                    
+                    <div class="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-400">
+                        <div class="flex items-start space-x-3">
+                            <i class="fas fa-info-circle text-blue-600 mt-1"></i>
+                            <div>
+                                <h4 class="text-sm font-medium text-blue-900 mb-2">Age-Based Test Adjustment</h4>
+                                <p class="text-sm text-blue-800">
+                                    ECG testing was not performed for this patient as they are under 34 years old. 
+                                    The medical examination was adjusted from "Annual Medical with ECG and Drug Test" 
+                                    to "Annual Medical with Drug Test" only, resulting in a cost reduction.
+                                </p>
+                                @if($examination->patient->original_test_name && $examination->patient->adjusted_test_name)
+                                    <div class="mt-3 text-xs">
+                                        <div class="text-blue-700">
+                                            <span class="font-medium">Original:</span> 
+                                            <span class="line-through">{{ $examination->patient->original_test_name }}</span>
+                                        </div>
+                                        <div class="text-blue-800 font-medium">
+                                            <span class="font-medium">Adjusted:</span> {{ $examination->patient->adjusted_test_name }}
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @elseif($examination->ecg || $examination->ecg_date || $examination->ecg_technician)
                 <div class="p-6 border-b border-gray-200">
                     <div class="flex items-center space-x-3 mb-4">
                         <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">

@@ -139,7 +139,7 @@ class MedicalTestSeeder extends Seeder
                         ['name' => 'AUDIOMETRY AND ISHIHARA ONLY', 'description' => null, 'sort_order' => 0, 'price' => 500.00],
                         ['name' => 'Pre-Employment Medical Examination', 'description' => null, 'sort_order' => 1, 'price' => 600.00],
                         ['name' => 'Pre-Employment with Drug Test', 'description' => null, 'sort_order' => 2, 'price' => 750.00],
-                        ['name' => 'Pre-Employment with ECG and Drug test', 'description' => null, 'sort_order' => 3, 'price' => 750.00],
+                        ['name' => 'Pre-Employment with ECG and Drug test', 'description' => null, 'sort_order' => 3, 'price' => 850.00],
                         ['name' => 'Pre-Employment with Drug test and AUDIO and ISHIHARA', 'description' => null, 'sort_order' => 4, 'price' => 800.00],
                         ['name' => 'Drug test only (bring valid I.D)', 'description' => null, 'sort_order' => 5, 'price' => 500.00],
                     ];

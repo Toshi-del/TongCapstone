@@ -18,6 +18,23 @@
                         <div>
                             <h1 class="text-xl font-semibold text-gray-900">Annual Physical Medical Results</h1>
                             <p class="text-sm text-gray-500">Exam ID: #{{ $examination->id }}</p>
+                            @if($examination->status)
+                                <div class="flex items-center space-x-2 mt-1">
+                                    @if($examination->status === 'sent_to_both')
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                            <i class="fas fa-check-double mr-1"></i>Sent to Both
+                                        </span>
+                                    @elseif($examination->status === 'sent_to_company')
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            <i class="fas fa-building mr-1"></i>Sent to Company
+                                        </span>
+                                    @elseif($examination->status === 'sent_to_patient')
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                            <i class="fas fa-user mr-1"></i>Sent to Patient
+                                        </span>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </div>
                     <a href="{{ route('admin.tests') }}" 
@@ -758,13 +775,27 @@ async function sendToCompany() {
         return;
     }
     
+    // Check current status to prevent re-sending
+    const currentStatus = '{{ $examination->status ?? "" }}';
+    if (currentStatus === 'sent_to_company') {
+        showErrorMessage('Already Sent to Company', 'This examination has already been sent to the company. Cannot send again.');
+        return;
+    }
+    if (currentStatus === 'sent_to_both') {
+        showErrorMessage('Already Sent to Both', 'This examination has already been sent to both company and patient. Cannot send again.');
+        return;
+    }
+    
     try {
         const response = await fetch(`/admin/examinations/annual-physical/{{ $examination->id }}/send`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
+            },
+            body: JSON.stringify({
+                send_to: 'company'
+            })
         });
         
         const data = await response.json();
@@ -789,6 +820,17 @@ async function sendToPatient() {
     
     if (!billingCheckbox.checked) {
         alert('Please confirm the billing information is correct before sending.');
+        return;
+    }
+    
+    // Check current status to prevent re-sending
+    const currentStatus = '{{ $examination->status ?? "" }}';
+    if (currentStatus === 'sent_to_patient') {
+        showErrorMessage('Already Sent to Patient', 'This examination has already been sent to the patient. Cannot send again.');
+        return;
+    }
+    if (currentStatus === 'sent_to_both') {
+        showErrorMessage('Already Sent to Both', 'This examination has already been sent to both company and patient. Cannot send again.');
         return;
     }
     
@@ -824,7 +866,7 @@ async function sendToPatient() {
 function showSuccessMessage(title, message) {
     // Create success notification
     const notification = document.createElement('div');
-    notification.className = 'fixed top-4 right-4 z-50 bg-white border-l-4 border-green-500 rounded-lg shadow-xl max-w-md transform transition-all duration-300 translate-x-full';
+    notification.className = 'fixed top-4 right-8 z-50 bg-white border-l-4 border-green-500 rounded-lg shadow-xl max-w-sm w-80 transform transition-all duration-300 translate-x-full';
     notification.innerHTML = `
         <div class="p-6">
             <div class="flex items-start">
@@ -879,7 +921,7 @@ function showSuccessMessage(title, message) {
 function showErrorMessage(title, message) {
     // Create error notification
     const notification = document.createElement('div');
-    notification.className = 'fixed top-4 right-4 z-50 bg-white border-l-4 border-red-500 rounded-lg shadow-xl max-w-md transform transition-all duration-300 translate-x-full';
+    notification.className = 'fixed top-4 right-8 z-50 bg-white border-l-4 border-red-500 rounded-lg shadow-xl max-w-sm w-80 transform transition-all duration-300 translate-x-full';
     notification.innerHTML = `
         <div class="p-6">
             <div class="flex items-start">

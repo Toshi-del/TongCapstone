@@ -36,6 +36,10 @@
                     Needs Attention
                     @php
                         $needsAttentionCount = \App\Models\PreEmploymentRecord::where('status', 'approved')
+                            ->where(function($q) {
+                                $q->where('age_adjusted', false)
+                                  ->orWhereNull('age_adjusted');
+                            })
                             ->whereDoesntHave('preEmploymentExamination', function($q) {
                                 $q->whereNotNull('ecg')
                                   ->where('ecg', '!=', '');
@@ -53,6 +57,10 @@
                     ECG Completed
                     @php
                         $completedCount = \App\Models\PreEmploymentRecord::where('status', 'approved')
+                            ->where(function($q) {
+                                $q->where('age_adjusted', false)
+                                  ->orWhereNull('age_adjusted');
+                            })
                             ->whereHas('preEmploymentExamination', function($q) {
                                 $q->whereNotNull('ecg')
                                   ->where('ecg', '!=', '');
@@ -207,6 +215,30 @@
         </div>
     </div>
 </div>
+
+<!-- Age Restriction Info Message -->
+@php
+    $ageAdjustedCount = \App\Models\PreEmploymentRecord::where('status', 'approved')
+        ->where('age_adjusted', true)
+        ->count();
+@endphp
+@if($ageAdjustedCount > 0)
+<div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+    <div class="flex items-start space-x-3">
+        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-info-circle text-blue-600 text-sm"></i>
+        </div>
+        <div class="flex-1">
+            <h4 class="text-sm font-medium text-blue-900 mb-1">Age-Based ECG Filtering</h4>
+            <p class="text-sm text-blue-800">
+                {{ $ageAdjustedCount }} pre-employment record{{ $ageAdjustedCount > 1 ? 's' : '' }} for patients under 34 years old {{ $ageAdjustedCount > 1 ? 'are' : 'is' }} automatically excluded from this ECG list. 
+                Their medical tests were adjusted from "Pre-Employment with ECG and Drug Test" to "Pre-Employment with Drug Test" only, 
+                so they don't require ECG examinations.
+            </p>
+        </div>
+    </div>
+</div>
+@endif
 
 <!-- Enhanced Records Table -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-100">

@@ -364,23 +364,32 @@ class CompanyAppointmentController extends Controller
                             }
                         }
                         
+                        // Age-based test adjustment logic
+                        $patientAge = (int) $row[2];
+                        $adjustmentResult = $this->adjustTestsForAge($medicalTestIds, $patientAge);
+                        $adjustedMedicalTestIds = $adjustmentResult['test_ids'];
+                        $adjustedFirstMedicalTestId = !empty($adjustedMedicalTestIds) ? $adjustedMedicalTestIds[0] : $firstMedicalTestId;
+                        
                         // Create new patient record
                         $patient = Patient::create([
                             'first_name' => $firstName,
                             'last_name' => $lastName,
-                            'age' => (int) $row[2],
+                            'age' => $patientAge,
                             'sex' => trim($row[3]),
                             'email' => $email,
                             'phone' => !empty($row[5]) ? trim($row[5]) : null,
                             'address' => $address,
                             'appointment_id' => $appointment->id,
                             'company_name' => $companyName,
-                            'medical_test_id' => $firstMedicalTestId,
+                            'medical_test_id' => $adjustedFirstMedicalTestId,
+                            'age_adjusted' => $adjustmentResult['was_adjusted'],
+                            'original_test_name' => $adjustmentResult['original_test_name'],
+                            'adjusted_test_name' => $adjustmentResult['adjusted_test_name'],
                         ]);
                         
-                        // Attach all medical tests to the patient
-                        if (!empty($medicalTestIds)) {
-                            $patient->medicalTests()->attach($medicalTestIds);
+                        // Attach adjusted medical tests to the patient
+                        if (!empty($adjustedMedicalTestIds)) {
+                            $patient->medicalTests()->attach($adjustedMedicalTestIds);
                         }
                         $processedCount++;
                     } else {
@@ -402,23 +411,32 @@ class CompanyAppointmentController extends Controller
                             }
                         }
                         
+                        // Age-based test adjustment logic
+                        $patientAge = (int) $row[2];
+                        $adjustmentResult = $this->adjustTestsForAge($medicalTestIds, $patientAge);
+                        $adjustedMedicalTestIds = $adjustmentResult['test_ids'];
+                        $adjustedFirstMedicalTestId = !empty($adjustedMedicalTestIds) ? $adjustedMedicalTestIds[0] : $firstMedicalTestId;
+                        
                         // Patient exists globally but not for this appointment, create a new record for this appointment
                         $patient = Patient::create([
                             'first_name' => $firstName,
                             'last_name' => $lastName,
-                            'age' => (int) $row[2],
+                            'age' => $patientAge,
                             'sex' => trim($row[3]),
                             'email' => $email,
                             'phone' => !empty($row[5]) ? trim($row[5]) : null,
                             'address' => $address,
                             'appointment_id' => $appointment->id,
                             'company_name' => $companyName,
-                            'medical_test_id' => $firstMedicalTestId,
+                            'medical_test_id' => $adjustedFirstMedicalTestId,
+                            'age_adjusted' => $adjustmentResult['was_adjusted'],
+                            'original_test_name' => $adjustmentResult['original_test_name'],
+                            'adjusted_test_name' => $adjustmentResult['adjusted_test_name'],
                         ]);
                         
-                        // Attach all medical tests to the patient
-                        if (!empty($medicalTestIds)) {
-                            $patient->medicalTests()->attach($medicalTestIds);
+                        // Attach adjusted medical tests to the patient
+                        if (!empty($adjustedMedicalTestIds)) {
+                            $patient->medicalTests()->attach($adjustedMedicalTestIds);
                         }
                         $processedCount++;
                     }
@@ -431,13 +449,17 @@ class CompanyAppointmentController extends Controller
             // Get total patient count for this appointment
             $totalPatients = Patient::where('appointment_id', $appointment->id)->count();
             
-            // Update appointment with patient data
+            // Recalculate total price based on actual tests assigned to patients
+            $actualTotalPrice = $this->recalculateAppointmentPrice($appointment);
+            
+            // Update appointment with patient data and recalculated price
             $appointment->update([
                 'patients_data' => [
                     'count' => $totalPatients,
                     'processed' => $processedCount,
                     'skipped' => $skippedCount
-                ]
+                ],
+                'total_price' => $actualTotalPrice
             ]);
             
             \Log::info('Excel processing completed', [
@@ -450,6 +472,94 @@ class CompanyAppointmentController extends Controller
         } catch (\Exception $e) {
             throw new \Exception('Error processing Excel file: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Adjust medical tests based on patient age
+     * Patients under 34 should not get ECG tests
+     */
+    private function adjustTestsForAge($medicalTestIds, $patientAge)
+    {
+        if (empty($medicalTestIds) || $patientAge >= 34) {
+            return [
+                'test_ids' => $medicalTestIds,
+                'was_adjusted' => false,
+                'original_test_name' => null,
+                'adjusted_test_name' => null
+            ];
+        }
+        
+        $adjustedTestIds = [];
+        $wasAdjusted = false;
+        $originalTestName = null;
+        $adjustedTestName = null;
+        
+        foreach ($medicalTestIds as $testId) {
+            $test = MedicalTest::find($testId);
+            if (!$test) {
+                continue;
+            }
+            
+            // Check if this is "Annual Medical with ECG and Drug test"
+            if (stripos($test->name, 'Annual Medical with ECG and Drug test') !== false) {
+                // Find "Annual Medical with Drug Test" as replacement
+                $replacementTest = MedicalTest::where('name', 'Annual Medical with Drug Test')->first();
+                if ($replacementTest) {
+                    $adjustedTestIds[] = $replacementTest->id;
+                    $wasAdjusted = true;
+                    $originalTestName = $test->name;
+                    $adjustedTestName = $replacementTest->name;
+                    
+                    \Log::info('Age-based test adjustment', [
+                        'patient_age' => $patientAge,
+                        'original_test' => $test->name,
+                        'replacement_test' => $replacementTest->name,
+                        'original_price' => $test->price,
+                        'new_price' => $replacementTest->price
+                    ]);
+                } else {
+                    // Fallback to original test if replacement not found
+                    $adjustedTestIds[] = $testId;
+                }
+            } else {
+                // Keep other tests as is
+                $adjustedTestIds[] = $testId;
+            }
+        }
+        
+        return [
+            'test_ids' => $adjustedTestIds,
+            'was_adjusted' => $wasAdjusted,
+            'original_test_name' => $originalTestName,
+            'adjusted_test_name' => $adjustedTestName
+        ];
+    }
+
+    /**
+     * Recalculate appointment total price based on actual tests assigned to patients
+     */
+    private function recalculateAppointmentPrice($appointment)
+    {
+        $totalPrice = 0;
+        $patients = Patient::where('appointment_id', $appointment->id)->get();
+        
+        foreach ($patients as $patient) {
+            // Get all medical tests for this patient
+            $patientTests = $patient->medicalTests;
+            
+            foreach ($patientTests as $test) {
+                $totalPrice += $test->price ?? 0;
+            }
+        }
+        
+        \Log::info('Price recalculation', [
+            'appointment_id' => $appointment->id,
+            'patient_count' => $patients->count(),
+            'original_price' => $appointment->total_price,
+            'recalculated_price' => $totalPrice
+        ]);
+        
+        return $totalPrice;
     }
 
     public function show($id)

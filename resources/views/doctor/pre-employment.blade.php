@@ -374,8 +374,21 @@
                             <div class="flex items-center justify-between sm:justify-end space-x-4">
                                 @if($preEmployment && $preEmployment->total_price)
                                     <div class="text-sm">
-                                        <span class="text-gray-500">Total:</span>
-                                        <span class="font-semibold text-emerald-600">₱{{ number_format($preEmployment->total_price, 2) }}</span>
+                                        @if($preEmployment->age_adjusted && $preEmployment->original_price > $preEmployment->total_price)
+                                            <div class="flex items-center space-x-2">
+                                                <span class="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                                                    <i class="fas fa-info-circle mr-1"></i>Age Adjusted
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center space-x-2 mt-1">
+                                                <span class="text-gray-400 line-through text-xs">₱{{ number_format($preEmployment->original_price, 2) }}</span>
+                                                <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
+                                                <span class="font-semibold text-emerald-600">₱{{ number_format($preEmployment->total_price, 2) }}</span>
+                                            </div>
+                                        @else
+                                            <span class="text-gray-500">Total:</span>
+                                            <span class="font-semibold text-emerald-600">₱{{ number_format($preEmployment->total_price, 2) }}</span>
+                                        @endif
                                     </div>
                                 @endif
                                 <div class="flex items-center space-x-2">

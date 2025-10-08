@@ -36,6 +36,10 @@
                     Needs Attention
                     @php
                         $needsAttentionCount = \App\Models\Patient::where('status', 'approved')
+                            ->where(function($q) {
+                                $q->where('age_adjusted', false)
+                                  ->orWhereNull('age_adjusted');
+                            })
                             ->whereDoesntHave('annualPhysicalExamination', function($q) {
                                 $q->whereNotNull('ecg')
                                   ->where('ecg', '!=', '');
@@ -53,6 +57,10 @@
                     ECG Completed
                     @php
                         $completedCount = \App\Models\Patient::where('status', 'approved')
+                            ->where(function($q) {
+                                $q->where('age_adjusted', false)
+                                  ->orWhereNull('age_adjusted');
+                            })
                             ->whereHas('annualPhysicalExamination', function($q) {
                                 $q->whereNotNull('ecg')
                                   ->where('ecg', '!=', '');
@@ -183,6 +191,30 @@
     </div>
 </div>
 
+<!-- Age Restriction Info Message -->
+@php
+    $ageAdjustedCount = \App\Models\Patient::where('status', 'approved')
+        ->where('age_adjusted', true)
+        ->count();
+@endphp
+@if($ageAdjustedCount > 0)
+<div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+    <div class="flex items-start space-x-3">
+        <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-info-circle text-blue-600 text-sm"></i>
+        </div>
+        <div class="flex-1">
+            <h4 class="text-sm font-medium text-blue-900 mb-1">Age-Based ECG Filtering</h4>
+            <p class="text-sm text-blue-800">
+                {{ $ageAdjustedCount }} patient{{ $ageAdjustedCount > 1 ? 's' : '' }} under 34 years old {{ $ageAdjustedCount > 1 ? 'are' : 'is' }} automatically excluded from this ECG list. 
+                Their medical tests were adjusted from "Annual Medical with ECG and Drug Test" to "Annual Medical with Drug Test" only, 
+                so they don't require ECG examinations.
+            </p>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Enhanced Patients Table -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
     <div class="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
@@ -193,12 +225,12 @@
                 </div>
                 <div>
                     <h2 class="text-xl font-bold text-gray-900">Annual Physical ECG Patients</h2>
-                    <p class="text-gray-600 text-sm mt-1">Routine cardiac health assessments and monitoring</p>
+                    <p class="text-gray-600 text-sm mt-1">Routine cardiac health assessments and monitoring (34+ years only)</p>
                 </div>
             </div>
             <div class="text-right">
                 <div class="text-2xl font-bold text-green-600" id="patientCount">{{ $patients->count() }}</div>
-                <div class="text-xs text-gray-500 uppercase tracking-wider">Total Patients</div>
+                <div class="text-xs text-gray-500 uppercase tracking-wider">ECG Required Patients</div>
             </div>
         </div>
     </div>
@@ -260,8 +292,9 @@
                                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                                     <i class="fas fa-heartbeat text-gray-400 text-xl"></i>
                                 </div>
-                                <p class="text-gray-500 font-medium">No annual physical patients found</p>
-                                <p class="text-gray-400 text-sm">New patients will appear here when scheduled</p>
+                                <p class="text-gray-500 font-medium">No ECG patients found</p>
+                                <p class="text-gray-400 text-sm">Only patients 34+ years requiring ECG examinations appear here</p>
+                                <p class="text-gray-400 text-xs mt-2">Patients under 34 are automatically excluded (Drug Test only)</p>
                             </div>
                         </td>
                     </tr>

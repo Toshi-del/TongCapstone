@@ -251,116 +251,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- Laboratory Examination Report Section -->
-                <div class="bg-teal-50 rounded-xl p-6 border-l-4 border-teal-600">
-                    <div class="flex items-center mb-6">
-                        <i class="fas fa-flask text-teal-600 text-xl mr-3"></i>
-                        <h3 class="text-lg font-bold text-teal-900" style="font-family: 'Poppins', sans-serif;">Laboratory Examination Report</h3>
-                    </div>
-                    
-                    @php
-                        $lab = $annualPhysical->lab_report ?? [];
-                        
-                        // Get pathologist tests that were actually requested for this patient
-                        $pathologistTests = $annualPhysical->patient->pathologist_tests ?? collect();
-                        $requestedTests = collect();
-                        
-                        // Build dynamic lab fields based on requested tests
-                        $labFields = [];
-                        $additionalTests = [];
-                        
-                        foreach($pathologistTests as $test) {
-                            $testName = $test['test_name'];
-                            $standardFieldName = '';
-                            $config = ['icon' => 'fas fa-flask', 'color' => 'teal'];
-                            
-                            // Standardize field names and set appropriate icons/colors
-                            if (stripos($testName, 'complete blood count') !== false || stripos($testName, 'cbc') !== false) {
-                                $standardFieldName = 'cbc';
-                                $config = ['icon' => 'fas fa-tint', 'color' => 'red'];
-                            } elseif (stripos($testName, 'urinalysis') !== false) {
-                                $standardFieldName = 'urinalysis';
-                                $config = ['icon' => 'fas fa-vial', 'color' => 'yellow'];
-                            } elseif (stripos($testName, 'stool') !== false || stripos($testName, 'fecalysis') !== false) {
-                                $standardFieldName = 'fecalysis';
-                                $config = ['icon' => 'fas fa-microscope', 'color' => 'brown'];
-                            } elseif (stripos($testName, 'blood chemistry') !== false) {
-                                $standardFieldName = 'blood_chemistry';
-                                $config = ['icon' => 'fas fa-heartbeat', 'color' => 'pink'];
-                            } elseif (stripos($testName, 'sodium') !== false) {
-                                $standardFieldName = 'sodium';
-                                $config = ['icon' => 'fas fa-atom', 'color' => 'blue'];
-                            } elseif (stripos($testName, 'potassium') !== false) {
-                                $standardFieldName = 'potassium';
-                                $config = ['icon' => 'fas fa-atom', 'color' => 'green'];
-                            } elseif (stripos($testName, 'calcium') !== false) {
-                                $standardFieldName = 'ionized_calcium';
-                                $config = ['icon' => 'fas fa-atom', 'color' => 'purple'];
-                            } elseif (stripos($testName, 'hbsag') !== false || stripos($testName, 'hepatitis b') !== false) {
-                                $standardFieldName = 'hbsag_screening';
-                                $config = ['icon' => 'fas fa-shield-virus', 'color' => 'orange'];
-                                $additionalTests[$standardFieldName] = ['name' => $testName, 'config' => $config];
-                                continue;
-                            } elseif (stripos($testName, 'hepa a') !== false || stripos($testName, 'hepatitis a') !== false) {
-                                $standardFieldName = 'hepa_a_igg_igm';
-                                $config = ['icon' => 'fas fa-virus', 'color' => 'purple'];
-                                $additionalTests[$standardFieldName] = ['name' => $testName, 'config' => $config];
-                                continue;
-                            } else {
-                                $standardFieldName = strtolower(str_replace([' ', '-', '&', '(', ')'], '_', $testName));
-                                $config = ['icon' => 'fas fa-flask', 'color' => 'indigo'];
-                            }
-                            
-                            if ($standardFieldName) {
-                                $labFields[$standardFieldName] = $config;
-                                $labFields[$standardFieldName]['display_name'] = $testName;
-                            }
-                        }
-                        
-                        // If no specific tests found, show basic tests
-                        if (empty($labFields)) {
-                            $labFields = [
-                                'cbc' => ['icon' => 'fas fa-tint', 'color' => 'red', 'display_name' => 'Complete Blood Count (CBC)'],
-                                'urinalysis' => ['icon' => 'fas fa-vial', 'color' => 'yellow', 'display_name' => 'Urinalysis'],
-                                'fecalysis' => ['icon' => 'fas fa-microscope', 'color' => 'brown', 'display_name' => 'Fecalysis']
-                            ];
-                        }
-                    @endphp
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                        @foreach($labFields as $field => $config)
-                            <div class="bg-white rounded-lg p-4 border-l-4 border-{{ $config['color'] }}-500">
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                    <i class="{{ $config['icon'] }} text-{{ $config['color'] }}-600 mr-2"></i>{{ $config['display_name'] ?? str_replace('_', ' ', ucwords($field)) }}
-                                </label>
-                                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700">
-                                    {{ data_get($lab, $field, 'Not available') }}
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                    
-                    <!-- Additional Laboratory Tests (Only show if requested) -->
-                    @if(!empty($additionalTests))
-                    <div class="bg-white rounded-lg p-4">
-                        <h4 class="text-md font-semibold text-gray-700 mb-4">
-                            <i class="fas fa-plus-square text-teal-600 mr-2"></i>Additional Laboratory Tests
-                        </h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            @foreach($additionalTests as $field => $testInfo)
-                                <div class="bg-gray-50 rounded-lg p-4 border-l-4 border-{{ $testInfo['config']['color'] }}-500">
-                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                        <i class="{{ $testInfo['config']['icon'] }} text-{{ $testInfo['config']['color'] }}-600 mr-2"></i>{{ $testInfo['name'] }}
-                                    </label>
-                                    <div class="bg-white p-3 rounded-lg border border-gray-200 text-sm text-gray-700">
-                                        {{ data_get($lab, $field, 'Not available') }}
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                    @endif
-                </div>
 
                 <!-- Physical Findings Section -->
                 <div class="bg-cyan-50 rounded-xl p-6 border-l-4 border-cyan-600">
@@ -482,7 +372,7 @@
                                 <div>
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Result</label>
                                     @php
-                                        // Match pathologist's key conversion logic: remove spaces, hyphens, ampersands, parentheses (but NOT dots)
+                                        // Match pathologist's key conversion logic exactly: remove spaces, hyphens, ampersands, parentheses (but preserve periods)
                                         $testKey = strtolower(str_replace([' ', '-', '&', '(', ')'], '_', $row));
                                         $testKey = str_replace('chest_x_ray', 'xray', $testKey);
                                         $testKey = str_replace('hepa_a_igg___igm', 'hepa_a_igg_igm', $testKey);
@@ -524,9 +414,6 @@
                                     @endphp
                                     <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm text-gray-700">
                                         {{ $resultValue ?: 'Not available' }}
-                                        @if(isset($debugInfo))
-                                            <div class="text-xs text-red-600 mt-1 font-mono">{{ $debugInfo }}</div>
-                                        @endif
                                     </div>
                                 </div>
                                 <div>

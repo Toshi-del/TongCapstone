@@ -167,6 +167,12 @@
                                                         <div class="text-xs text-amber-600 ml-4">
                                                             <i class="fas fa-stethoscope mr-1"></i>
                                                             {{ $test->name }}
+                                                            @if(stripos($test->name, 'Annual Medical with ECG and Drug test') !== false)
+                                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200 ml-2">
+                                                                    <i class="fas fa-exchange-alt mr-1 text-xs"></i>
+                                                                    Under 34 → Drug Test only
+                                                                </span>
+                                                            @endif
                                                         </div>
                                                     @endforeach
                                                 </div>
@@ -181,6 +187,19 @@
                                             </div>
                                         @endif
                                     </div>
+                                    @php
+                                        $ageAdjustedCount = $appointment->patients()->where('age_adjusted', true)->count();
+                                    @endphp
+                                    @if($ageAdjustedCount > 0)
+                                        <div class="mt-2">
+                                            <div class="flex items-center space-x-2 bg-blue-50 px-2 py-1 rounded-lg border border-blue-200">
+                                                <i class="fas fa-exchange-alt text-blue-600 text-xs"></i>
+                                                <span class="text-xs font-medium text-blue-800">
+                                                    {{ $ageAdjustedCount }} patient{{ $ageAdjustedCount > 1 ? 's' : '' }} changed to "Annual Medical with Drug Test"
+                                                </span>
+                                            </div>
+                                        </div>
+                                    @endif
                                     @if($appointment->status === 'approved' && $appointment->hasTestAssignments())
                                         <div class="mt-2 flex flex-wrap gap-1">
                                             @php
@@ -226,6 +245,16 @@
                                         <div class="text-sm font-bold text-emerald-800">
                                             ₱{{ number_format($appointment->total_price, 2) }}
                                         </div>
+                                        @php
+                                            $ageAdjustedCount = $appointment->patients()->where('age_adjusted', true)->count();
+                                            $priceDifference = $ageAdjustedCount * 100; // ₱850 - ₱750 = ₱100 per patient
+                                        @endphp
+                                        @if($ageAdjustedCount > 0 && $priceDifference > 0)
+                                            <div class="text-xs text-blue-600 mt-1">
+                                                <i class="fas fa-calculator mr-1"></i>
+                                                Saved ₱{{ number_format($priceDifference, 2) }}
+                                            </div>
+                                        @endif
                                     </div>
                                 @else
                                     <div class="bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 text-center">

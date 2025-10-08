@@ -406,12 +406,31 @@
                                 </div>
                             </td>
                             <td class="py-5 px-6 border-r border-gray-100">
-                                <div class="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
-                                    <i class="fas fa-peso-sign text-green-500 text-xs"></i>
-                                    <span class="text-sm font-semibold text-green-700">
-                                        {{ number_format((float)($preEmployment->total_price ?? 0), 2) }}
-                                    </span>
-                                </div>
+                                @if($preEmployment->age_adjusted && $preEmployment->original_price > $preEmployment->total_price)
+                                    <div class="space-y-1">
+                                        <div class="flex items-center space-x-2 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                                            <i class="fas fa-info-circle text-amber-600 text-xs"></i>
+                                            <span class="text-xs text-amber-700 font-medium">Age Adjusted</span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-xs text-gray-500 line-through">₱{{ number_format($preEmployment->original_price, 2) }}</span>
+                                            <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
+                                        </div>
+                                        <div class="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                                            <i class="fas fa-peso-sign text-green-500 text-xs"></i>
+                                            <span class="text-sm font-semibold text-green-700">
+                                                {{ number_format((float)($preEmployment->total_price ?? 0), 2) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                                        <i class="fas fa-peso-sign text-green-500 text-xs"></i>
+                                        <span class="text-sm font-semibold text-green-700">
+                                            {{ number_format((float)($preEmployment->total_price ?? 0), 2) }}
+                                        </span>
+                                    </div>
+                                @endif
                             </td>
                             <td class="py-5 px-6 border-r border-gray-100">
                                 @php

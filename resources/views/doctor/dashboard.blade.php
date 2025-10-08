@@ -136,29 +136,7 @@
     </div>
 
     <!-- Charts Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Patient Distribution Chart -->
-        <div class="bg-white rounded-xl shadow-md p-6">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    <i class="fas fa-chart-pie text-purple-600 mr-2"></i>Patient Distribution
-                </h3>
-                <div class="text-sm text-gray-500">
-                    <i class="fas fa-sync-alt mr-1"></i>Updated today
-                </div>
-            </div>
-            <div class="relative" style="height: 280px;">
-                <canvas id="distributionChart"></canvas>
-                <div id="emptyDistributionChart" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 bg-opacity-80 rounded-lg {{ ($patientCount + $preEmploymentCount) > 0 ? 'hidden' : '' }}">
-                    <div class="w-20 h-20 text-gray-300 mb-4">
-                        <i class="fas fa-chart-pie text-5xl"></i>
-                    </div>
-                    <p class="text-gray-500 font-medium">No patient data available</p>
-                    <p class="text-gray-400 text-sm mt-1">Patient distribution will appear here</p>
-                </div>
-            </div>
-        </div>
-
+    <div class="grid grid-cols-1 gap-6">
         <!-- Examination Trends Chart -->
         <div class="bg-white rounded-xl shadow-md p-6">
             <div class="flex items-center justify-between mb-6">
@@ -183,7 +161,7 @@
     </div>
 
     <!-- Additional Charts Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 gap-6">
         <!-- Monthly Examination Trends -->
         <div class="bg-white rounded-xl shadow-md p-6">
             <div class="flex items-center justify-between mb-6">
@@ -191,10 +169,7 @@
                     <i class="fas fa-calendar-alt text-indigo-600 mr-2"></i>Monthly Examination Trends
                 </h3>
                 <div class="text-sm text-gray-500">
-                    <select id="yearSelector" class="border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="2023">2023</option>
-                        <option value="2022">2022</option>
-                    </select>
+                    <i class="fas fa-sync-alt mr-1"></i>Updated today
                 </div>
             </div>
             <div class="relative" style="height: 280px;">
@@ -209,31 +184,6 @@
             </div>
         </div>
 
-        <!-- Health Conditions Overview -->
-        <div class="bg-white rounded-xl shadow-md p-6">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    <i class="fas fa-heartbeat text-red-600 mr-2"></i>Health Conditions Overview
-                </h3>
-                <div class="text-sm text-gray-500">
-                    <select id="conditionPeriod" class="border-gray-300 rounded-md text-sm focus:ring-red-500 focus:border-red-500">
-                        <option value="all">All Time</option>
-                        <option value="year">This Year</option>
-                        <option value="month">This Month</option>
-                    </select>
-                </div>
-            </div>
-            <div class="relative" style="height: 280px;">
-                <canvas id="healthConditionsChart"></canvas>
-                <div id="emptyHealthChart" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 bg-opacity-80 rounded-lg">
-                    <div class="w-20 h-20 text-gray-300 mb-4">
-                        <i class="fas fa-heartbeat text-5xl"></i>
-                    </div>
-                    <p class="text-gray-500 font-medium">No health condition data available</p>
-                    <p class="text-gray-400 text-sm mt-1">Health condition statistics will appear here</p>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Quick Actions Grid -->
@@ -435,63 +385,9 @@
         
         // Hide/show empty states based on data
         if (hasData) {
-            document.getElementById('emptyDistributionChart').style.display = 'none';
             document.getElementById('emptyTrendsChart').style.display = 'none';
         }
         
-        // Patient Distribution Chart (Doughnut)
-        const distributionCtx = document.getElementById('distributionChart');
-        if (distributionCtx) {
-            new Chart(distributionCtx.getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Annual Physical', 'Pre-Employment'],
-                    datasets: [{
-                        data: [patientCount, preEmploymentCount],
-                        backgroundColor: ['#9333ea', '#059669'],
-                        borderWidth: 0,
-                        hoverOffset: 8
-                    }]
-                },
-                options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 20,
-                            font: {
-                                size: 13,
-                                family: "'Inter', sans-serif"
-                            },
-                            usePointStyle: true,
-                            pointStyle: 'circle'
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed || 0;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return `${label}: ${value} (${percentage}%)`;
-                            }
-                        },
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12,
-                        titleFont: {
-                            size: 14
-                        },
-                        bodyFont: {
-                            size: 13
-                        }
-                    }
-                }
-                }
-            });
-        }
 
         // Examination Overview Chart (Bar)
         const trendsCtx = document.getElementById('trendsChart');
@@ -649,114 +545,11 @@
             }
         }
         
-        // Health Conditions Chart (Horizontal Bar)
-        const healthCtxElement = document.getElementById('healthConditionsChart');
-        @php
-            $defaultHealthConditions = ['hypertension' => 0, 'diabetes' => 0, 'respiratory' => 0, 'cardiac' => 0, 'others' => 0];
-        @endphp
-        const healthConditions = @json($healthConditions ?? $defaultHealthConditions);
-        const hasHealthData = Object.values(healthConditions).some(val => val > 0);
         
-        if (healthCtxElement) {
-            const healthChart = new Chart(healthCtxElement.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: ['Hypertension', 'Diabetes', 'Respiratory Issues', 'Cardiac Issues', 'Others'],
-                    datasets: [{
-                        label: 'Patients',
-                        data: [
-                            healthConditions.hypertension || 0,
-                            healthConditions.diabetes || 0,
-                            healthConditions.respiratory || 0,
-                            healthConditions.cardiac || 0,
-                            healthConditions.others || 0
-                        ],
-                        backgroundColor: [
-                            'rgba(239, 68, 68, 0.7)',
-                            'rgba(59, 130, 246, 0.7)',
-                            'rgba(16, 185, 129, 0.7)',
-                            'rgba(245, 158, 11, 0.7)',
-                            'rgba(107, 114, 128, 0.7)'
-                        ],
-                        borderRadius: 8,
-                        borderSkipped: false
-                    }]
-                },
-                options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 12
-                    }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1,
-                            font: {
-                                size: 12
-                            }
-                        },
-                        grid: {
-                            color: '#f1f5f9'
-                        }
-                    },
-                    y: {
-                        ticks: {
-                            font: {
-                                size: 12
-                            }
-                        },
-                        grid: {
-                            display: false
-                        }
-                    }
-                }
-                }
-            });
-            
-            // Show/hide empty state for health conditions chart
-            if (!hasHealthData) {
-                document.getElementById('emptyHealthChart').classList.remove('hidden');
-            } else {
-                document.getElementById('emptyHealthChart').classList.add('hidden');
-            }
-        }
-        
-        // Year selector for monthly trends
-        const yearSelector = document.getElementById('yearSelector');
-        if (yearSelector) {
-            yearSelector.addEventListener('change', function() {
-                // This would typically fetch data for the selected year
-                // For now, just show the empty state
-                const emptyMonthly = document.getElementById('emptyMonthlyChart');
-                if (emptyMonthly) emptyMonthly.classList.remove('hidden');
-            });
-        }
-        
-        // Period selector for health conditions
-        const conditionPeriod = document.getElementById('conditionPeriod');
-        if (conditionPeriod) {
-            conditionPeriod.addEventListener('change', function() {
-                // This would typically fetch data for the selected period
-                // For now, just show the empty state
-                const emptyHealth = document.getElementById('emptyHealthChart');
-                if (emptyHealth) emptyHealth.classList.remove('hidden');
-            });
-        }
         
         // Show empty states if no data
         if (!hasData) {
-            const emptyDist = document.getElementById('emptyDistributionChart');
             const emptyTrends = document.getElementById('emptyTrendsChart');
-            if (emptyDist) emptyDist.classList.remove('hidden');
             if (emptyTrends) emptyTrends.classList.remove('hidden');
         }
     });

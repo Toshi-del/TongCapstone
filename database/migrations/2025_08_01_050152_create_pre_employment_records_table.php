@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('sex', ['Male', 'Female']);
             $table->string('email');
             $table->string('phone_number');
+            $table->text('address')->nullable();
             $table->foreignId('medical_test_categories_id')->constrained('medical_test_categories');
             $table->unsignedBigInteger('medical_test_id')->nullable();
             $table->text('other_exams')->nullable();

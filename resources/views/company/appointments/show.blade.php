@@ -111,7 +111,18 @@
                     <h2 class="text-xl font-bold text-white" style="font-family: 'Poppins', sans-serif;">
                         <i class="fas fa-vials mr-3"></i>Selected Medical Tests
                     </h2>
-                    <p class="text-emerald-100 mt-1">{{ $selectedTests->count() }} test(s) selected</p>
+                    <div class="flex items-center justify-between mt-1">
+                        <p class="text-emerald-100">{{ $selectedTests->count() }} test(s) selected</p>
+                        @php
+                            $ageAdjustedCount = $appointment->patients()->where('age_adjusted', true)->count();
+                        @endphp
+                        @if($ageAdjustedCount > 0)
+                            <div class="flex items-center space-x-2 bg-amber-500 bg-opacity-20 px-3 py-1 rounded-full">
+                                <i class="fas fa-exchange-alt text-amber-200 text-sm"></i>
+                                <span class="text-amber-100 text-sm font-medium">{{ $ageAdjustedCount }} patient(s) → Drug Test only</span>
+                            </div>
+                        @endif
+                    </div>
                 </div>
                 <div class="p-8">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -405,27 +416,62 @@
                         @endphp
                         @if($selectedTestsForPrice->count() > 0)
                         <div class="bg-green-50 rounded-lg p-4 border-l-4 border-green-600 col-span-2">
-                            <p class="text-green-700 text-sm font-medium">Total Price Calculation</p>
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between text-sm text-green-700">
-                                    <span>Tests Price per Patient:</span>
-                                    <span class="font-semibold">₱{{ number_format($totalTestPrice, 2) }}</span>
+                            <p class="text-green-700 text-sm font-medium">Final Price Calculation</p>
+                            @php
+                                $ageAdjustedCount = $appointment->patients()->where('age_adjusted', true)->count();
+                                $regularPatients = $patientCount - $ageAdjustedCount;
+                                $actualTotal = $appointment->total_price ?? $grandTotal;
+                                $priceDifference = $ageAdjustedCount * 100; // ₱850 - ₱750 = ₱100 per patient
+                            @endphp
+                            
+                            @if($ageAdjustedCount > 0)
+                                <!-- Price breakdown with age adjustments -->
+                                <div class="space-y-2">
+                                    @if($regularPatients > 0)
+                                        <div class="flex items-center justify-between text-sm text-green-700">
+                                            <span>{{ $regularPatients }} patient{{ $regularPatients > 1 ? 's' : '' }} (ECG + Drug Test):</span>
+                                            <span class="font-semibold">₱{{ number_format($regularPatients * 850, 2) }}</span>
+                                        </div>
+                                    @endif
+                                    <div class="flex items-center justify-between text-sm text-blue-700">
+                                        <span>{{ $ageAdjustedCount }} patient{{ $ageAdjustedCount > 1 ? 's' : '' }} (Drug Test only):</span>
+                                        <span class="font-semibold">₱{{ number_format($ageAdjustedCount * 750, 2) }}</span>
+                                    </div>
+                                    @if($priceDifference > 0)
+                                        <div class="flex items-center justify-between text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                            <span><i class="fas fa-calculator mr-1"></i>Amount Saved (Age Adjustments):</span>
+                                            <span class="font-semibold">₱{{ number_format($priceDifference, 2) }}</span>
+                                        </div>
+                                    @endif
+                                    <hr class="border-green-300">
+                                    <div class="flex items-start justify-between">
+                                        <span class="text-green-700 font-medium">Final Total Amount:</span>
+                                        <span class="text-3xl font-bold text-green-900">₱{{ number_format($actualTotal, 2) }}</span>
+                                    </div>
                                 </div>
-                                <div class="flex items-center justify-between text-sm text-green-700">
-                                    <span>Number of Patients:</span>
-                                    <span class="font-semibold">{{ $patientCount }}</span>
+                            @else
+                                <!-- Regular pricing without adjustments -->
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between text-sm text-green-700">
+                                        <span>Tests Price per Patient:</span>
+                                        <span class="font-semibold">₱{{ number_format($totalTestPrice, 2) }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm text-green-700">
+                                        <span>Number of Patients:</span>
+                                        <span class="font-semibold">{{ $patientCount }}</span>
+                                    </div>
+                                    <hr class="border-green-300">
+                                    <div class="flex items-start justify-between">
+                                        <span class="text-green-700 font-medium">Total Amount:</span>
+                                        <span class="text-3xl font-bold text-green-900">₱{{ number_format($grandTotal, 2) }}</span>
+                                    </div>
+                                    @if($patientCount > 0)
+                                    <p class="text-xs text-green-600 mt-1">
+                                        (₱{{ number_format($totalTestPrice, 2) }} × {{ $patientCount }} patients)
+                                    </p>
+                                    @endif
                                 </div>
-                                <hr class="border-green-300">
-                                <div class="flex items-start justify-between">
-                                    <span class="text-green-700 font-medium">Estimated Total Amount:</span>
-                                    <span class="text-3xl font-bold text-green-900">₱{{ number_format($grandTotal, 2) }}</span>
-                                </div>
-                                @if($patientCount > 0)
-                                <p class="text-xs text-green-600 mt-1">
-                                    (₱{{ number_format($totalTestPrice, 2) }} × {{ $patientCount }} patients)
-                                </p>
-                                @endif
-                            </div>
+                            @endif
                         </div>
                         @endif
                         <div class="bg-gray-50 rounded-lg p-4 border-l-4 border-gray-600 col-span-2">

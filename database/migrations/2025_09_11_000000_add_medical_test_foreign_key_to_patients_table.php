@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('patients', function (Blueprint $table) {
-            $table->string('status')->default('pending')->after('appointment_id');
+            $table->foreign('medical_test_id')->references('id')->on('medical_tests')->onDelete('set null');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('patients', function (Blueprint $table) {
-            $table->dropColumn('status');
+            $table->dropForeign(['medical_test_id']);
         });
     }
 };

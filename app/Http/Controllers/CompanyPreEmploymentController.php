@@ -196,24 +196,82 @@ class CompanyPreEmploymentController extends Controller
                     } else {
                         $processedRows++;
                         
+                        // Apply age-based ECG restriction for patients under 34
+                        $adjustedTests = $selectedTests;
+                        $adjustedCategoryIds = $categoryIds;
+                        $adjustedTestIds = $testIds;
+                        $adjustedTotalPrice = $totalPrice;
+                        $originalPrice = $totalPrice;
+                        $ageAdjusted = false;
+                        
+                        if ($age < 34) {
+                            $newTests = [];
+                            $newCategoryIds = [];
+                            $newTestIds = [];
+                            $newTotalPrice = 0;
+                            
+                            foreach ($adjustedTests as $index => $test) {
+                                // Check if this is an ECG-related test
+                                if (stripos($test->name, 'Pre-Employment with ECG and Drug test') !== false) {
+                                    // Find the non-ECG equivalent
+                                    $nonEcgTest = MedicalTest::where('name', 'Pre-Employment with Drug Test')
+                                        ->where('medical_test_category_id', $test->medical_test_category_id)
+                                        ->first();
+                                    
+                                    if ($nonEcgTest) {
+                                        $newTests[] = $nonEcgTest;
+                                        $newCategoryIds[] = $adjustedCategoryIds[$index];
+                                        $newTestIds[] = $nonEcgTest->id;
+                                        $newTotalPrice += $nonEcgTest->price ?? 0;
+                                        $ageAdjusted = true;
+                                        
+                                        \Log::info('Age-based ECG restriction applied', [
+                                            'patient_age' => $age,
+                                            'original_test' => $test->name,
+                                            'adjusted_test' => $nonEcgTest->name,
+                                            'original_price' => $test->price,
+                                            'adjusted_price' => $nonEcgTest->price
+                                        ]);
+                                    } else {
+                                        // If no non-ECG equivalent found, keep original
+                                        $newTests[] = $test;
+                                        $newCategoryIds[] = $adjustedCategoryIds[$index];
+                                        $newTestIds[] = $adjustedTestIds[$index];
+                                        $newTotalPrice += $test->price ?? 0;
+                                    }
+                                } else {
+                                    // Keep non-ECG tests as is
+                                    $newTests[] = $test;
+                                    $newCategoryIds[] = $adjustedCategoryIds[$index];
+                                    $newTestIds[] = $adjustedTestIds[$index];
+                                    $newTotalPrice += $test->price ?? 0;
+                                }
+                            }
+                            
+                            $adjustedTests = $newTests;
+                            $adjustedCategoryIds = $newCategoryIds;
+                            $adjustedTestIds = $newTestIds;
+                            $adjustedTotalPrice = $newTotalPrice;
+                        }
+                        
                         // Save to database with total price of all selected medical tests
                         // Use the first selected test for the main fields
-                        $firstTest = $selectedTests[0];
-                        $firstCategoryId = $categoryIds[0];
+                        $firstTest = $adjustedTests[0];
+                        $firstCategoryId = $adjustedCategoryIds[0];
                         
                         // Load all categories at once for efficiency
-                        $categories = \App\Models\MedicalTestCategory::whereIn('id', $categoryIds)->get()->keyBy('id');
+                        $categories = \App\Models\MedicalTestCategory::whereIn('id', $adjustedCategoryIds)->get()->keyBy('id');
                         
                         // Prepare selected tests data for other_exams field
                         $selectedTestsData = [];
-                        foreach ($selectedTests as $index => $test) {
-                            $categoryId = $categoryIds[$index];
+                        foreach ($adjustedTests as $index => $test) {
+                            $categoryId = $adjustedCategoryIds[$index];
                             $category = $categories->get($categoryId);
                             
                             $selectedTestsData[] = [
                                 'category_id' => $categoryId,
                                 'category_name' => $category->name ?? 'Unknown',
-                                'test_id' => $testIds[$index],
+                                'test_id' => $adjustedTestIds[$index],
                                 'test_name' => $test->name,
                                 'price' => $test->price ?? 0,
                             ];
@@ -224,7 +282,7 @@ class CompanyPreEmploymentController extends Controller
                         if (!empty($request->package_other_exams)) {
                             $otherExamsData['additional_exams'] = $request->package_other_exams;
                         }
-                        if (count($selectedTests) > 1) {
+                        if (count($adjustedTests) > 1) {
                             $otherExamsData['selected_tests'] = $selectedTestsData;
                         }
                         
@@ -238,7 +296,9 @@ class CompanyPreEmploymentController extends Controller
                             'address' => !empty($row[6]) ? trim($row[6]) : null,
                             'medical_test_categories_id' => $firstCategoryId,
                             'medical_test_id' => $firstTest->id,
-                            'total_price' => $totalPrice,
+                            'total_price' => $adjustedTotalPrice,
+                            'original_price' => $ageAdjusted ? $originalPrice : $adjustedTotalPrice,
+                            'age_adjusted' => $ageAdjusted,
                             'other_exams' => !empty($otherExamsData) ? json_encode($otherExamsData) : $request->package_other_exams,
                             'billing_type' => $request->billing_type,
                             'company_name' => $request->company_name,

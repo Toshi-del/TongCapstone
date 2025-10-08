@@ -65,6 +65,17 @@
                                 <div>
                                     <p class="text-sm text-gray-500">Number of Patients</p>
                                     <p class="font-medium text-gray-900">{{ $appointment->patient_count }} {{ $appointment->patient_count == 1 ? 'patient' : 'patients' }}</p>
+                                    @php
+                                        $ageAdjustedCount = $appointment->patients()->where('age_adjusted', true)->count();
+                                    @endphp
+                                    @if($ageAdjustedCount > 0)
+                                        <div class="mt-1">
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                                <i class="fas fa-exchange-alt mr-1 text-xs"></i>
+                                                {{ $ageAdjustedCount }} → Drug Test only
+                                            </span>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -185,6 +196,12 @@
                                                     <div class="flex items-center space-x-2">
                                                         <i class="fas fa-stethoscope text-amber-500 text-xs"></i>
                                                         <span class="text-sm text-amber-700">{{ $test->name }}</span>
+                                                        @if(stripos($test->name, 'Annual Medical with ECG and Drug test') !== false)
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200 ml-2">
+                                                                <i class="fas fa-exchange-alt mr-1 text-xs"></i>
+                                                                Under 34 → Drug Test only
+                                                            </span>
+                                                        @endif
                                                     </div>
                                                     @if($test->price)
                                                         <span class="text-xs text-green-600 font-medium">₱{{ number_format((float)$test->price, 2) }}</span>
@@ -198,18 +215,56 @@
                             
                             <!-- Estimated Billing -->
                             <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-semibold text-green-800">Estimated Total Cost:</span>
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="font-semibold text-green-800">Actual Total Cost:</span>
                                     <div class="text-right">
                                         <div class="flex items-center space-x-2 text-green-700">
                                             <i class="fas fa-peso-sign"></i>
-                                            <span class="text-lg font-bold">{{ number_format((float)($appointment->total_price ?? 0) * $appointment->patient_count, 2) }}</span>
+                                            <span class="text-lg font-bold">{{ number_format((float)($appointment->total_price ?? 0), 2) }}</span>
                                         </div>
-                                        <p class="text-xs text-green-600">
-                                            {{ $appointment->patient_count }} {{ $appointment->patient_count == 1 ? 'patient' : 'patients' }} × ₱{{ number_format((float)($appointment->total_price ?? 0), 2) }}
-                                        </p>
                                     </div>
                                 </div>
+                                
+                                @php
+                                    $ageAdjustedCount = $appointment->patients()->where('age_adjusted', true)->count();
+                                    $regularPatients = $appointment->patient_count - $ageAdjustedCount;
+                                    $originalECGPrice = 850; // Annual Medical with ECG and Drug test
+                                    $drugTestPrice = 750;    // Annual Medical with Drug Test
+                                    $priceDifference = $ageAdjustedCount * ($originalECGPrice - $drugTestPrice);
+                                    $originalTotalPrice = ($appointment->total_price ?? 0) + $priceDifference;
+                                @endphp
+                                
+                                @if($ageAdjustedCount > 0)
+                                    <!-- Price Breakdown with Age Adjustments -->
+                                    <div class="space-y-2 text-sm">
+                                        @if($regularPatients > 0)
+                                            <div class="flex items-center justify-between text-green-700">
+                                                <span>{{ $regularPatients }} patient{{ $regularPatients > 1 ? 's' : '' }} (ECG + Drug Test)</span>
+                                                <span>₱{{ number_format($regularPatients * $originalECGPrice, 2) }}</span>
+                                            </div>
+                                        @endif
+                                        <div class="flex items-center justify-between text-blue-700">
+                                            <span>{{ $ageAdjustedCount }} patient{{ $ageAdjustedCount > 1 ? 's' : '' }} (Drug Test only)</span>
+                                            <span>₱{{ number_format($ageAdjustedCount * $drugTestPrice, 2) }}</span>
+                                        </div>
+                                        <hr class="border-green-300">
+                                        <div class="flex items-center justify-between text-green-800 font-medium">
+                                            <span>Total After Age Adjustments</span>
+                                            <span>₱{{ number_format((float)($appointment->total_price ?? 0), 2) }}</span>
+                                        </div>
+                                        @if($priceDifference > 0)
+                                            <div class="flex items-center justify-between text-blue-600 text-xs">
+                                                <span><i class="fas fa-calculator mr-1"></i>Amount Saved</span>
+                                                <span>₱{{ number_format($priceDifference, 2) }}</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @else
+                                    <!-- Regular pricing without adjustments -->
+                                    <p class="text-xs text-green-600">
+                                        {{ $appointment->patient_count }} {{ $appointment->patient_count == 1 ? 'patient' : 'patients' }} × ₱{{ number_format((float)($appointment->total_price ?? 0) / max($appointment->patient_count, 1), 2) }}
+                                    </p>
+                                @endif
                             </div>
                         </div>
                     @else

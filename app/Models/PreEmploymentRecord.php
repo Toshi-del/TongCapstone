@@ -22,6 +22,8 @@ class PreEmploymentRecord extends Model
         'medical_test_categories_id',
         'medical_test_id',
         'total_price',
+        'original_price',
+        'age_adjusted',
         'other_exams',
         'billing_type',
         'company_name',
@@ -33,6 +35,8 @@ class PreEmploymentRecord extends Model
 
     protected $casts = [
         'total_price' => 'decimal:2',
+        'original_price' => 'decimal:2',
+        'age_adjusted' => 'boolean',
     ];
 
     public function creator(): BelongsTo

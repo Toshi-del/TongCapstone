@@ -264,6 +264,18 @@
                                                             <div class="ml-3 flex-1 flex flex-col justify-between min-h-0">
                                                                 <div class="flex-1">
                                                                     <h5 class="text-base font-bold text-gray-900 mb-1">{{ $test->name }}</h5>
+                                                                    @if(stripos($test->name, 'Annual Medical with ECG and Drug test') !== false)
+                                                                        <div class="mb-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                                                                            <div class="flex items-center space-x-2">
+                                                                                <i class="fas fa-info-circle text-amber-600 text-sm"></i>
+                                                                                <span class="text-xs text-amber-800 font-medium">Age Restriction - Auto Replacement</span>
+                                                                            </div>
+                                                                            <p class="text-xs text-amber-700 mt-1">
+                                                                                Patients under 34 years will be automatically changed to:<br>
+                                                                                <span class="font-semibold text-blue-700">"Annual Medical with Drug Test"</span>
+                                                                            </p>
+                                                                        </div>
+                                                                    @endif
                                                                     @if($test->description)
                                                                         @php
                                                                             $isPackageTest = str_contains(strtolower($test->name), 'package');

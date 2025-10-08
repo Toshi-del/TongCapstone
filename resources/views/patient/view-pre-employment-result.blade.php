@@ -55,6 +55,95 @@
                 </div>
             </div>
         </div>
+
+        <!-- Examination Package & Pricing Information -->
+        @if($examination->preEmploymentRecord)
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-file-invoice-dollar text-emerald-600 text-sm"></i>
+                    </div>
+                    <h2 class="text-lg font-medium text-gray-900">Examination Package & Pricing</h2>
+                </div>
+            </div>
+            <div class="p-6">
+                @php
+                    $record = $examination->preEmploymentRecord;
+                    $isAgeAdjusted = $record->age_adjusted ?? false;
+                    $originalPrice = $record->original_price ?? $record->total_price;
+                    $finalPrice = $record->total_price;
+                    $priceDifference = $originalPrice - $finalPrice;
+                @endphp
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Package Information -->
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <i class="fas fa-box text-blue-600"></i>
+                            <h3 class="font-semibold text-blue-700">Examination Package</h3>
+                        </div>
+                        @if($record->medicalTest)
+                            <p class="text-gray-900 font-medium mb-2">{{ $record->medicalTest->name }}</p>
+                            @if($record->medicalTest->description)
+                                <p class="text-gray-600 text-sm">{{ $record->medicalTest->description }}</p>
+                            @endif
+                        @else
+                            <p class="text-gray-900 font-medium">Pre-Employment Medical Examination</p>
+                        @endif
+                    </div>
+                    
+                    <!-- Pricing Information -->
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <i class="fas fa-calculator text-green-600"></i>
+                            <h3 class="font-semibold text-green-700">Pricing Details</h3>
+                        </div>
+                        @if($isAgeAdjusted && $priceDifference > 0)
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600 text-sm">Original Package:</span>
+                                    <span class="text-gray-500 line-through text-sm">₱{{ number_format($originalPrice, 2) }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600 text-sm">Age Adjustment:</span>
+                                    <span class="text-red-600 text-sm">-₱{{ number_format($priceDifference, 2) }}</span>
+                                </div>
+                                <hr class="border-gray-300">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-green-700 font-semibold">Final Amount:</span>
+                                    <span class="text-green-700 font-semibold text-lg">₱{{ number_format($finalPrice, 2) }}</span>
+                                </div>
+                            </div>
+                        @else
+                            <div class="flex justify-between items-center">
+                                <span class="text-green-700 font-semibold">Total Amount:</span>
+                                <span class="text-green-700 font-semibold text-lg">₱{{ number_format($finalPrice, 2) }}</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+                
+                <!-- Age Adjustment Notice -->
+                @if($isAgeAdjusted && $priceDifference > 0)
+                <div class="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-info-circle text-amber-600 mt-1"></i>
+                        <div class="flex-1">
+                            <h4 class="text-amber-800 font-semibold mb-1">Age-Based Package Adjustment</h4>
+                            <p class="text-amber-700 text-sm">
+                                Since you are under 34 years old, your examination package was automatically adjusted from 
+                                <strong>"Pre-Employment with ECG and Drug Test"</strong> to <strong>"Pre-Employment with Drug Test"</strong> only. 
+                                The ECG examination was removed as it's not required for patients under 34, resulting in a price reduction of 
+                                <strong>₱{{ number_format($priceDifference, 2) }}</strong>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
         
         <!-- Fitness Assessment -->
         @if($examination->fitness_assessment)

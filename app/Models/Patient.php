@@ -22,6 +22,9 @@ class Patient extends Model
         'company_name',
         'status',
         'medical_test_id',
+        'age_adjusted',
+        'original_test_name',
+        'adjusted_test_name',
     ];
 
     public function appointment(): \Illuminate\Database\Eloquent\Relations\BelongsTo

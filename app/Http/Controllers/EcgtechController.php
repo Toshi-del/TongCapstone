@@ -23,8 +23,12 @@ class EcgtechController extends Controller
      */
     public function dashboard()
     {
-        // Get pre-employment records not yet submitted - only those with ECG and Drug test or packages A-E
+        // Get pre-employment records not yet submitted - only those with ECG and Drug test or packages A-E (excluding age-adjusted)
         $preEmployments = PreEmploymentRecord::where('status', 'approved')
+            ->where(function($q) {
+                $q->where('age_adjusted', false)
+                  ->orWhereNull('age_adjusted');
+            })
             ->whereHas('medicalTest', function ($q) {
                 $q->where('name', 'Pre-Employment with ECG and Drug test')
                   ->orWhereIn('name', ['Package A', 'Package B', 'Package C', 'Package D', 'Package E']);
@@ -35,14 +39,22 @@ class EcgtechController extends Controller
             ->latest()->take(5)->get();
             
         $preEmploymentCount = PreEmploymentRecord::where('status', 'approved')
+            ->where(function($q) {
+                $q->where('age_adjusted', false)
+                  ->orWhereNull('age_adjusted');
+            })
             ->whereHas('medicalTest', function ($q) {
                 $q->where('name', 'Pre-Employment with ECG and Drug test')
                   ->orWhereIn('name', ['Package A', 'Package B', 'Package C', 'Package D', 'Package E']);
             })
             ->count();
 
-        // Get patients for annual physical with ECG and Drug test or packages A-E
+        // Get patients for annual physical with ECG and Drug test or packages A-E (excluding age-adjusted)
         $patients = Patient::where('status', 'approved')
+            ->where(function($q) {
+                $q->where('age_adjusted', false)
+                  ->orWhereNull('age_adjusted');
+            })
             ->whereHas('appointment', function ($q) {
                 $q->where('status', 'approved')
                   ->whereHas('medicalTest', function ($testQuery) {
@@ -56,6 +68,10 @@ class EcgtechController extends Controller
             ->latest()->take(5)->get();
 
         $patientCount = Patient::where('status', 'approved')
+            ->where(function($q) {
+                $q->where('age_adjusted', false)
+                  ->orWhereNull('age_adjusted');
+            })
             ->whereHas('appointment', function ($q) {
                 $q->where('status', 'approved')
                   ->whereHas('medicalTest', function ($testQuery) {
@@ -95,7 +111,11 @@ class EcgtechController extends Controller
      */
     public function preEmployment(Request $request)
     {
-        $query = PreEmploymentRecord::where('status', 'approved');
+        $query = PreEmploymentRecord::where('status', 'approved')
+            ->where(function($q) {
+                $q->where('age_adjusted', false)
+                  ->orWhereNull('age_adjusted');
+            });
 
         // Get ECG status filter (default to 'needs_attention')
         $ecgStatus = $request->filled('ecg_status') ? $request->ecg_status : 'needs_attention';
@@ -146,7 +166,11 @@ class EcgtechController extends Controller
      */
     public function annualPhysical(Request $request)
     {
-        $query = Patient::where('status', 'approved');
+        $query = Patient::where('status', 'approved')
+            ->where(function($q) {
+                $q->where('age_adjusted', false)
+                  ->orWhereNull('age_adjusted');
+            });
 
         // Get ECG status filter (default to 'needs_attention')
         $ecgStatus = $request->filled('ecg_status') ? $request->ecg_status : 'needs_attention';

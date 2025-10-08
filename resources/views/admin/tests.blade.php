@@ -174,11 +174,6 @@
                                             <i class="fas fa-eye mr-2 text-xs"></i>
                                             View
                                         </a>
-                                        <button type="button" onclick="openSendModal('pre-employment', {{ $exam->id }}, '{{ $exam->name }}', '{{ $exam->company_name }}')" 
-                                                class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
-                                            <i class="fas fa-paper-plane mr-2 text-xs"></i>
-                                            Send Results
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -328,11 +323,6 @@
                                             <i class="fas fa-eye mr-2 text-xs"></i>
                                             View
                                         </a>
-                                        <button type="button" onclick="openSendModal('annual-physical', {{ $exam->id }}, '{{ $exam->name }}', '')" 
-                                                class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all duration-150 shadow-md hover:shadow-lg">
-                                            <i class="fas fa-paper-plane mr-2 text-xs"></i>
-                                            Send Results
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -355,78 +345,6 @@
     </div>
 </div>
 
-<!-- Send Results Modal -->
-<div id="sendResultsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300">
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 rounded-t-2xl">
-            <div class="flex items-center space-x-4">
-                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-paper-plane text-white text-xl"></i>
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold text-white">Send Medical Results</h3>
-                    <p class="text-blue-100 text-sm">Choose where to send the examination results</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="p-8">
-            <div class="mb-6">
-                <div class="flex items-center space-x-4 mb-4">
-                    <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-user text-blue-600 text-xl"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-lg font-semibold text-gray-900" id="modalPatientName">Patient Name</h4>
-                        <p class="text-sm text-gray-600" id="modalExaminationType">Examination Type</p>
-                        <p class="text-xs text-gray-500" id="modalCompanyName">Company Name</p>
-                    </div>
-                </div>
-                
-                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-                    <div class="flex items-start space-x-3">
-                        <i class="fas fa-info-circle text-amber-600 text-lg mt-0.5"></i>
-                        <div>
-                            <h5 class="text-amber-800 font-medium mb-1">Send Confirmation</h5>
-                            <p class="text-amber-700 text-sm">
-                                Please choose where you want to send these medical examination results. This action will notify the recipient via email.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="space-y-3">
-                <button type="button" onclick="sendToCompany()"
-                        class="w-full flex items-center justify-center px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg">
-                    <i class="fas fa-building mr-3 text-lg"></i>
-                    <div class="text-left">
-                        <div class="font-semibold">Send to Company</div>
-                        <div class="text-sm text-blue-100">Send results to the hiring company</div>
-                    </div>
-                </button>
-                
-                <button type="button" onclick="sendToPatient()"
-                        class="w-full flex items-center justify-center px-6 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg">
-                    <i class="fas fa-user mr-3 text-lg"></i>
-                    <div class="text-left">
-                        <div class="font-semibold">Send to Patient</div>
-                        <div class="text-sm text-green-100">Send results directly to the patient</div>
-                    </div>
-                </button>
-            </div>
-            
-            <div class="mt-6 pt-6 border-t border-gray-200">
-                <button type="button" 
-                        onclick="closeSendModal()" 
-                        class="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-all duration-200">
-                    <i class="fas fa-times mr-2"></i>
-                    Cancel
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <script>
 // Auto-hide success message after 5 seconds with progress bar
@@ -463,116 +381,6 @@ function closeSuccessMessage() {
     }
 }
 
-// Store current examination data for sending
-let currentExamination = null;
-
-function openSendModal(examinationType, examId, patientName, companyName) {
-    // Store examination data
-    currentExamination = {
-        type: examinationType,
-        id: examId,
-        patientName: patientName,
-        companyName: companyName
-    };
-    
-    // Set modal content
-    document.getElementById('modalPatientName').textContent = patientName;
-    document.getElementById('modalExaminationType').textContent = examinationType === 'pre-employment' ? 'Pre-Employment Examination' : 'Annual Physical Examination';
-    document.getElementById('modalCompanyName').textContent = companyName || 'N/A';
-    
-    // Show modal
-    document.getElementById('sendResultsModal').classList.remove('hidden');
-}
-
-function closeSendModal() {
-    document.getElementById('sendResultsModal').classList.add('hidden');
-}
-
-// Send to company function
-async function sendToCompany() {
-    if (!currentExamination) {
-        showErrorMessage('Error', 'No examination selected');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/admin/examinations/${currentExamination.type}/${currentExamination.id}/send`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({
-                send_to: 'company'
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            closeSendModal();
-            showSuccessMessage('Success!', data.message);
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
-        } else {
-            showErrorMessage('Failed to send examination', data.message || 'An error occurred while sending the examination to the company.');
-        }
-    } catch (error) {
-        console.error('Error sending examination:', error);
-        showErrorMessage('Network Error', 'Failed to send examination to company. Please check your connection and try again.');
-    }
-}
-
-// Send to patient function
-async function sendToPatient() {
-    if (!currentExamination) {
-        showErrorMessage('Error', 'No examination selected');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/admin/examinations/${currentExamination.type}/${currentExamination.id}/send`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({
-                send_to: 'patient'
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            closeSendModal();
-            showSuccessMessage('Success!', data.message);
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
-        } else {
-            showErrorMessage('Failed to send examination', data.message || 'An error occurred while sending the examination to the patient.');
-        }
-    } catch (error) {
-        console.error('Error sending examination:', error);
-        showErrorMessage('Network Error', 'Failed to send examination to patient. Please check your connection and try again.');
-    }
-}
-
-// Close modal when clicking outside
-document.getElementById('sendResultsModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeSendModal();
-    }
-});
-
-// Close modal with Escape key
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeSendModal();
-    }
-});
 
 // Show success message function
 function showSuccessMessage(title, message) {

@@ -184,13 +184,61 @@
                             <td class="py-5 px-6 border-r border-gray-100">
                                 @if($patient->appointment)
                                     <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
-                                        <div class="text-sm font-medium text-amber-800">
-                                            {{ optional($patient->appointment->medicalTestCategory)->name ?? 'General' }}
-                                        </div>
-                                        @if($patient->appointment->medicalTest)
-                                            <div class="text-xs text-amber-600 mt-1">
-                                                {{ $patient->appointment->medicalTest->name }}
+                                        @php
+                                            $displayTests = [];
+                                            
+                                            // Check for selected_tests (multiple tests)
+                                            if ($patient->appointment->selected_tests && count($patient->appointment->selected_tests) > 0) {
+                                                foreach ($patient->appointment->selected_tests as $test) {
+                                                    $displayTests[] = $test->name;
+                                                }
+                                            }
+                                            // Fallback to single medicalTest
+                                            elseif ($patient->appointment->medicalTest) {
+                                                $displayTests[] = $patient->appointment->medicalTest->name;
+                                            }
+                                            // Final fallback to category
+                                            else {
+                                                $displayTests[] = optional($patient->appointment->medicalTestCategory)->name ?? 'General';
+                                            }
+                                        @endphp
+                                        
+                                        @if(count($displayTests) > 0)
+                                            <div class="text-sm font-medium text-amber-800">
+                                                {{ $displayTests[0] }}
                                             </div>
+                                            @if(count($displayTests) > 1)
+                                                <div class="text-xs text-amber-600 mt-1">
+                                                    +{{ count($displayTests) - 1 }} more test{{ count($displayTests) > 2 ? 's' : '' }}
+                                                </div>
+                                            @endif
+                                            @if($patient->age_adjusted)
+                                                <div class="flex items-center space-x-1 mt-1">
+                                                    <i class="fas fa-exchange-alt text-blue-500 text-xs"></i>
+                                                    <span class="text-xs text-blue-600 font-medium">Changed to Drug Test only</span>
+                                                </div>
+                                                @if($patient->original_test_name && $patient->adjusted_test_name)
+                                                    <div class="text-xs text-gray-500 mt-1">
+                                                        <span class="line-through text-red-500">{{ $patient->original_test_name }} (₱850)</span>
+                                                        <br>
+                                                        <span class="text-blue-600 font-medium">→ {{ $patient->adjusted_test_name }} (₱750)</span>
+                                                        <br>
+                                                        <span class="text-green-600 font-medium text-xs">
+                                                            <i class="fas fa-calculator mr-1"></i>Saved ₱100
+                                                        </span>
+                                                    </div>
+                                                @else
+                                                    <div class="text-xs text-blue-600 mt-1 font-medium">
+                                                        → Annual Medical with Drug Test (₱750)
+                                                        <br>
+                                                        <span class="text-green-600">
+                                                            <i class="fas fa-calculator mr-1"></i>Saved ₱100
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            @endif
+                                        @else
+                                            <div class="text-sm font-medium text-amber-800">General</div>
                                         @endif
                                     </div>
                                 @else
@@ -211,19 +259,7 @@
                                 @endif
                             </td>
                             <td class="py-5 px-6">
-                                <div class="flex items-center space-x-3">
-                                    <button type="button" 
-                                            class="inline-flex items-center px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-all duration-150 border border-blue-200"
-                                            onclick="openPatientViewModal({{ $patient->id }})">
-                                        <i class="fas fa-eye mr-1"></i>
-                                        View
-                                    </button>
-                                    <button type="button" 
-                                            class="inline-flex items-center px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg text-xs font-medium transition-all duration-150 border border-emerald-200"
-                                            onclick="openPatientEditModal({{ $patient->id }})">
-                                        <i class="fas fa-edit mr-1"></i>
-                                        Edit
-                                    </button>
+                                <div class="flex items-center">
                                     <button type="button" 
                                             class="inline-flex items-center px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium transition-all duration-150 border border-red-200"
                                             onclick="openPatientDeleteModal({{ $patient->id }})">

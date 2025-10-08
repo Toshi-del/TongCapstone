@@ -156,9 +156,44 @@
                         @endforeach
                         
                         <div class="pt-4 border-t border-gray-200">
+                            @if($examination->preEmploymentRecord && $examination->preEmploymentRecord->age_adjusted && $examination->preEmploymentRecord->original_price > $examination->preEmploymentRecord->total_price)
+                                <!-- Age Adjustment Notice -->
+                                <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <div class="flex items-start space-x-3">
+                                        <i class="fas fa-info-circle text-amber-600 mt-1"></i>
+                                        <div class="flex-1">
+                                            <h4 class="text-amber-800 font-semibold mb-1">Age-Based Package Adjustment</h4>
+                                            <p class="text-amber-700 text-sm">
+                                                Since the patient is under 34 years old, the examination package was automatically adjusted from 
+                                                <strong>"Pre-Employment with ECG and Drug Test"</strong> to <strong>"Pre-Employment with Drug Test"</strong> only. 
+                                                The ECG examination was removed as it's not required for patients under 34, resulting in a price reduction.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Pricing Breakdown -->
+                                <div class="space-y-2 mb-4">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-600">Original Package:</span>
+                                        <span class="text-gray-500 line-through">₱{{ number_format($examination->preEmploymentRecord->original_price, 2) }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-600">Age Adjustment:</span>
+                                        <span class="text-red-600">-₱{{ number_format($examination->preEmploymentRecord->original_price - $examination->preEmploymentRecord->total_price, 2) }}</span>
+                                    </div>
+                                </div>
+                            @endif
+                            
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-base font-medium text-gray-900">Total Amount</p>
+                                    <p class="text-base font-medium text-gray-900">
+                                        @if($examination->preEmploymentRecord && $examination->preEmploymentRecord->age_adjusted)
+                                            Final Amount
+                                        @else
+                                            Total Amount
+                                        @endif
+                                    </p>
                                 </div>
                                 <div class="text-right">
                                     <p class="text-xl font-bold text-green-600">₱{{ number_format($totalAmount, 2) }}</p>

@@ -124,79 +124,7 @@
 </div>
 
 <!-- Laboratory Analytics -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-    <!-- Lab Performance -->
-    <div class="content-card rounded-2xl p-6">
-        <div class="flex items-center space-x-3 mb-6">
-            <div class="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
-                <i class="fas fa-chart-line text-teal-600 text-lg"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-800">Lab Performance</h3>
-        </div>
-        <div class="space-y-4">
-            <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-xl">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-vial text-yellow-600"></i>
-                    <span class="text-sm font-medium text-gray-800">Samples in Process</span>
-                </div>
-                <span class="text-lg font-bold text-yellow-600">{{ $metrics['blood_samples_in_process'] }}</span>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-purple-50 rounded-xl">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-clipboard-check text-purple-600"></i>
-                    <span class="text-sm font-medium text-gray-800">Results to Review</span>
-                </div>
-                <span class="text-lg font-bold text-purple-600">{{ $metrics['results_to_review'] }}</span>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-green-50 rounded-xl">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-check-circle text-green-600"></i>
-                    <span class="text-sm font-medium text-gray-800">Monthly Completed</span>
-                </div>
-                <span class="text-lg font-bold text-green-600">{{ $metrics['monthly_completed'] }}</span>
-            </div>
-            <div class="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-clock text-blue-600"></i>
-                    <span class="text-sm font-medium text-gray-800">Avg. Processing Time</span>
-                </div>
-                <span class="text-lg font-bold text-blue-600">{{ $metrics['average_processing_time'] }}h</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Blood Chemistry Tests -->
-    <div class="content-card rounded-2xl p-6">
-        <div class="flex items-center space-x-3 mb-6">
-            <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                <i class="fas fa-flask text-red-600 text-lg"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-800">Blood Chemistry Tests</h3>
-        </div>
-        <div class="space-y-3">
-            @forelse($bloodChemistryTests->take(5) as $test)
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200">
-                    <div>
-                        <p class="font-semibold text-gray-900">{{ $test->name }}</p>
-                        @if($test->normal_range)
-                            <p class="text-xs text-gray-500">{{ $test->normal_range }}</p>
-                        @endif
-                    </div>
-                    <span class="px-3 py-1 text-xs font-semibold rounded-full {{ $test->is_active ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-gray-100 text-gray-800 border border-gray-200' }}">
-                        {{ $test->is_active ? 'Active' : 'Inactive' }}
-                    </span>
-                </div>
-            @empty
-                <div class="text-center py-8">
-                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-flask text-gray-400 text-2xl"></i>
-                    </div>
-                    <p class="text-gray-500 font-medium">No blood chemistry tests available</p>
-                </div>
-            @endforelse
-        </div>
-    </div>
-
+<div class="grid grid-cols-1 gap-6 mb-8">
     <!-- Pending Tasks -->
     <div class="content-card rounded-2xl p-6">
         <div class="flex items-center space-x-3 mb-6">
@@ -205,7 +133,7 @@
             </div>
             <h3 class="text-lg font-bold text-gray-800">Pending Tasks</h3>
         </div>
-        <div class="space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <div class="flex items-center justify-between p-3 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors duration-200">
                 <div class="flex items-center space-x-3">
                     <i class="fas fa-file-medical text-emerald-600"></i>
