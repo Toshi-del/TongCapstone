@@ -365,11 +365,13 @@ class AdminController extends Controller
         // Only show examinations that have been submitted by doctors to admin
         // Pre-Employment: Doctor submits with status 'sent_to_admin' -> Admin can send to company/patient
         // Annual Physical: Doctor submits with status 'sent_to_admin' -> Admin can send to company/patient
+        // OPD: Doctor submits with status 'sent_to_admin' -> Admin can send to patient
         
         $preEmploymentResults = \App\Models\PreEmploymentExamination::whereIn('status', ['sent_to_admin', 'sent_to_company', 'sent_to_patient', 'sent_to_both', 'Approved'])->get();
         $annualPhysicalResults = \App\Models\AnnualPhysicalExamination::whereIn('status', ['sent_to_admin', 'sent_to_company', 'sent_to_patient', 'sent_to_both'])->get();
+        $opdResults = \App\Models\OpdExamination::whereIn('status', ['sent_to_admin', 'sent_to_patient', 'completed', 'approved'])->get();
         
-        return view('admin.tests', compact('preEmploymentResults', 'annualPhysicalResults'));
+        return view('admin.tests', compact('preEmploymentResults', 'annualPhysicalResults', 'opdResults'));
     }
 
     /**
@@ -1034,59 +1036,81 @@ class AdminController extends Controller
      */
     public function opd(Request $request)
     {
-        $filter = $request->get('filter', 'pending');
-        $query = DB::table('opd_tests');
+        $filter = $request->get('filter', 'sent_to_admin');
+        $query = \App\Models\OpdExamination::with(['user']);
+        
         switch ($filter) {
-            case 'pending':
-                $query->where('status', 'pending');
+            case 'sent_to_admin':
+                $query->where('status', 'sent_to_admin');
+                break;
+            case 'sent_to_patient':
+                $query->where('status', 'sent_to_patient');
+                break;
+            case 'completed':
+                $query->where('status', 'completed');
                 break;
             case 'approved':
                 $query->where('status', 'approved');
                 break;
-            case 'declined':
-                $query->where('status', 'declined');
-                break;
-            case 'done':
-                $query->where('status', 'done');
-                break;
-            case 'opd':
+            case 'all':
             default:
-                // show all
+                $query->whereIn('status', ['sent_to_admin', 'sent_to_patient', 'completed', 'approved']);
                 break;
         }
+        
         $entries = $query->orderByDesc('created_at')->paginate(15);
         return view('admin.opd', compact('entries', 'filter'));
     }
 
-    /** Approve OPD entry */
-    public function approveOpd($id)
+    /** View OPD examination details */
+    public function viewOpdExamination($id)
     {
-        DB::table('opd_tests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => now()]);
-        return redirect()->back()->with('success', 'OPD entry approved.');
+        $examination = \App\Models\OpdExamination::with(['user'])->findOrFail($id);
+        return view('admin.view-opd-examination', compact('examination'));
     }
 
-    /** Decline OPD entry */
-    public function declineOpd($id)
-    {
-        DB::table('opd_tests')->where('id', $id)->update(['status' => 'declined', 'updated_at' => now()]);
-        return redirect()->back()->with('success', 'OPD entry declined.');
-    }
-
-    /** Mark OPD entry as done */
-    public function markOpdDone($id)
-    {
-        DB::table('opd_tests')->where('id', $id)->update(['status' => 'done', 'updated_at' => now()]);
-        return redirect()->back()->with('success', 'OPD entry marked as done.');
-    }
-
-    /** Send OPD results (placeholder) */
+    /** Send OPD examination results to patient */
     public function sendOpdResults($id)
     {
-        $entry = DB::table('opd_tests')->find($id);
-        if (!$entry) {
-            return redirect()->back()->with('error', 'OPD entry not found.');
-        }
-        return redirect()->back()->with('success', 'Results sent to ' . ($entry->customer_email ?? 'patient') . '.');
+        $examination = \App\Models\OpdExamination::findOrFail($id);
+        $examination->update(['status' => 'sent_to_patient']);
+        
+        // Create notification for OPD patient
+        $patientName = $examination->name ?? 'OPD Patient';
+        $opdUser = \App\Models\User::findOrFail($examination->user_id);
+        
+        \App\Models\Notification::createForUser(
+            $opdUser,
+            'examination_results',
+            'OPD Examination Results Available',
+            "Your OPD examination results have been reviewed and are now available for viewing.",
+            [
+                'examination_id' => $examination->id,
+                'examination_type' => 'opd',
+                'patient_name' => $patientName
+            ],
+            'high',
+            null,
+            $examination
+        );
+        
+        return redirect()->back()->with('success', 'OPD examination results sent to OPD patient successfully.');
+    }
+
+    /** Approve OPD examination */
+    public function approveOpdExamination($id)
+    {
+        $examination = \App\Models\OpdExamination::findOrFail($id);
+        $examination->update(['status' => 'approved']);
+        return redirect()->back()->with('success', 'OPD examination approved successfully.');
+    }
+
+    /** Mark OPD examination as completed */
+    public function markOpdCompleted($id)
+    {
+        $examination = \App\Models\OpdExamination::findOrFail($id);
+        $examination->update(['status' => 'completed']);
+        return redirect()->back()->with('success', 'OPD examination marked as completed successfully.');
     }
 
     /**

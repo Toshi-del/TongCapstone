@@ -89,6 +89,9 @@
             @if(isset($patient))
                 <input type="hidden" name="patient_id" value="{{ $patient->id }}">
             @endif
+            @if(isset($opdPatient))
+                <input type="hidden" name="user_id" value="{{ $opdPatient->id }}">
+            @endif
 
             @php
                 // Precompute generated number once for reuse
@@ -97,6 +100,8 @@
                     $generatedNumber = $medicalChecklist->number;
                 } elseif (isset($patient)) {
                     $generatedNumber = 'APEP-' . str_pad($patient->id, 4, '0', STR_PAD_LEFT);
+                } elseif (isset($opdPatient)) {
+                    $generatedNumber = 'OPD-' . str_pad($opdPatient->id, 4, '0', STR_PAD_LEFT);
                 } elseif (isset($preEmploymentRecord)) {
                     $generatedNumber = 'PPEP-' . str_pad($preEmploymentRecord->id, 4, '0', STR_PAD_LEFT);
                 } else {
@@ -124,13 +129,15 @@
                                 {{ $medicalChecklist->patient->full_name }}
                             @elseif(isset($patient))
                                 {{ $patient->full_name }}
+                            @elseif(isset($opdPatient))
+                                {{ $opdPatient->fname }} {{ $opdPatient->lname }}
                             @elseif(isset($preEmploymentRecord))
                                 {{ $preEmploymentRecord->first_name }} {{ $preEmploymentRecord->last_name }}
                             @else
                                 {{ old('name', $medicalChecklist->name ?? $name ?? '') }}
                             @endif
                         </div>
-                        <input type="hidden" name="name" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->full_name }}@elseif(isset($patient)){{ $patient->full_name }}@elseif(isset($preEmploymentRecord)){{ $preEmploymentRecord->first_name }} {{ $preEmploymentRecord->last_name }}@else{{ old('name', $medicalChecklist->name ?? $name ?? '') }}@endif" />
+                        <input type="hidden" name="name" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->full_name }}@elseif(isset($patient)){{ $patient->full_name }}@elseif(isset($opdPatient)){{ $opdPatient->fname }} {{ $opdPatient->lname }}@elseif(isset($preEmploymentRecord)){{ $preEmploymentRecord->first_name }} {{ $preEmploymentRecord->last_name }}@else{{ old('name', $medicalChecklist->name ?? $name ?? '') }}@endif" />
                     </div>
                     
                     <div class="space-y-3">
@@ -149,13 +156,15 @@
                                 {{ $medicalChecklist->patient->age }} years
                             @elseif(isset($patient))
                                 {{ $patient->age }} years
+                            @elseif(isset($opdPatient))
+                                {{ $opdPatient->age }} years
                             @elseif(isset($preEmploymentRecord))
                                 {{ $preEmploymentRecord->age }} years
                             @else
                                 {{ old('age', $medicalChecklist->age ?? $age ?? '') }} years
                             @endif
                         </div>
-                        <input type="hidden" name="age" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->age }}@elseif(isset($patient)){{ $patient->age }}@elseif(isset($preEmploymentRecord)){{ $preEmploymentRecord->age }}@else{{ old('age', $medicalChecklist->age ?? $age ?? '') }}@endif" />
+                        <input type="hidden" name="age" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->age }}@elseif(isset($patient)){{ $patient->age }}@elseif(isset($opdPatient)){{ $opdPatient->age }}@elseif(isset($preEmploymentRecord)){{ $preEmploymentRecord->age }}@else{{ old('age', $medicalChecklist->age ?? $age ?? '') }}@endif" />
                     </div>
                     
                     <div class="space-y-3">

@@ -35,17 +35,28 @@
         </div>
 
         @php
-            $formAction = isset($medicalChecklist) && $medicalChecklist->id 
-                ? route('pathologist.medical-checklist.update', $medicalChecklist->id) 
-                : route('pathologist.medical-checklist.store');
+            // Determine the correct form action based on examination type
+            if (isset($examinationType) && $examinationType === 'opd') {
+                // For OPD, always use the generic store/update routes since there's no specific OPD store route
+                $formAction = isset($medicalChecklist) && $medicalChecklist->id 
+                    ? route('pathologist.medical-checklist.update', $medicalChecklist->id) 
+                    : route('pathologist.medical-checklist.store');
+            } else {
+                // For pre-employment and annual physical
+                $formAction = isset($medicalChecklist) && $medicalChecklist->id 
+                    ? route('pathologist.medical-checklist.update', $medicalChecklist->id) 
+                    : route('pathologist.medical-checklist.store');
+            }
             
-            // Preserve URL parameters in form action
-            if (request('pre_employment_record_id') || request('patient_id') || request('examination_type')) {
-                $params = [];
-                if (request('pre_employment_record_id')) $params['pre_employment_record_id'] = request('pre_employment_record_id');
-                if (request('patient_id')) $params['patient_id'] = request('patient_id');
-                if (request('examination_type')) $params['examination_type'] = request('examination_type');
-                $formAction .= '?' . http_build_query($params);
+            // Preserve URL parameters in form action for non-OPD cases
+            if (!isset($examinationType) || $examinationType !== 'opd') {
+                if (request('pre_employment_record_id') || request('patient_id') || request('examination_type')) {
+                    $params = [];
+                    if (request('pre_employment_record_id')) $params['pre_employment_record_id'] = request('pre_employment_record_id');
+                    if (request('patient_id')) $params['patient_id'] = request('patient_id');
+                    if (request('examination_type')) $params['examination_type'] = request('examination_type');
+                    $formAction .= '?' . http_build_query($params);
+                }
             }
         @endphp
         
@@ -55,7 +66,7 @@
                 @method('PATCH')
             @endif
             
-            <input type="hidden" name="examination_type" value="{{ (isset($examinationType) && ($examinationType === 'pre-employment' || $examinationType === 'pre_employment')) ? 'pre_employment' : 'annual_physical' }}">
+            <input type="hidden" name="examination_type" value="{{ isset($examinationType) ? ($examinationType === 'pre-employment' || $examinationType === 'pre_employment' ? 'pre_employment' : ($examinationType === 'opd' ? 'opd' : 'annual_physical')) : 'annual_physical' }}">
             
             {{-- Always include the IDs from request parameters if available --}}
             @if(request('pre_employment_record_id'))
@@ -69,6 +80,14 @@
             @elseif(isset($patient) && $patient)
                 <input type="hidden" name="patient_id" value="{{ $patient->id }}">
             @endif
+            
+            @if(isset($opdPatient) && $examinationType === 'opd')
+                <input type="hidden" name="user_id" value="{{ $opdPatient->id }}">
+                @if(isset($opdExamination))
+                    <input type="hidden" name="opd_examination_id" value="{{ $opdExamination->id }}">
+                @endif
+            @endif
+            
             @if(isset($annualPhysicalExamination))
                 <input type="hidden" name="annual_physical_examination_id" value="{{ $annualPhysicalExamination->id }}">
             @endif
@@ -82,6 +101,8 @@
                     $generatedNumber = 'APEP-' . str_pad($patient->id, 4, '0', STR_PAD_LEFT);
                 } elseif (isset($preEmploymentRecord) && $preEmploymentRecord) {
                     $generatedNumber = 'PPEP-' . str_pad($preEmploymentRecord->id, 4, '0', STR_PAD_LEFT);
+                } elseif (isset($opdPatient) && $examinationType === 'opd') {
+                    $generatedNumber = 'OPD-' . str_pad($opdPatient->id, 4, '0', STR_PAD_LEFT);
                 } else {
                     $generatedNumber = $number ?: old('number', '');
                 }
@@ -98,11 +119,13 @@
                             {{ $patient->full_name }}
                         @elseif(isset($preEmploymentRecord) && $preEmploymentRecord)
                             {{ $preEmploymentRecord->first_name }} {{ $preEmploymentRecord->last_name }}
+                        @elseif(isset($opdPatient) && $examinationType === 'opd')
+                            {{ $opdPatient->fname }} {{ $opdPatient->lname }}
                         @else
                             {{ $name ?: old('name', '') }}
                         @endif
                     </div>
-                    <input type="hidden" name="name" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->full_name }}@elseif(isset($patient) && $patient){{ $patient->full_name }}@elseif(isset($preEmploymentRecord) && $preEmploymentRecord){{ $preEmploymentRecord->first_name }} {{ $preEmploymentRecord->last_name }}@else{{ $name ?: old('name', '') }}@endif" />
+                    <input type="hidden" name="name" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->full_name }}@elseif(isset($patient) && $patient){{ $patient->full_name }}@elseif(isset($preEmploymentRecord) && $preEmploymentRecord){{ $preEmploymentRecord->first_name }} {{ $preEmploymentRecord->last_name }}@elseif(isset($opdPatient) && $examinationType === 'opd'){{ $opdPatient->fname }} {{ $opdPatient->lname }}@else{{ $name ?: old('name', '') }}@endif" />
                 </div>
                 
                 <div>
@@ -123,11 +146,13 @@
                             {{ $patient->age }}
                         @elseif(isset($preEmploymentRecord) && $preEmploymentRecord)
                             {{ $preEmploymentRecord->age }}
+                        @elseif(isset($opdPatient) && $examinationType === 'opd')
+                            {{ $opdPatient->age }}
                         @else
                             {{ $age ?: old('age', '') }}
                         @endif
                     </div>
-                    <input type="hidden" name="age" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->age }}@elseif(isset($patient) && $patient){{ $patient->age }}@elseif(isset($preEmploymentRecord) && $preEmploymentRecord){{ $preEmploymentRecord->age }}@else{{ $age ?: old('age', '') }}@endif" />
+                    <input type="hidden" name="age" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->age }}@elseif(isset($patient) && $patient){{ $patient->age }}@elseif(isset($preEmploymentRecord) && $preEmploymentRecord){{ $preEmploymentRecord->age }}@elseif(isset($opdPatient) && $examinationType === 'opd'){{ $opdPatient->age }}@else{{ $age ?: old('age', '') }}@endif" />
                 </div>
                 
                 <div>
@@ -196,7 +221,7 @@
 
             <!-- Submit Button -->
             <div class="flex justify-between items-center pt-6 border-t border-gray-200">
-                <a href="{{ $examinationType === 'pre-employment' ? route('pathologist.pre-employment') : route('pathologist.annual-physical') }}" 
+                <a href="{{ $examinationType === 'pre-employment' ? route('pathologist.pre-employment') : ($examinationType === 'opd' ? route('pathologist.opd') : route('pathologist.annual-physical')) }}" 
                    class="bg-gray-500 text-white px-8 py-3 rounded-lg shadow hover:bg-gray-600 transition-colors font-semibold tracking-wide">
                     <i class="fas fa-arrow-left mr-2"></i>Back to List
                 </a>

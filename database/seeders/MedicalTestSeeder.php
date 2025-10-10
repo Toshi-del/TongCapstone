@@ -153,11 +153,7 @@ class MedicalTestSeeder extends Seeder
                     break;
                 case 'Package':
                     $tests = [
-                        ['name' => 'Package A', 'description' => 'ELECTROCARDIOGRAM, FASTING BLOOD SUGAR, TOTAL CHOLESTEROL, BLOOD UREA NITROGEN, BLOOD URIC ACID, SGPT, CBC, URINALYSIS AND FECALYSIS', 'sort_order' => 1, 'price' => 1600.00],
-                        ['name' => 'Package B', 'description' => 'PACKAGE A PLUS TRIGLYCERIDE, HDL & LDL (GOOD AND BAD CHOLESTEROL)', 'sort_order' => 2, 'price' => 1800.00],
-                        ['name' => 'Package C', 'description' => 'PACKAGE A B PLUS CREATININE & BLD. TYPING', 'sort_order' => 3, 'price' => 2050.00],
-                        ['name' => 'Package D', 'description' => 'PACKAGE A B C PLUS SODIUM, POTASSIUM, CALCIUM, CHLORIDE', 'sort_order' => 4, 'price' => 2200.00],
-                        ['name' => 'Package E', 'description' => 'PACKAGE A B C D PLUS (LIVER FUNCTION TEST) TPAG, SGOT, BILIRUBIN PLUS AMYLASE', 'sort_order' => 5, 'price' => 2800.00],
+                        // Package A through E have been removed as requested
                     ];
                     break;
                 case 'Routine Examinations':

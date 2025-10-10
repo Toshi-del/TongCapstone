@@ -170,6 +170,10 @@
                             <i class="fas fa-user-md mr-4 text-lg"></i>
                             <span class="font-medium">Annual Physical X-Ray</span>
                         </a>
+                        <a href="{{ route('radiologist.opd.xray') }}" class="nav-item flex items-center px-4 py-3 text-gray-700 hover:text-gray-900 rounded-xl transition-all duration-200 {{ request()->routeIs('radiologist.opd.xray*') ? 'active text-white' : '' }}">
+                            <i class="fas fa-walking mr-4 text-lg"></i>
+                            <span class="font-medium">OPD X-Ray</span>
+                        </a>
                     </div>
                 </div>
 

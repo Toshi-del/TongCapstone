@@ -160,12 +160,12 @@ Route::post('admin/pre-employment/{id}/send-email', [App\Http\Controllers\AdminC
     Route::put('/admin/page-contents/{pageContent}', [App\Http\Controllers\Admin\PageContentController::class, 'update'])->name('admin.page-contents.update');
     Route::delete('/admin/page-contents/{pageContent}', [App\Http\Controllers\Admin\PageContentController::class, 'destroy'])->name('admin.page-contents.destroy');
 
-    // Admin OPD entries
+    // Admin OPD examinations
     Route::get('/admin/opd', [AdminController::class, 'opd'])->name('admin.opd');
-    Route::post('/admin/opd/{id}/approve', [AdminController::class, 'approveOpd'])->name('admin.opd.approve');
-    Route::post('/admin/opd/{id}/decline', [AdminController::class, 'declineOpd'])->name('admin.opd.decline');
-    Route::post('/admin/opd/{id}/done', [AdminController::class, 'markOpdDone'])->name('admin.opd.mark-done');
-    Route::post('/admin/opd/{id}/send-results', [AdminController::class, 'sendOpdResults'])->name('admin.opd.send-results');
+    Route::get('/admin/opd-examination/{id}', [AdminController::class, 'viewOpdExamination'])->name('admin.view-opd-examination');
+    Route::post('/admin/opd/{id}/send-results', [AdminController::class, 'sendOpdResults'])->name('admin.send-opd-results');
+    Route::post('/admin/opd/{id}/approve-examination', [AdminController::class, 'approveOpdExamination'])->name('admin.approve-opd-examination');
+    Route::post('/admin/opd/{id}/mark-completed', [AdminController::class, 'markOpdCompleted'])->name('admin.mark-opd-completed');
     
     // Company Account Management Routes
     Route::post('/admin/company-accounts/{id}/approve', [AdminController::class, 'approveCompanyAccount'])->name('admin.company-accounts.approve');
@@ -280,6 +280,13 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::get('/doctor/medical-tests/{id}/edit', [DoctorController::class, 'editMedicalTest'])->name('medical-tests.edit');
     Route::patch('/doctor/medical-tests/{id}', [DoctorController::class, 'updateMedicalTest'])->name('medical-tests.update');
     
+    // OPD Routes
+    Route::get('/doctor/opd', [DoctorController::class, 'opd'])->name('doctor.opd');
+    Route::get('/doctor/opd/{id}/edit', [DoctorController::class, 'editOpd'])->name('doctor.opd.edit');
+    Route::patch('/doctor/opd/{id}', [DoctorController::class, 'updateOpd'])->name('doctor.opd.update');
+    Route::get('/doctor/opd/{id}/examination', [DoctorController::class, 'showOpdExamination'])->name('doctor.opd.examination.show');
+    Route::post('/doctor/opd/{id}/submit', [DoctorController::class, 'submitOpd'])->name('doctor.opd.submit');
+    
     // Doctor Chat Routes
     Route::get('/doctor/messages', [DoctorController::class, 'messages'])->name('doctor.messages');
     Route::get('/doctor/messages/fetch', [DoctorController::class, 'fetchMessages']);
@@ -299,6 +306,22 @@ Route::middleware(['auth', 'role:opd'])->group(function () {
     // OPD Result preview (UI only)
     Route::get('/opd/result', [OpdController::class, 'result'])->name('opd.result');
     
+    // OPD Create Route
+    Route::get('/opd/create', [OpdController::class, 'create'])->name('opd.create');
+    
+    // OPD Show Route
+    Route::get('/opd/show', [OpdController::class, 'show'])->name('opd.show');
+    
+    // OPD Booking Route
+    Route::post('/opd/book-appointment', [OpdController::class, 'bookAppointment'])->name('opd.book-appointment');
+    
+    // OPD Appointment Management Routes
+    Route::get('/opd/reschedule', [OpdController::class, 'showReschedule'])->name('opd.reschedule.show');
+    Route::post('/opd/reschedule', [OpdController::class, 'reschedule'])->name('opd.reschedule');
+    Route::post('/opd/cancel', [OpdController::class, 'cancel'])->name('opd.cancel');
+    Route::post('/opd/download-results', [OpdController::class, 'downloadResults'])->name('opd.download-results');
+    Route::post('/opd/cleanup-invalid', [OpdController::class, 'cleanupInvalidAppointments'])->name('opd.cleanup-invalid');
+    
     // OPD Account Creation Routes
     Route::get('/opd/create-account', [OpdController::class, 'showCreateAccount'])->name('opd.create-account');
     Route::post('/opd/create-account', [OpdController::class, 'createAccount'])->name('opd.create-account.store');
@@ -308,6 +331,56 @@ Route::middleware(['auth', 'role:opd'])->group(function () {
 Route::get('/debug-users', function() {
     $users = \App\Models\User::select('id', 'fname', 'lname', 'role', 'company')->get();
     return response()->json($users);
+});
+
+// Debug route to clear test data
+Route::get('/clear-test-data', function() {
+    try {
+        $deleted = DB::table('opd_tests')->delete();
+        return response()->json([
+            'success' => true,
+            'message' => "Cleared {$deleted} test records from opd_tests table"
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
+    }
+});
+
+// Debug route to test direct database insert
+Route::get('/test-db-insert', function() {
+    try {
+        // Test direct DB insert
+        $inserted = DB::table('opd_tests')->insert([
+            'customer_name' => 'Test User',
+            'customer_email' => 'test@example.com',
+            'medical_test' => 'Test Medical Test',
+            'appointment_date' => '2025-10-15',
+            'appointment_time' => '14:00',
+            'price' => 500.00,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        
+        $count = DB::table('opd_tests')->count();
+        $records = DB::table('opd_tests')->get();
+        
+        return response()->json([
+            'insert_success' => $inserted,
+            'total_count' => $count,
+            'all_records' => $records,
+            'database' => DB::connection()->getDatabaseName(),
+            'connection' => DB::connection()->getName()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'database' => DB::connection()->getDatabaseName(),
+            'connection' => DB::connection()->getName()
+        ]);
+    }
 });
 
 // Debug route to check patients for an appointment
@@ -380,10 +453,12 @@ Route::middleware(['auth', 'role:radtech'])->group(function () {
     // Radtech X-Ray Service Routes
     Route::get('/radtech/pre-employment-xray', [RadtechController::class, 'preEmploymentXray'])->name('radtech.pre-employment-xray');
     Route::get('/radtech/annual-physical-xray', [RadtechController::class, 'annualPhysicalXray'])->name('radtech.annual-physical-xray');
+    Route::get('/radtech/opd-xray', [RadtechController::class, 'opdXray'])->name('radtech.opd.xray');
     
     // Radtech Medical Checklist Routes
     Route::get('/radtech/medical-checklist/pre-employment/{recordId}', [RadtechController::class, 'showMedicalChecklistPreEmployment'])->name('radtech.medical-checklist.pre-employment');
     Route::get('/radtech/medical-checklist/annual-physical/{patientId}', [RadtechController::class, 'showMedicalChecklistAnnualPhysical'])->name('radtech.medical-checklist.annual-physical');
+    Route::get('/radtech/medical-checklist/opd/{userId}', [RadtechController::class, 'showMedicalChecklistOpd'])->name('radtech.medical-checklist.opd');
     Route::post('/radtech/medical-checklist', [RadtechController::class, 'storeMedicalChecklist'])->name('radtech.medical-checklist.store');
     Route::patch('/radtech/medical-checklist/{id}', [RadtechController::class, 'updateMedicalChecklist'])->name('radtech.medical-checklist.update');
 
@@ -424,6 +499,7 @@ Route::middleware(['auth', 'role:radiologist'])->group(function () {
     // X-Ray List Routes
     Route::get('/radiologist/pre-employment-xray', [RadiologistController::class, 'preEmploymentXray'])->name('radiologist.pre-employment-xray');
     Route::get('/radiologist/annual-physical-xray', [RadiologistController::class, 'annualPhysicalXray'])->name('radiologist.annual-physical-xray');
+    Route::get('/radiologist/opd-xray', [RadiologistController::class, 'opdXray'])->name('radiologist.opd.xray');
     Route::get('/radiologist/xray-gallery', [RadiologistController::class, 'xrayGallery'])->name('radiologist.xray-gallery');
     
     // Individual X-Ray Review Routes
@@ -431,6 +507,8 @@ Route::middleware(['auth', 'role:radiologist'])->group(function () {
     Route::patch('/radiologist/pre-employment/{id}', [RadiologistController::class, 'updatePreEmployment'])->name('radiologist.pre-employment.update');
     Route::get('/radiologist/annual-physical/{id}', [RadiologistController::class, 'showAnnualPhysical'])->name('radiologist.annual-physical.show');
     Route::patch('/radiologist/annual-physical/{id}', [RadiologistController::class, 'updateAnnualPhysical'])->name('radiologist.annual-physical.update');
+    Route::get('/radiologist/opd/{userId}', [RadiologistController::class, 'showOpd'])->name('radiologist.opd.show');
+    Route::patch('/radiologist/opd/{userId}', [RadiologistController::class, 'updateOpd'])->name('radiologist.opd.update');
 
     // Radiologist Messaging Routes
     Route::get('/radiologist/messages', [RadiologistController::class, 'messages'])->name('radiologist.messages');

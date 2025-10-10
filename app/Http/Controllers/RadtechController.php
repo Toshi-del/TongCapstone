@@ -170,6 +170,88 @@ class RadtechController extends Controller
     }
 
     /**
+     * Show OPD X-ray records
+     */
+    public function opdXray(Request $request)
+    {
+        $query = \App\Models\User::where('role', 'opd');
+
+        // Handle tab filtering
+        $xrayStatus = $request->get('xray_status', 'needs_attention');
+        
+        if ($xrayStatus === 'all') {
+            // Show all OPD patients (for debugging)
+            // No additional filtering
+        } elseif ($xrayStatus === 'needs_attention') {
+            // OPD patients who need X-ray attention (no chest X-ray completed yet)
+            $query->whereDoesntHave('medicalChecklists', function($q) {
+                $q->where('examination_type', 'opd')
+                  ->whereNotNull('chest_xray_done_by')
+                  ->where('chest_xray_done_by', '!=', '');
+            });
+        } elseif ($xrayStatus === 'xray_completed') {
+            // OPD patients who have completed X-ray
+            $query->whereHas('medicalChecklists', function($q) {
+                $q->where('examination_type', 'opd')
+                  ->whereNotNull('chest_xray_done_by')
+                  ->where('chest_xray_done_by', '!=', '');
+            });
+        }
+
+        // Handle search
+        $search = $request->get('search');
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('fname', 'like', "%{$search}%")
+                  ->orWhere('lname', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $opdPatients = $query->with(['medicalChecklists' => function($q) {
+            $q->where('examination_type', 'opd');
+        }])->latest()->get();
+
+        // Debug: Log OPD patient and checklist info
+        $totalOpdUsers = \App\Models\User::where('role', 'opd')->count();
+        $opdWithChecklists = \App\Models\User::where('role', 'opd')
+            ->whereHas('medicalChecklists', function($q) {
+                $q->where('examination_type', 'opd');
+            })->count();
+        $opdWithCompletedXray = \App\Models\User::where('role', 'opd')
+            ->whereHas('medicalChecklists', function($q) {
+                $q->where('examination_type', 'opd')
+                  ->whereNotNull('chest_xray_done_by')
+                  ->where('chest_xray_done_by', '!=', '');
+            })->count();
+            
+        // Debug: Get detailed info about each OPD patient
+        $allOpdUsers = \App\Models\User::where('role', 'opd')->with('medicalChecklists')->get();
+        $debugInfo = [];
+        foreach ($allOpdUsers as $user) {
+            $checklists = $user->medicalChecklists->where('examination_type', 'opd');
+            $debugInfo[] = [
+                'user_id' => $user->id,
+                'name' => trim(($user->fname ?? '') . ' ' . ($user->lname ?? '')),
+                'checklists_count' => $checklists->count(),
+                'chest_xray_done_by' => $checklists->first()->chest_xray_done_by ?? null,
+                'has_xray_image' => $checklists->first()->xray_image_path ?? null,
+            ];
+        }
+        
+        \Log::info('Radtech OPD Debug:', [
+            'total_opd_users' => $totalOpdUsers,
+            'opd_with_checklists' => $opdWithChecklists,
+            'opd_with_completed_xray' => $opdWithCompletedXray,
+            'current_tab' => $xrayStatus,
+            'filtered_patients_count' => $opdPatients->count(),
+            'detailed_user_info' => $debugInfo
+        ]);
+
+        return view('radtech.opd-xray', compact('opdPatients'));
+    }
+
+    /**
      * Show medical checklist for pre-employment
      */
     public function showMedicalChecklistPreEmployment($recordId)
@@ -261,16 +343,82 @@ class RadtechController extends Controller
     }
 
     /**
+     * Show medical checklist for OPD
+     */
+    public function showMedicalChecklistOpd($userId)
+    {
+        $opdPatient = \App\Models\User::where('role', 'opd')->findOrFail($userId);
+        
+        // Find the most recent OPD examination record for this patient
+        $opdExamination = \App\Models\OpdExamination::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        // Try to find checklist linked to this examination
+        $medicalChecklist = null;
+        if ($opdExamination) {
+            $medicalChecklist = MedicalChecklist::where('opd_examination_id', $opdExamination->id)
+                ->where('examination_type', 'opd')
+                ->first();
+        }
+        
+        // Fallback: check by user_id for unlinked checklists
+        if (!$medicalChecklist) {
+            $medicalChecklist = MedicalChecklist::where('user_id', $userId)
+                ->where('examination_type', 'opd')
+                ->first();
+        }
+        
+        $examinationType = 'opd';
+        $examinations = [
+            'chest_xray' => ['name' => 'Chest X-Ray', 'icon' => 'fas fa-x-ray', 'color' => 'indigo'],
+            'stool_exam' => ['name' => 'Stool Examination', 'icon' => 'fas fa-flask', 'color' => 'amber'],
+            'urinalysis' => ['name' => 'Urinalysis', 'icon' => 'fas fa-tint', 'color' => 'blue'],
+            'drug_test' => ['name' => 'Drug Test', 'icon' => 'fas fa-pills', 'color' => 'red'],
+            'blood_extraction' => ['name' => 'Blood Extraction', 'icon' => 'fas fa-syringe', 'color' => 'rose'],
+            'ecg' => ['name' => 'ElectroCardioGram (ECG)', 'icon' => 'fas fa-heartbeat', 'color' => 'green'],
+            'physical_exam' => ['name' => 'Physical Examination', 'icon' => 'fas fa-stethoscope', 'color' => 'purple'],
+        ];
+        $number = 'OPD-' . str_pad($opdPatient->id, 4, '0', STR_PAD_LEFT);
+        $name = trim(($opdPatient->fname ?? '') . ' ' . ($opdPatient->lname ?? ''));
+        $age = $opdPatient->age ?? null;
+        $date = now()->format('Y-m-d');
+        
+        return view('radtech.medical-checklist', compact(
+            'medicalChecklist', 
+            'opdPatient', 
+            'examinationType', 
+            'number', 
+            'name', 
+            'age', 
+            'date',
+            'examinations'
+        ));
+    }
+
+    /**
      * Update medical checklist (add radtech initials and X-ray image)
      */
     public function updateMedicalChecklist(Request $request, $id)
     {
+        \Log::info('UPDATE Medical Checklist called:', [
+            'id' => $id,
+            'method' => $request->method(),
+            'all_data' => $request->all()
+        ]);
+        
         try {
             $medicalChecklist = MedicalChecklist::findOrFail($id);
             
             $validated = $request->validate([
                 'chest_xray_done_by' => 'nullable|string|max:100',
                 'xray_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:25000',
+                'examination_type' => 'nullable|string',
+                'user_id' => 'nullable|integer',
+                'name' => 'nullable|string',
+                'date' => 'nullable|date',
+                'age' => 'nullable|integer',
+                'number' => 'nullable|string',
             ]);
 
             if ($request->hasFile('xray_image') && $request->file('xray_image')->isValid()) {
@@ -278,12 +426,11 @@ class RadtechController extends Controller
                 $validated['xray_image_path'] = $path;
             }
 
-            // Update chest X-ray completion
-            if (array_key_exists('chest_xray_done_by', $validated) && !empty($validated['chest_xray_done_by'])) {
-                $medicalChecklist->chest_xray_done_by = $validated['chest_xray_done_by'];
-            }
-            if (array_key_exists('xray_image_path', $validated)) {
-                $medicalChecklist->xray_image_path = $validated['xray_image_path'];
+            // Update all fields
+            foreach ($validated as $key => $value) {
+                if ($key !== 'xray_image') { // Skip the file field
+                    $medicalChecklist->$key = $value;
+                }
             }
             
             $medicalChecklist->save();
@@ -292,7 +439,17 @@ class RadtechController extends Controller
             if (!empty($validated['chest_xray_done_by'])) {
                 $radtech = Auth::user();
                 $patientName = $medicalChecklist->name;
-                $examinationType = $medicalChecklist->pre_employment_record_id ? 'Pre-Employment' : 'Annual Physical';
+                
+                // Determine examination type
+                if ($medicalChecklist->pre_employment_record_id) {
+                    $examinationType = 'Pre-Employment';
+                } elseif ($medicalChecklist->patient_id) {
+                    $examinationType = 'Annual Physical';
+                } elseif ($medicalChecklist->user_id || $medicalChecklist->examination_type === 'opd') {
+                    $examinationType = 'OPD';
+                } else {
+                    $examinationType = 'Unknown';
+                }
                 
                 Notification::createForAdmin(
                     'xray_completed',
@@ -319,6 +476,9 @@ class RadtechController extends Controller
             } elseif ($medicalChecklist->patient_id) {
                 return redirect()->route('radtech.annual-physical-xray')
                     ->with('success', 'X-ray information updated successfully.');
+            } elseif ($medicalChecklist->user_id || $medicalChecklist->examination_type === 'opd') {
+                return redirect()->route('radtech.opd.xray')
+                    ->with('success', 'X-ray information updated successfully.');
             }
 
             return redirect()->route('radtech.dashboard')
@@ -336,11 +496,21 @@ class RadtechController extends Controller
      */
     public function storeMedicalChecklist(Request $request)
     {
+        // Debug: Log all incoming request data
+        \Log::info('Store Medical Checklist Debug:', [
+            'all_request_data' => $request->all(),
+            'examination_type' => $request->input('examination_type'),
+            'user_id' => $request->input('user_id'),
+            'chest_xray_done_by' => $request->input('chest_xray_done_by'),
+            'has_xray_file' => $request->hasFile('xray_image')
+        ]);
+        
         try {
             $validated = $request->validate([
-                'examination_type' => 'required|in:pre-employment,annual_physical',
+                'examination_type' => 'required|in:pre-employment,annual_physical,opd',
                 'pre_employment_record_id' => 'required_if:examination_type,pre-employment|nullable|exists:pre_employment_records,id',
                 'patient_id' => 'required_if:examination_type,annual_physical|nullable|exists:patients,id',
+                'user_id' => 'required_if:examination_type,opd|nullable|exists:users,id',
                 'name' => 'required|string|max:255',
                 'date' => 'required|date',
                 'age' => 'required|integer|min:0',
@@ -349,7 +519,16 @@ class RadtechController extends Controller
                 'xray_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:25000',
             ]);
 
-        $validated['user_id'] = Auth::id();
+        \Log::info('Validation passed, validated data:', $validated);
+
+        // Set user_id based on examination type
+        if ($validated['examination_type'] === 'opd') {
+            // For OPD, user_id should be the OPD patient's ID (from form)
+            // Keep the user_id from validation
+        } else {
+            // For other types, user_id is the authenticated radtech
+            $validated['user_id'] = Auth::id();
+        }
 
         if ($request->hasFile('xray_image')) {
             $path = $request->file('xray_image')->store('xray-images', 'public');
@@ -379,6 +558,25 @@ class RadtechController extends Controller
                 $validated['annual_physical_examination_id'] = $annualPhysicalExam->id;
             }
         }
+        if ($validated['examination_type'] === 'opd') {
+            if ($request->filled('user_id')) {
+                $validated['user_id'] = (int)$request->input('user_id');
+                
+                // Find or create OPD examination and link it
+                $opdExamination = \App\Models\OpdExamination::where('user_id', $validated['user_id'])
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if (!$opdExamination) {
+                    $opdExamination = \App\Models\OpdExamination::create([
+                        'user_id' => $validated['user_id'],
+                        'status' => 'pending'
+                    ]);
+                }
+                
+                $validated['opd_examination_id'] = $opdExamination->id;
+            }
+        }
 
         // Check for existing checklist to update instead of creating duplicate
         $existingChecklist = null;
@@ -389,6 +587,10 @@ class RadtechController extends Controller
         } elseif (!empty($validated['pre_employment_record_id'])) {
             $existingChecklist = MedicalChecklist::where('pre_employment_record_id', $validated['pre_employment_record_id'])
                 ->whereIn('examination_type', ['pre_employment', 'pre-employment'])
+                ->first();
+        } elseif (!empty($validated['opd_examination_id'])) {
+            $existingChecklist = MedicalChecklist::where('opd_examination_id', $validated['opd_examination_id'])
+                ->where('examination_type', 'opd')
                 ->first();
         }
         
@@ -403,7 +605,13 @@ class RadtechController extends Controller
         if (!empty($validated['chest_xray_done_by'])) {
             $radtech = Auth::user();
             $patientName = $validated['name'];
-            $examinationType = $validated['examination_type'] === 'pre-employment' ? 'Pre-Employment' : 'Annual Physical';
+            if ($validated['examination_type'] === 'pre-employment') {
+                $examinationType = 'Pre-Employment';
+            } elseif ($validated['examination_type'] === 'annual_physical') {
+                $examinationType = 'Annual Physical';
+            } else {
+                $examinationType = 'OPD';
+            }
             
             Notification::createForAdmin(
                 'xray_completed',
@@ -429,6 +637,9 @@ class RadtechController extends Controller
                 ->with('success', 'X-ray information saved successfully.');
         } elseif ($validated['examination_type'] === 'annual_physical') {
             return redirect()->route('radtech.annual-physical-xray')
+                ->with('success', 'X-ray information saved successfully.');
+        } elseif ($validated['examination_type'] === 'opd') {
+            return redirect()->route('radtech.opd.xray')
                 ->with('success', 'X-ray information saved successfully.');
         }
 

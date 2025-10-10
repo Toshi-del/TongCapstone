@@ -48,6 +48,30 @@
             </div>
         </div>
         
+        <div class="content-card rounded-xl p-6 border-l-4 border-amber-500 hover:shadow-lg transition-shadow duration-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600 mb-1">Submitted to Admin</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $entries->where('status', 'sent_to_admin')->count() }}</p>
+                </div>
+                <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-paper-plane text-amber-600 text-lg"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content-card rounded-xl p-6 border-l-4 border-blue-500 hover:shadow-lg transition-shadow duration-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600 mb-1">Sent to OPD</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $entries->where('status', 'sent_to_patient')->count() }}</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-share text-blue-600 text-lg"></i>
+                </div>
+            </div>
+        </div>
+        
         <div class="content-card rounded-xl p-6 border-l-4 border-emerald-500 hover:shadow-lg transition-shadow duration-200">
             <div class="flex items-center justify-between">
                 <div>
@@ -56,30 +80,6 @@
                 </div>
                 <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
                     <i class="fas fa-check-circle text-emerald-600 text-lg"></i>
-                </div>
-            </div>
-        </div>
-        
-        <div class="content-card rounded-xl p-6 border-l-4 border-amber-500 hover:shadow-lg transition-shadow duration-200">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 mb-1">Pending</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ $entries->where('status', 'pending')->count() }}</p>
-                </div>
-                <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-clock text-amber-600 text-lg"></i>
-                </div>
-            </div>
-        </div>
-        
-        <div class="content-card rounded-xl p-6 border-l-4 border-purple-500 hover:shadow-lg transition-shadow duration-200">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600 mb-1">Completed</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ $entries->where('status', 'done')->count() }}</p>
-                </div>
-                <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-check-double text-purple-600 text-lg"></i>
                 </div>
             </div>
         </div>
@@ -94,17 +94,17 @@
                         <i class="fas fa-stethoscope text-white text-xl"></i>
                     </div>
                     <div>
-                        <h3 class="text-xl font-bold text-white">OPD Management</h3>
-                        <p class="text-blue-100 text-sm">Manage outpatient department entries and appointments</p>
+                        <h3 class="text-xl font-bold text-white">OPD Examinations</h3>
+                        <p class="text-blue-100 text-sm">Manage OPD medical examinations submitted by doctors</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
                     <!-- Filter Tabs -->
                     <div class="flex items-center space-x-2">
-                        @php $statuses = ['pending' => ['label' => 'Pending', 'color' => 'yellow'], 'approved' => ['label' => 'Approved', 'color' => 'green'], 'declined' => ['label' => 'Declined', 'color' => 'red'], 'opd' => ['label' => 'OPD', 'color' => 'blue'], 'done' => ['label' => 'Done', 'color' => 'purple']]; @endphp
+                        @php $statuses = ['sent_to_admin' => ['label' => 'Submitted', 'color' => 'yellow'], 'sent_to_patient' => ['label' => 'Sent to OPD', 'color' => 'blue'], 'approved' => ['label' => 'Approved', 'color' => 'green'], 'completed' => ['label' => 'Completed', 'color' => 'purple'], 'all' => ['label' => 'All', 'color' => 'gray']]; @endphp
                         @foreach($statuses as $key => $status)
                         <a href="{{ route('admin.opd', ['filter' => $key]) }}" 
-                           class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 {{ ($filter ?? 'pending') === $key ? 'bg-white text-blue-600' : 'bg-white/10 text-white hover:bg-white/20' }}">
+                           class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 {{ ($filter ?? 'sent_to_admin') === $key ? 'bg-white text-blue-600' : 'bg-white/10 text-white hover:bg-white/20' }}">
                             {{ $status['label'] }}
                         </a>
                         @endforeach
@@ -131,10 +131,9 @@
                     <tr>
                         <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">ID</th>
                         <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Patient Name</th>
-                        <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Email</th>
-                        <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Medical Test</th>
-                        <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Appointment</th>
-                        <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Price</th>
+                        <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Patient Email</th>
+                        <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Examination Date</th>
+                        <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Fitness Assessment</th>
                         <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Status</th>
                         <th class="text-left py-5 px-6 text-sm font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -150,113 +149,88 @@
                                 </div>
                             </td>
                             <td class="py-5 px-6 border-r border-gray-100">
-                                <div class="flex items-center space-x-4">
-                                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                                        <span class="text-white font-bold text-sm">
-                                            {{ strtoupper(substr($entry->customer_name, 0, 2)) }}
-                                        </span>
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user text-blue-600 text-sm"></i>
                                     </div>
                                     <div>
-                                        <div class="text-sm font-semibold text-gray-900">
-                                            {{ $entry->customer_name }}
-                                        </div>
-                                        <div class="text-xs text-gray-500">Entry ID: #{{ $entry->id }}</div>
+                                        <div class="text-sm font-bold text-gray-900">{{ $entry->name ?? 'N/A' }}</div>
+                                        <div class="text-xs text-gray-500">OPD Patient</div>
                                     </div>
                                 </div>
                             </td>
                             <td class="py-5 px-6 border-r border-gray-100">
-                                <div class="flex items-center space-x-2">
-                                    <i class="fas fa-envelope text-gray-400 text-xs"></i>
-                                    <span class="text-sm text-gray-700">{{ $entry->customer_email }}</span>
-                                </div>
+                                <div class="text-sm text-gray-900">{{ $entry->user->email ?? 'N/A' }}</div>
                             </td>
                             <td class="py-5 px-6 border-r border-gray-100">
-                                <div class="bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
-                                    <div class="text-sm font-medium text-amber-800">
-                                        {{ $entry->medical_test }}
-                                    </div>
-                                </div>
+                                <div class="text-sm text-gray-900">{{ $entry->date ? $entry->date->format('M d, Y') : 'N/A' }}</div>
                             </td>
                             <td class="py-5 px-6 border-r border-gray-100">
-                                <div class="space-y-1">
-                                    <div class="flex items-center space-x-2 bg-blue-50 px-3 py-1 rounded-lg border border-blue-200">
-                                        <i class="fas fa-calendar text-blue-500 text-xs"></i>
-                                        <span class="text-sm font-medium text-blue-700">
-                                            {{ \Carbon\Carbon::parse($entry->appointment_date)->format('M d, Y') }}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center space-x-2 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
-                                        <i class="fas fa-clock text-emerald-500 text-xs"></i>
-                                        <span class="text-sm font-medium text-emerald-700">
-                                            {{ $entry->appointment_time }}
-                                        </span>
-                                    </div>
-                                </div>
+                                @php
+                                    $assessment = $entry->fitness_assessment ?? 'Pending';
+                                    $assessmentClass = '';
+                                    if ($assessment === 'Fit to work') {
+                                        $assessmentClass = 'bg-green-100 text-green-800';
+                                    } elseif ($assessment === 'Not fit for work') {
+                                        $assessmentClass = 'bg-red-100 text-red-800';
+                                    } elseif ($assessment === 'For evaluation') {
+                                        $assessmentClass = 'bg-yellow-100 text-yellow-800';
+                                    } else {
+                                        $assessmentClass = 'bg-gray-100 text-gray-800';
+                                    }
+                                @endphp
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $assessmentClass }}">
+                                    {{ $assessment }}
+                                </span>
                             </td>
                             <td class="py-5 px-6 border-r border-gray-100">
-                                <div class="text-lg font-bold text-gray-900">
-                                    ₱{{ number_format((float)($entry->price ?? 0), 2) }}
-                                </div>
-                            </td>
-                            <td class="py-5 px-6 border-r border-gray-100">
-                                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border
-                                    @if($entry->status === 'approved') bg-green-100 text-green-800 border-green-200
-                                    @elseif($entry->status === 'declined') bg-red-100 text-red-800 border-red-200
-                                    @elseif($entry->status === 'done') bg-purple-100 text-purple-800 border-purple-200
-                                    @elseif($entry->status === 'opd') bg-blue-100 text-blue-800 border-blue-200
-                                    @else bg-yellow-100 text-yellow-800 border-yellow-200 @endif">
-                                    <i class="fas fa-circle text-xs mr-1.5"></i>
-                                    {{ ucfirst($entry->status) }}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                                    @if($entry->status === 'approved') bg-green-100 text-green-800
+                                    @elseif($entry->status === 'sent_to_admin') bg-yellow-100 text-yellow-800
+                                    @elseif($entry->status === 'sent_to_patient') bg-blue-100 text-blue-800
+                                    @elseif($entry->status === 'completed') bg-purple-100 text-purple-800
+                                    @else bg-gray-100 text-gray-800 @endif">
+                                    {{ ucfirst(str_replace('_', ' ', $entry->status ?? 'unknown')) }}
                                 </span>
                             </td>
                             <td class="py-5 px-6">
                                 <div class="flex items-center space-x-2">
-                                    @if($entry->status !== 'approved')
-                                    <button type="button" 
-                                            class="inline-flex items-center px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-xs font-medium transition-all duration-150 border border-green-200"
-                                            onclick="openApproveModal({{ $entry->id }}, '{{ $entry->customer_name }}')">
-                                        <i class="fas fa-check mr-1"></i>
-                                        Approve
-                                    </button>
-                                    @endif
-
-                                    @if($entry->status !== 'declined')
-                                    <button type="button" 
-                                            class="inline-flex items-center px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium transition-all duration-150 border border-red-200"
-                                            onclick="openDeclineModal({{ $entry->id }}, '{{ $entry->customer_name }}')">
-                                        <i class="fas fa-times mr-1"></i>
-                                        Decline
-                                    </button>
-                                    @endif
-
-                                    <button type="button" 
-                                            class="inline-flex items-center px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-medium transition-all duration-150 border border-purple-200"
-                                            onclick="openMarkDoneModal({{ $entry->id }}, '{{ $entry->customer_name }}')">
-                                        <i class="fas fa-check-double mr-1"></i>
-                                        Done
-                                    </button>
-
-                                    @if($entry->status === 'done')
-                                    <button type="button" 
-                                            class="inline-flex items-center px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-all duration-150 border border-blue-200"
-                                            onclick="openSendResultsModal({{ $entry->id }}, '{{ $entry->customer_name }}', '{{ $entry->customer_email }}')">
-                                        <i class="fas fa-envelope mr-1"></i>
-                                        Send
-                                    </button>
+                                    <a href="{{ route('admin.view-opd-examination', $entry->id) }}" 
+                                       class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-all duration-150 shadow-sm hover:shadow-md">
+                                        <i class="fas fa-eye mr-1"></i>
+                                        View
+                                    </a>
+                                    
+                                    @if($entry->status === 'sent_to_admin')
+                                        <form action="{{ route('admin.send-opd-results', $entry->id) }}" method="POST" style="display: inline;">
+                                            @csrf
+                                            <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-all duration-150 shadow-sm hover:shadow-md">
+                                                <i class="fas fa-paper-plane mr-1"></i>
+                                                Send to OPD
+                                            </button>
+                                        </form>
+                                    @elseif($entry->status === 'sent_to_patient')
+                                        <form action="{{ route('admin.approve-opd-examination', $entry->id) }}" method="POST" style="display: inline;">
+                                            @csrf
+                                            <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-all duration-150 shadow-sm hover:shadow-md">
+                                                <i class="fas fa-check mr-1"></i>
+                                                Approve
+                                            </button>
+                                        </form>
                                     @endif
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="py-16 text-center border-2 border-dashed border-gray-300">
+                            <td colspan="7" class="py-16 text-center border-2 border-dashed border-gray-300">
                                 <div class="flex flex-col items-center space-y-4">
                                     <div class="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center border-4 border-blue-300">
                                         <i class="fas fa-stethoscope text-blue-500 text-3xl"></i>
                                     </div>
                                     <div>
-                                        <p class="text-gray-600 font-semibold text-lg">No OPD entries found</p>
-                                        <p class="text-gray-500 text-sm mt-1">No entries match the current filter criteria</p>
+                                        <p class="text-gray-600 font-semibold text-lg">No OPD examinations found</p>
+                                        <p class="text-gray-500 text-sm mt-1">No examinations match the current filter criteria</p>
                                     </div>
                                 </div>
                             </td>
@@ -277,7 +251,7 @@
 
 <!-- Modals -->
 <!-- Approve Modal -->
-<div id="approveModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+<div id="approveModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">
@@ -306,7 +280,7 @@
 </div>
 
 <!-- Decline Modal -->
-<div id="declineModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+<div id="declineModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">
@@ -335,7 +309,7 @@
 </div>
 
 <!-- Mark Done Modal -->
-<div id="markDoneModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+<div id="markDoneModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">
@@ -364,7 +338,7 @@
 </div>
 
 <!-- Send Results Modal -->
-<div id="sendResultsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+<div id="sendResultsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">

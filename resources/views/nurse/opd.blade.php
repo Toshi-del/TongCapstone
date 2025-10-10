@@ -331,9 +331,13 @@
                                                 <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full mr-2">
                                                     <i class="fas fa-check-circle mr-1"></i>Exam Completed
                                                 </span>
+                                            @elseif($medicalChecklist)
+                                                <span class="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full mr-2">
+                                                    <i class="fas fa-clipboard-check mr-1"></i>Ready for Exam
+                                                </span>
                                             @else
-                                                <span class="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full mr-2">
-                                                    <i class="fas fa-clock mr-1"></i>Pending Exam
+                                                <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full mr-2">
+                                                    <i class="fas fa-clipboard-list mr-1"></i>Checklist Required
                                                 </span>
                                             @endif
 
@@ -345,19 +349,35 @@
                                                     <i class="fas fa-edit"></i>
                                                 </a>
                                             @else
-                                                <a href="{{ route('nurse.opd.create', ['user_id' => $patient->id]) }}" 
-                                                   class="p-2 text-emerald-600 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors" 
-                                                   title="Create Examination">
-                                                    <i class="fas fa-plus"></i>
-                                                </a>
+                                                @if($medicalChecklist)
+                                                    <a href="{{ route('nurse.opd.create', ['user_id' => $patient->id]) }}" 
+                                                       class="p-2 text-emerald-600 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors" 
+                                                       title="Create Examination">
+                                                        <i class="fas fa-plus"></i>
+                                                    </a>
+                                                @else
+                                                    <button disabled 
+                                                            class="p-2 text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed opacity-50" 
+                                                            title="Complete medical checklist first">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                @endif
                                             @endif
 
                                             <!-- Medical Checklist -->
-                                            <a href="{{ route('nurse.medical-checklist.opd', $patient->id) }}" 
-                                               class="p-2 text-amber-600 hover:text-amber-900 hover:bg-amber-50 rounded-lg transition-colors" 
-                                               title="Medical Checklist">
-                                                <i class="fas fa-clipboard-list"></i>
-                                            </a>
+                                            @if($medicalChecklist)
+                                                <a href="{{ route('nurse.medical-checklist.opd', $patient->id) }}" 
+                                                   class="p-2 text-emerald-600 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors" 
+                                                   title="View/Edit Medical Checklist">
+                                                    <i class="fas fa-clipboard-check"></i>
+                                                </a>
+                                            @else
+                                                <a href="{{ route('nurse.medical-checklist.opd', $patient->id) }}" 
+                                                   class="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors animate-pulse" 
+                                                   title="Complete Medical Checklist (Required)">
+                                                    <i class="fas fa-clipboard-list"></i>
+                                                </a>
+                                            @endif
 
                                             <!-- View Details -->
                                             <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors" title="View Details">

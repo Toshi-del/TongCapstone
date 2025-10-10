@@ -523,6 +523,223 @@ class RadiologistController extends Controller
     }
 
     /**
+     * Show OPD X-ray list
+     */
+    public function opdXray(Request $request)
+    {
+        $currentRadiologistId = auth()->id();
+        
+        $query = \App\Models\User::where('role', 'opd');
+
+        // Debug: Log total OPD users
+        $totalOpdUsers = \App\Models\User::where('role', 'opd')->count();
+        $opdUsersWithChecklists = \App\Models\User::where('role', 'opd')
+            ->whereHas('medicalChecklists', function($q) {
+                $q->where('examination_type', 'opd');
+            })->count();
+        $opdUsersWithXrays = \App\Models\User::where('role', 'opd')
+            ->whereHas('medicalChecklists', function($q) {
+                $q->where('examination_type', 'opd')
+                  ->whereNotNull('xray_image_path')
+                  ->where('xray_image_path', '!=', '');
+            })->count();
+            
+        \Log::info('Radiologist OPD Debug:', [
+            'total_opd_users' => $totalOpdUsers,
+            'opd_with_checklists' => $opdUsersWithChecklists,
+            'opd_with_xrays' => $opdUsersWithXrays
+        ]);
+
+        // Handle tab filtering
+        $xrayStatus = $request->get('xray_status', 'needs_attention');
+        
+        if ($xrayStatus === 'all') {
+            // Show all OPD patients with X-ray images (for debugging)
+            $query->whereHas('medicalChecklists', function($q) {
+                $q->where('examination_type', 'opd')
+                  ->whereNotNull('xray_image_path')
+                  ->where('xray_image_path', '!=', '');
+            });
+        } elseif ($xrayStatus === 'needs_attention') {
+            // OPD patients who have X-ray images but no radiologist findings yet
+            $query->whereHas('medicalChecklists', function($q) {
+                $q->where('examination_type', 'opd')
+                  ->whereNotNull('xray_image_path')
+                  ->where('xray_image_path', '!=', '');
+            });
+            
+            // Exclude those who already have radiologist findings
+            // Check if they have an OPD examination with chest X-ray results
+            $query->whereDoesntHave('opdExamination', function($q) {
+                $q->whereNotNull('lab_findings')
+                  ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_findings, '$.\"chest_xray\".\"result\"')) IS NOT NULL")
+                  ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_findings, '$.\"chest_xray\".\"result\"')) != ''");
+            });
+        } elseif ($xrayStatus === 'completed') {
+            // OPD patients who have completed radiologist review
+            $query->whereHas('medicalChecklists', function($q) {
+                $q->where('examination_type', 'opd')
+                  ->whereNotNull('xray_image_path')
+                  ->where('xray_image_path', '!=', '');
+            })->whereHas('opdExamination', function($q) {
+                $q->whereNotNull('lab_findings')
+                  ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_findings, '$.\"chest_xray\".\"result\"')) IS NOT NULL")
+                  ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(lab_findings, '$.\"chest_xray\".\"result\"')) != ''");
+            });
+        }
+
+        // Handle search
+        $search = $request->get('search');
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('fname', 'like', "%{$search}%")
+                  ->orWhere('lname', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $opdPatients = $query->with(['medicalChecklists' => function($q) {
+            $q->where('examination_type', 'opd')
+              ->whereNotNull('xray_image_path');
+        }])->latest()->get();
+
+        return view('radiologist.opd-xray', compact('opdPatients'));
+    }
+
+    /**
+     * Show OPD X-ray details for radiologist review
+     */
+    public function showOpd($userId)
+    {
+        $opdPatient = \App\Models\User::where('role', 'opd')->findOrFail($userId);
+        
+        // Find the most recent OPD examination record for this patient
+        $opdExamination = \App\Models\OpdExamination::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        // Find medical checklist with X-ray image
+        $medicalChecklist = \App\Models\MedicalChecklist::where('user_id', $userId)
+            ->where('examination_type', 'opd')
+            ->whereNotNull('xray_image_path')
+            ->where('xray_image_path', '!=', '')
+            ->first();
+
+        if (!$medicalChecklist) {
+            return redirect()->route('radiologist.opd.xray')->with('error', 'No X-ray image found for this OPD patient.');
+        }
+
+        // Get existing X-ray findings from OpdExamination
+        $cxr_result = '—';
+        $cxr_finding = '—';
+        
+        if ($opdExamination) {
+            $cxr = $opdExamination->lab_findings['chest_xray'] ?? ($opdExamination->lab_findings['Chest X-Ray'] ?? null);
+            if (is_array($cxr)) {
+                $cxr_result = is_scalar($cxr['result'] ?? null) ? (string)$cxr['result'] : '—';
+                $cxr_finding = is_scalar($cxr['finding'] ?? null) ? (string)$cxr['finding'] : '—';
+            } else {
+                $cxr_finding = is_scalar($cxr) ? (string)$cxr : '—';
+            }
+        }
+
+        $data = [
+            'opdPatient' => $opdPatient,
+            'opdExamination' => $opdExamination,
+            'medicalChecklist' => $medicalChecklist,
+            'number' => 'OPD-' . str_pad($opdPatient->id, 4, '0', STR_PAD_LEFT),
+            'name' => trim(($opdPatient->fname ?? '') . ' ' . ($opdPatient->lname ?? '')),
+            'age' => $opdPatient->age ?? null,
+            'gender' => $opdPatient->gender ?? null,
+            'email' => $opdPatient->email,
+            'date' => $medicalChecklist->date ?? now()->format('Y-m-d'),
+            'cxr_result' => $cxr_result,
+            'cxr_finding' => $cxr_finding,
+        ];
+
+        return view('radiologist.opd-show', $data);
+    }
+
+    /**
+     * Update OPD X-ray findings
+     */
+    public function updateOpd(\Illuminate\Http\Request $request, $userId)
+    {
+        $request->validate([
+            'cxr_result' => 'nullable|string',
+            'cxr_finding' => 'nullable|string',
+        ]);
+
+        $opdPatient = \App\Models\User::where('role', 'opd')->findOrFail($userId);
+        
+        // Find or create OPD examination
+        $opdExamination = \App\Models\OpdExamination::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$opdExamination) {
+            return redirect()->back()->with('error', 'OPD examination not found.');
+        }
+
+        // Get current radiologist info
+        $currentRadiologistId = auth()->id();
+        $radiologist = auth()->user();
+        $patientName = trim(($opdPatient->fname ?? '') . ' ' . ($opdPatient->lname ?? ''));
+
+        // Get existing lab findings or initialize
+        $lab = $opdExamination->lab_findings ?? [];
+        
+        // Initialize chest_xray section if it doesn't exist
+        if (!isset($lab['chest_xray'])) {
+            $lab['chest_xray'] = [];
+        }
+        
+        // Initialize reviews array if it doesn't exist
+        if (!isset($lab['chest_xray']['reviews'])) {
+            $lab['chest_xray']['reviews'] = [];
+        }
+        
+        // Add or update this radiologist's review
+        $lab['chest_xray']['reviews'][$currentRadiologistId] = [
+            'result' => $request->input('cxr_result'),
+            'finding' => $request->input('cxr_finding'),
+            'radiologist_name' => $radiologist->name,
+            'reviewed_at' => now()->toDateTimeString(),
+        ];
+        
+        // Keep the most recent review as the primary result (for backward compatibility)
+        $lab['chest_xray']['result'] = $request->input('cxr_result');
+        $lab['chest_xray']['finding'] = $request->input('cxr_finding');
+        $lab['chest_xray']['reviewed_by'] = $currentRadiologistId;
+        $lab['chest_xray']['reviewed_at'] = now()->toDateTimeString();
+        
+        // Save the updated lab findings
+        $opdExamination->lab_findings = $lab;
+        $opdExamination->save();
+
+        // Create notification for admin
+        \App\Models\Notification::createForAdmin(
+            'xray_interpreted',
+            'X-Ray Interpretation Completed - OPD',
+            "Radiologist {$radiologist->name} has completed X-ray interpretation for {$patientName} (OPD). Result: " . ($request->input('cxr_result') ?: 'No result specified'),
+            [
+                'examination_id' => $opdExamination->id,
+                'patient_name' => $patientName,
+                'radiologist_name' => $radiologist->name,
+                'examination_type' => 'opd',
+                'xray_result' => $request->input('cxr_result'),
+                'xray_finding' => $request->input('cxr_finding'),
+                'has_findings' => !empty($request->input('cxr_finding'))
+            ],
+            'medium',
+            $radiologist,
+            $opdExamination
+        );
+
+        return redirect()->route('radiologist.opd.xray')->with('success', 'OPD X-Ray findings submitted successfully. Record is now ready for doctor review.');
+    }
+
+    /**
      * Show X-ray gallery
      */
     public function xrayGallery()

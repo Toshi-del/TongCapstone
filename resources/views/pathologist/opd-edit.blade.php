@@ -55,178 +55,83 @@
             </h3>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-gray-700">Urinalysis</label>
-                    <input type="text" name="lab_report[urinalysis]" 
-                           value="{{ old('lab_report.urinalysis', $examination->lab_report['urinalysis'] ?? '') }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500"
-                           placeholder="Enter urinalysis results">
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-gray-700">CBC</label>
-                    <input type="text" name="lab_report[cbc]" 
-                           value="{{ old('lab_report.cbc', $examination->lab_report['cbc'] ?? '') }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500"
-                           placeholder="Enter CBC results">
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-gray-700">Fecalysis</label>
-                    <input type="text" name="lab_report[fecalysis]" 
-                           value="{{ old('lab_report.fecalysis', $examination->lab_report['fecalysis'] ?? '') }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500"
-                           placeholder="Enter fecalysis results">
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-gray-700">Blood Chemistry</label>
-                    <input type="text" name="lab_report[blood_chemistry]" 
-                           value="{{ old('lab_report.blood_chemistry', $examination->lab_report['blood_chemistry'] ?? '') }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500"
-                           placeholder="Enter blood chemistry results">
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-gray-700">Others</label>
-                    <input type="text" name="lab_report[others]" 
-                           value="{{ old('lab_report.others', $examination->lab_report['others'] ?? '') }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500"
-                           placeholder="Enter other test results">
-                </div>
+                @if($opdTests->count() > 0)
+                    @foreach($opdTests as $test)
+                        @php
+                            $testKey = strtolower(str_replace([' ', '-', '&', '.'], '_', $test->medical_test));
+                        @endphp
+                        <div class="space-y-2">
+                            <label class="block text-sm font-semibold text-gray-700">
+                                {{ $test->medical_test }}
+                                @if(isset($test->is_standard) && $test->is_standard)
+                                    <span class="text-xs text-blue-600 font-medium ml-2">
+                                        <i class="fas fa-star mr-1"></i>Standard Lab Test
+                                    </span>
+                                @endif
+                            </label>
+                            <select name="lab_report[{{ $testKey }}]" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 lab-test-select"
+                                    data-test-key="{{ $testKey }}">
+                                <option value="">Select Result</option>
+                                <option value="Normal" {{ old('lab_report.' . $testKey, $examination->lab_report[$testKey] ?? '') === 'Normal' ? 'selected' : '' }}>Normal</option>
+                                <option value="Not Normal" {{ old('lab_report.' . $testKey, $examination->lab_report[$testKey] ?? '') === 'Not Normal' ? 'selected' : '' }}>Not Normal</option>
+                            </select>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="col-span-3 text-center py-8">
+                        <div class="text-gray-500">
+                            <i class="fas fa-info-circle text-2xl mb-2"></i>
+                            <p>No medical tests found for this OPD patient.</p>
+                            <p class="text-sm">Please ensure the patient has approved medical tests in the system.</p>
+                        </div>
+                    </div>
+                @endif
             </div>
 
-            <!-- Additional Laboratory Tests -->
-            <h4 class="text-lg font-bold text-gray-800 mb-4">
-                <i class="fas fa-vial mr-2 text-teal-600"></i>Additional Laboratory Tests
-            </h4>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-gray-700">HBsAg Screening</label>
-                    <input type="text" name="lab_report[hbsag_screening]" 
-                           value="{{ old('lab_report.hbsag_screening', $examination->lab_report['hbsag_screening'] ?? '') }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500"
-                           placeholder="Enter HBsAg screening results">
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-gray-700">HEPA A IgG & IgM</label>
-                    <input type="text" name="lab_report[hepa_a_igg_igm]" 
-                           value="{{ old('lab_report.hepa_a_igg_igm', $examination->lab_report['hepa_a_igg_igm'] ?? '') }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500"
-                           placeholder="Enter HEPA A IgG & IgM results">
-                </div>
-            </div>
 
             <!-- Laboratory Examinations Report Table -->
-            <h4 class="text-lg font-bold text-gray-800 mb-4">
-                <i class="fas fa-table mr-2 text-teal-600"></i>Laboratory Examinations Report
-            </h4>
-            
-            <div class="overflow-x-auto">
-                <table class="w-full border border-gray-300 rounded-lg">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-300">TEST</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-300">RESULT</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-300">FINDINGS</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white">
-                        <tr class="border-b border-gray-200">
-                            <td class="px-4 py-3 text-sm text-gray-700">Urinalysis</td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[urinalysis_result]" 
-                                       value="{{ old('lab_results.urinalysis_result', $examination->lab_results['urinalysis_result'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter result">
-                            </td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[urinalysis_findings]" 
-                                       value="{{ old('lab_results.urinalysis_findings', $examination->lab_results['urinalysis_findings'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter findings">
-                            </td>
-                        </tr>
-                        <tr class="border-b border-gray-200">
-                            <td class="px-4 py-3 text-sm text-gray-700">Fecalysis</td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[fecalysis_result]" 
-                                       value="{{ old('lab_results.fecalysis_result', $examination->lab_results['fecalysis_result'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter result">
-                            </td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[fecalysis_findings]" 
-                                       value="{{ old('lab_results.fecalysis_findings', $examination->lab_results['fecalysis_findings'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter findings">
-                            </td>
-                        </tr>
-                        <tr class="border-b border-gray-200">
-                            <td class="px-4 py-3 text-sm text-gray-700">CBC</td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[cbc_result]" 
-                                       value="{{ old('lab_results.cbc_result', $examination->lab_results['cbc_result'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter result">
-                            </td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[cbc_findings]" 
-                                       value="{{ old('lab_results.cbc_findings', $examination->lab_results['cbc_findings'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter findings">
-                            </td>
-                        </tr>
-                        <tr class="border-b border-gray-200">
-                            <td class="px-4 py-3 text-sm text-gray-700">HBsAg Screening</td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[hbsag_result]" 
-                                       value="{{ old('lab_results.hbsag_result', $examination->lab_results['hbsag_result'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter result">
-                            </td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[hbsag_findings]" 
-                                       value="{{ old('lab_results.hbsag_findings', $examination->lab_results['hbsag_findings'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter findings">
-                            </td>
-                        </tr>
-                        <tr class="border-b border-gray-200">
-                            <td class="px-4 py-3 text-sm text-gray-700">HEPA A IgG & IgM</td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[hepa_result]" 
-                                       value="{{ old('lab_results.hepa_result', $examination->lab_results['hepa_result'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter result">
-                            </td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[hepa_findings]" 
-                                       value="{{ old('lab_results.hepa_findings', $examination->lab_results['hepa_findings'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter findings">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="px-4 py-3 text-sm text-gray-700">Others</td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[others_result]" 
-                                       value="{{ old('lab_results.others_result', $examination->lab_results['others_result'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter result">
-                            </td>
-                            <td class="px-4 py-3">
-                                <input type="text" name="lab_results[others_findings]" 
-                                       value="{{ old('lab_results.others_findings', $examination->lab_results['others_findings'] ?? '') }}"
-                                       class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
-                                       placeholder="Enter findings">
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            @if($opdTests->count() > 0)
+                <h4 class="text-lg font-bold text-gray-800 mb-4">
+                    <i class="fas fa-table mr-2 text-teal-600"></i>Laboratory Examinations Report
+                </h4>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full border border-gray-300 rounded-lg">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-300">TEST</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-300">RESULT</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-300">FINDINGS</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white">
+                            @foreach($opdTests as $index => $test)
+                                @php
+                                    $testKey = strtolower(str_replace([' ', '-', '&', '.'], '_', $test->medical_test));
+                                @endphp
+                                <tr class="{{ $index < $opdTests->count() - 1 ? 'border-b border-gray-200' : '' }}">
+                                    <td class="px-4 py-3 text-sm text-gray-700">{{ $test->medical_test }}</td>
+                                    <td class="px-4 py-3">
+                                        <input type="text" name="lab_results[{{ $testKey }}_result]" 
+                                               id="result_{{ $testKey }}"
+                                               value="{{ old('lab_results.' . $testKey . '_result', $examination->lab_results[$testKey . '_result'] ?? '') }}"
+                                               class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500 bg-gray-50"
+                                               placeholder="Auto-populated from above"
+                                               readonly>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <input type="text" name="lab_results[{{ $testKey }}_findings]" 
+                                               value="{{ old('lab_results.' . $testKey . '_findings', $examination->lab_results[$testKey . '_findings'] ?? '') }}"
+                                               class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+                                               placeholder="Enter findings">
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
 
         
@@ -257,4 +162,42 @@
         </div>
     </form>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle dropdown changes to auto-populate result fields
+    const labTestSelects = document.querySelectorAll('.lab-test-select');
+    
+    labTestSelects.forEach(function(select) {
+        // Set initial values on page load
+        updateResultField(select);
+        
+        // Handle changes
+        select.addEventListener('change', function() {
+            updateResultField(this);
+        });
+    });
+    
+    function updateResultField(selectElement) {
+        const testKey = selectElement.getAttribute('data-test-key');
+        const resultField = document.getElementById('result_' + testKey);
+        
+        if (resultField) {
+            const selectedValue = selectElement.value;
+            resultField.value = selectedValue;
+            
+            // Visual feedback for the result field
+            if (selectedValue === 'Normal') {
+                resultField.className = resultField.className.replace(/bg-red-50|bg-yellow-50/, 'bg-green-50');
+            } else if (selectedValue === 'Not Normal') {
+                resultField.className = resultField.className.replace(/bg-green-50|bg-yellow-50/, 'bg-red-50');
+            } else {
+                resultField.className = resultField.className.replace(/bg-green-50|bg-red-50/, 'bg-gray-50');
+            }
+        }
+    }
+});
+</script>
 @endsection

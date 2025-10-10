@@ -277,16 +277,25 @@ class PleboController extends Controller
      */
     public function showMedicalChecklistOpd($userId)
     {
-        $user = User::findOrFail($userId);
-        $opdExamination = $user->opdExamination;
-        $medicalChecklist = MedicalChecklist::where('opd_examination_id', optional($opdExamination)->id)->first();
+        $opdPatient = User::where('role', 'opd')->findOrFail($userId);
+        $opdExamination = OpdExamination::where('user_id', $userId)->first();
+        
+        // Look for medical checklist by user_id first, then by opd_examination_id
+        $medicalChecklist = MedicalChecklist::where('user_id', $userId)
+            ->where('examination_type', 'opd')
+            ->first();
+            
+        if (!$medicalChecklist && $opdExamination) {
+            $medicalChecklist = MedicalChecklist::where('opd_examination_id', $opdExamination->id)->first();
+        }
+        
         $examinationType = 'opd';
-        $number = 'OPD-' . str_pad($user->id, 4, '0', STR_PAD_LEFT);
-        $name = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
-        $age = $user->age ?? null;
+        $number = 'OPD-' . str_pad($opdPatient->id, 4, '0', STR_PAD_LEFT);
+        $name = trim(($opdPatient->fname ?? '') . ' ' . ($opdPatient->lname ?? ''));
+        $age = $opdPatient->age ?? null;
         $date = now()->format('Y-m-d');
 
-        return view('plebo.medical-checklist', compact('medicalChecklist', 'user', 'opdExamination', 'examinationType', 'number', 'name', 'age', 'date'));
+        return view('plebo.medical-checklist', compact('medicalChecklist', 'opdPatient', 'opdExamination', 'examinationType', 'number', 'name', 'age', 'date'));
     }
 
     /**
@@ -447,25 +456,49 @@ class PleboController extends Controller
     /**
      * List OPD patients for plebo
      */
-    public function opd()
+    public function opd(Request $request)
     {
-        $opdPatients = User::where('role', 'opd')
-            ->where(function($query) {
-                // Only show patients without checklist OR with incomplete checklist
-                $query->whereDoesntHave('medicalChecklist')
-                      ->orWhereHas('medicalChecklist', function($q) {
-                          // Incomplete if blood extraction is empty
-                          $q->where(function($subQ) {
-                              $subQ->whereNull('blood_extraction_done_by')
-                                   ->orWhere('blood_extraction_done_by', '');
-                          });
-                      });
-            })
-            ->whereDoesntHave('opdExamination', function($q) {
-                $q->whereIn('status', ['completed']);
-            })
-            ->latest()
-            ->paginate(15);
+        $query = User::where('role', 'opd');
+
+        // Handle tab filtering
+        $bloodStatus = $request->get('blood_status', 'needs_attention');
+        
+        if ($bloodStatus === 'needs_attention') {
+            // Patients that need blood collection (no checklist or incomplete blood extraction)
+            $query->where(function($q) {
+                $q->whereDoesntHave('medicalChecklist')
+                  ->orWhereHas('medicalChecklist', function($subQ) {
+                      $subQ->where('examination_type', 'opd')
+                           ->where(function($checkQ) {
+                               $checkQ->whereNull('blood_extraction_done_by')
+                                      ->orWhere('blood_extraction_done_by', '');
+                           });
+                  });
+            });
+        } elseif ($bloodStatus === 'collection_completed') {
+            // Patients where blood collection is completed
+            $query->whereHas('medicalChecklist', function($q) {
+                $q->where('examination_type', 'opd')
+                  ->whereNotNull('blood_extraction_done_by')
+                  ->where('blood_extraction_done_by', '!=', '');
+            });
+        }
+
+        // Apply additional filters
+        if ($request->filled('gender')) {
+            $query->where('gender', $request->gender);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('fname', 'like', '%' . $search . '%')
+                  ->orWhere('lname', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%');
+            });
+        }
+
+        $opdPatients = $query->latest()->paginate(15);
             
         return view('plebo.opd', compact('opdPatients'));
     }
@@ -534,10 +567,20 @@ class PleboController extends Controller
                     ->whereNull('annual_physical_examination_id')
                     ->first();
             }
-        } elseif ($data['examination_type'] === 'opd' && $data['opd_examination_id']) {
-            $medicalChecklist = MedicalChecklist::where('opd_examination_id', $data['opd_examination_id'])
-                ->where('examination_type', 'opd')
-                ->first();
+        } elseif ($data['examination_type'] === 'opd') {
+            // Look for medical checklist by user_id first, then by opd_examination_id
+            if (!empty($data['user_id'])) {
+                $medicalChecklist = MedicalChecklist::where('user_id', $data['user_id'])
+                    ->where('examination_type', 'opd')
+                    ->first();
+            }
+            
+            // Fallback to opd_examination_id if not found by user_id
+            if (!$medicalChecklist && !empty($data['opd_examination_id'])) {
+                $medicalChecklist = MedicalChecklist::where('opd_examination_id', $data['opd_examination_id'])
+                    ->where('examination_type', 'opd')
+                    ->first();
+            }
         }
 
         try {
@@ -929,6 +972,40 @@ class PleboController extends Controller
                     $exam = AnnualPhysicalExamination::create([
                         'patient_id' => $patient->id,
                         'name' => $patient->first_name . ' ' . $patient->last_name,
+                        'date' => now(),
+                        'status' => 'collection_completed',
+                        'lab_report' => [
+                            'collection_completed_at' => now()->toDateTimeString(),
+                            'blood_extraction_completed' => true,
+                            'phlebotomist' => Auth::user()->name ?? 'Unknown'
+                        ]
+                    ]);
+                } else {
+                    // Update existing examination
+                    $exam->status = 'collection_completed';
+                    
+                    // Ensure lab_report exists
+                    $labReport = $exam->lab_report ?? [];
+                    $labReport['collection_completed_at'] = now()->toDateTimeString();
+                    $labReport['blood_extraction_completed'] = true;
+                    $labReport['phlebotomist'] = Auth::user()->name ?? 'Unknown';
+                    
+                    $exam->lab_report = $labReport;
+                    $exam->save();
+                }
+            }
+        } elseif ($data['examination_type'] === 'opd' && !empty($data['user_id'])) {
+            // Handle OPD examination
+            $user = User::find($data['user_id']);
+            if ($user) {
+                // Find or create OPD examination
+                $exam = OpdExamination::where('user_id', $user->id)->first();
+                
+                if (!$exam) {
+                    // Create new OPD examination
+                    $exam = OpdExamination::create([
+                        'user_id' => $user->id,
+                        'name' => $user->fname . ' ' . $user->lname,
                         'date' => now(),
                         'status' => 'collection_completed',
                         'lab_report' => [

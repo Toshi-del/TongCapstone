@@ -86,6 +86,9 @@
             @if(isset($patient))
                 <input type="hidden" name="patient_id" value="{{ $patient->id }}">
             @endif
+            @if(isset($opdPatient))
+                <input type="hidden" name="user_id" value="{{ $opdPatient->id }}">
+            @endif
             @if(isset($annualPhysicalExamination))
                 <input type="hidden" name="annual_physical_examination_id" value="{{ $annualPhysicalExamination->id }}">
             @endif
@@ -233,7 +236,7 @@
                                                    value="{{ old($field . '_done_by', $medicalChecklist->{$field . '_done_by'} ?? '') }}"
                                                    placeholder="Enter your initials"
                                                    class="w-48 px-4 py-3 rounded-xl border-2 border-cyan-400 bg-white text-gray-900 font-medium text-center focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors shadow-sm"
-                                                   {{ $isCompleted ? 'readonly' : '' }}>
+                                                   required>
                                         @else
                                             <div class="w-48 px-4 py-3 rounded-xl border-2 border-gray-300 bg-gray-100 text-gray-600 font-medium text-center shadow-inner">
                                                 {{ $medicalChecklist->{$field . '_done_by'} ?? 'Not completed' }}

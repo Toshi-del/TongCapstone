@@ -204,11 +204,7 @@ class NurseController extends Controller
                                    ->orWhere('lab_report', '[]')
                                    ->orWhere('lab_report', '{}');
                             })
-                            // AND no findings
-                            ->where(function($sq) {
-                                $sq->whereNull('findings')
-                                   ->orWhere('findings', '');
-                            })
+                       
                             // AND no illness history
                             ->where(function($sq) {
                                 $sq->whereNull('illness_history')
@@ -237,8 +233,8 @@ class NurseController extends Controller
                         })
                         // Has findings OR
                         ->orWhere(function($sq) {
-                            $sq->whereNotNull('findings')
-                               ->where('findings', '!=', '');
+                            $sq->whereNotNull('final_findings')
+                               ->where('final_findings', '!=', '');
                         })
                         // Has illness history
                         ->orWhere(function($sq) {
@@ -290,7 +286,7 @@ class NurseController extends Controller
             'skin_marks' => 'nullable|string',
             'visual' => 'nullable|string',
             'ishihara_test' => 'nullable|string',
-            'findings' => 'nullable|string',
+            'final_findings' => 'nullable|string',
             'lab_report' => 'nullable|array',
             'physical_findings' => 'nullable|array',
             'lab_findings' => 'nullable|array',
@@ -336,7 +332,7 @@ class NurseController extends Controller
             'skin_marks' => 'nullable|string',
             'visual' => 'nullable|string',
             'ishihara_test' => 'nullable|string',
-            'findings' => 'nullable|string',
+            'final_findings' => 'nullable|string',
             'lab_report' => 'nullable|array',
             'drug_test' => 'nullable|array',
             'physical_findings' => 'nullable|array',
@@ -461,6 +457,7 @@ class NurseController extends Controller
             'patient_id' => 'nullable|integer',
             'annual_physical_examination_id' => 'nullable|integer',
             'opd_examination_id' => 'nullable|integer',
+            'user_id' => 'nullable|integer',
             // All examination fields
             'chest_xray_done_by' => 'nullable|string',
             'stool_exam_done_by' => 'nullable|string',
@@ -473,7 +470,10 @@ class NurseController extends Controller
             'nurse_signature' => 'nullable|string',
         ]);
 
-        $validated['user_id'] = Auth::id();
+        // Set user_id to current nurse only if not already provided (for OPD, user_id is the patient ID)
+        if (!isset($validated['user_id']) || empty($validated['user_id'])) {
+            $validated['user_id'] = Auth::id();
+        }
 
         // For annual physical: create examination record if it doesn't exist and link it
         if (($validated['examination_type'] === 'annual_physical' || $validated['examination_type'] === 'annual-physical') 
@@ -567,7 +567,7 @@ class NurseController extends Controller
         $redirectParams = match($validated['examination_type']) {
             'pre-employment', 'pre_employment' => $validated['pre_employment_record_id'] ?? null,
             'annual-physical', 'annual_physical' => $validated['patient_id'] ?? null,
-            'opd' => $validated['opd_examination_id'] ?? null,
+            'opd' => $validated['user_id'] ?? null,
             default => null
         };
 
@@ -586,6 +586,12 @@ class NurseController extends Controller
             'date' => 'required|date',
             'age' => 'required|integer',
             'number' => 'nullable|string',
+            'examination_type' => 'required|string',
+            'pre_employment_record_id' => 'nullable|integer',
+            'patient_id' => 'nullable|integer',
+            'annual_physical_examination_id' => 'nullable|integer',
+            'opd_examination_id' => 'nullable|integer',
+            'user_id' => 'nullable|integer',
             // All examination fields
             'chest_xray_done_by' => 'nullable|string',
             'stool_exam_done_by' => 'nullable|string',
@@ -639,7 +645,7 @@ class NurseController extends Controller
         $redirectParams = match($examinationType) {
             'pre-employment', 'pre_employment' => $medicalChecklist->pre_employment_record_id ?? null,
             'annual-physical', 'annual_physical' => $medicalChecklist->patient_id ?? null,
-            'opd' => $medicalChecklist->opd_examination_id ?? null,
+            'opd' => $medicalChecklist->user_id ?? null,
             default => null
         };
 
@@ -867,7 +873,7 @@ class NurseController extends Controller
             'skin_marks' => $isAudiometryIshiharaOnly ? 'nullable|string' : 'required|string',
             'visual' => $isAudiometryIshiharaOnly ? 'nullable|string' : 'required|string',
             'ishihara_test' => $showIshiharaTest ? 'required|string' : 'nullable|string',
-            'findings' => 'nullable|string',
+            'final_findings' => 'nullable|string',
             'lab_report' => 'nullable|array',
             'physical_findings' => 'nullable|array',
             'lab_findings' => 'nullable|array',
@@ -1017,7 +1023,7 @@ class NurseController extends Controller
             'skin_marks' => 'required|string',
             'visual' => 'required|string',
             'ishihara_test' => $isAnnualMedicalExam ? 'nullable|string' : 'required|string',
-            'findings' => 'nullable|string',
+            'final_findings' => 'nullable|string',
             'lab_report' => 'nullable|array',
             'physical_findings' => 'nullable|array',
             'lab_findings' => 'nullable|array',
@@ -1114,16 +1120,45 @@ class NurseController extends Controller
     }
 
     /**
-     * Show OPD walk-in patients
+     * Show OPD walk-in patients with filtering
      */
-    public function opd()
+    public function opd(Request $request)
     {
-        // Show all OPD patients with their examination status
-        // Nurses can see all OPD patients regardless of examination completion
-        $opdPatients = User::with(['opdExamination'])
-            ->where('role', 'opd')
-            ->latest()
-            ->get();
+        $query = User::with(['opdExamination'])
+            ->where('role', 'opd');
+
+        // Apply search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('fname', 'like', "%{$search}%")
+                  ->orWhere('lname', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT(fname, ' ', lname) LIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        // Apply gender filter
+        if ($request->filled('gender')) {
+            $query->where('gender', $request->gender);
+        }
+
+        // Apply exam status filtering - default to 'needs_attention'
+        $examStatus = $request->filled('exam_status') ? $request->exam_status : 'needs_attention';
+        
+        switch ($examStatus) {
+            case 'needs_attention':
+                // Patients that need attention (no examination created yet)
+                $query->whereDoesntHave('opdExamination');
+                break;
+                
+            case 'exam_completed':
+                // Patients with completed examinations
+                $query->whereHas('opdExamination');
+                break;
+        }
+
+        $opdPatients = $query->latest()->get();
         
         return view('nurse.opd', compact('opdPatients'));
     }
@@ -1159,7 +1194,7 @@ class NurseController extends Controller
             'skin_marks' => 'required|string',
             'visual' => 'required|string',
             'ishihara_test' => 'required|string',
-            'findings' => 'nullable|string',
+            'final_findings' => 'nullable|string',
             'lab_report' => 'nullable|array',
             'physical_findings' => 'nullable|array',
             'lab_findings' => 'nullable|array',
@@ -1225,7 +1260,7 @@ class NurseController extends Controller
             'skin_marks' => 'nullable|string',
             'visual' => 'nullable|string',
             'ishihara_test' => 'nullable|string',
-            'findings' => 'nullable|string',
+            'final_findings' => 'nullable|string',
             'lab_report' => 'nullable|array',
             'physical_findings' => 'nullable|array',
             'lab_findings' => 'nullable|array',
@@ -1265,7 +1300,16 @@ class NurseController extends Controller
     {
         $opdPatient = User::where('role', 'opd')->findOrFail($userId);
         $opdExamination = OpdExamination::where('user_id', $userId)->first();
-        $medicalChecklist = \App\Models\MedicalChecklist::where('opd_examination_id', $opdExamination->id ?? 0)->first();
+        
+        // Look for medical checklist by user_id first, then by opd_examination_id
+        $medicalChecklist = \App\Models\MedicalChecklist::where('user_id', $userId)
+            ->where('examination_type', 'opd')
+            ->first();
+            
+        if (!$medicalChecklist && $opdExamination) {
+            $medicalChecklist = \App\Models\MedicalChecklist::where('opd_examination_id', $opdExamination->id)->first();
+        }
+        
         $examinationType = 'opd';
         $number = 'OPD-' . str_pad($opdPatient->id, 4, '0', STR_PAD_LEFT);
         $name = trim(($opdPatient->fname ?? '') . ' ' . ($opdPatient->lname ?? ''));

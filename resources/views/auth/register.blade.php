@@ -188,6 +188,22 @@
                         </div>
 
                         <div class="mt-6">
+                            <label for="address" class="block text-sm font-semibold text-gray-700 mb-2">Address *</label>
+                            <div class="relative">
+                                <input type="text" name="address" id="address" value="{{ old('address') }}" required 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all @error('address') border-red-500 @enderror"
+                                       placeholder="Enter your complete address">
+                                <i class="fa-solid fa-map-marker-alt absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            </div>
+                            @error('address')
+                                <p class="mt-2 text-sm text-red-600 flex items-center">
+                                    <i class="fa-solid fa-circle-exclamation mr-1"></i>
+                                    {{ $message }}
+                                </p>
+                            @enderror
+                        </div>
+
+                        <div class="mt-6">
                             <label for="birthday" class="block text-sm font-semibold text-gray-700 mb-2">Birthday *</label>
                             <div class="relative">
                                 <input type="date" name="birthday" id="birthday" required

@@ -48,17 +48,16 @@
                     <i class="fas fa-exclamation-circle mr-2"></i>
                     Needs Attention
                     @php
-                        $needsAttentionCount = \App\Models\User::where('status', 'approved')
-                            ->whereHas('medicalChecklists', function($q) {
-                                $q->where('examination_type', 'opd')
-                                  ->whereNotNull('stool_exam_done_by')
-                                  ->where('stool_exam_done_by', '!=', '')
-                                  ->whereNotNull('urinalysis_done_by')
-                                  ->where('urinalysis_done_by', '!=', '');
-                            })
-                            ->whereDoesntHave('opdExamination', function($q) {
-                                $q->whereNotNull('lab_report')
-                                  ->where('lab_report', '!=', '');
+                        $needsAttentionCount = \App\Models\User::where('role', 'opd')
+                            ->where(function($query) {
+                                $query->whereDoesntHave('medicalChecklist')
+                                      ->orWhereHas('medicalChecklist', function($q) {
+                                          $q->where('examination_type', 'opd')
+                                            ->where(function($subQ) {
+                                                $subQ->whereNull('blood_extraction_done_by')
+                                                     ->orWhere('blood_extraction_done_by', '');
+                                            });
+                                      });
                             })
                             ->count();
                     @endphp
@@ -72,17 +71,11 @@
                     <i class="fas fa-check-circle mr-2"></i>
                     Collection Completed
                     @php
-                        $completedCount = \App\Models\User::where('status', 'approved')
-                            ->whereHas('medicalChecklists', function($q) {
+                        $completedCount = \App\Models\User::where('role', 'opd')
+                            ->whereHas('medicalChecklist', function($q) {
                                 $q->where('examination_type', 'opd')
-                                  ->whereNotNull('stool_exam_done_by')
-                                  ->where('stool_exam_done_by', '!=', '')
-                                  ->whereNotNull('urinalysis_done_by')
-                                  ->where('urinalysis_done_by', '!=', '');
-                            })
-                            ->whereHas('opdExamination', function($q) {
-                                $q->whereNotNull('lab_report')
-                                  ->where('lab_report', '!=', '');
+                                  ->whereNotNull('blood_extraction_done_by')
+                                  ->where('blood_extraction_done_by', '!=', '');
                             })
                             ->count();
                     @endphp
@@ -184,9 +177,12 @@
             <div>
                 @php
                     $completedCount = $opdPatients->filter(function($patient) {
-                        $hasExamination = $patient->opdExamination;
-                        $hasMedicalChecklist = \App\Models\MedicalChecklist::where('opd_examination_id', optional($patient->opdExamination)->id)->exists();
-                        return $hasExamination && $hasMedicalChecklist;
+                        $hasMedicalChecklist = \App\Models\MedicalChecklist::where('user_id', $patient->id)
+                            ->where('examination_type', 'opd')
+                            ->whereNotNull('blood_extraction_done_by')
+                            ->where('blood_extraction_done_by', '!=', '')
+                            ->exists();
+                        return $hasMedicalChecklist;
                     })->count();
                 @endphp
                 <h3 class="text-2xl font-bold text-gray-900">{{ $completedCount }}</h3>
@@ -205,9 +201,12 @@
             <div>
                 @php
                     $pendingCount = $opdPatients->filter(function($patient) {
-                        $hasExamination = $patient->opdExamination;
-                        $hasMedicalChecklist = \App\Models\MedicalChecklist::where('opd_examination_id', optional($patient->opdExamination)->id)->exists();
-                        return !($hasExamination && $hasMedicalChecklist);
+                        $hasMedicalChecklist = \App\Models\MedicalChecklist::where('user_id', $patient->id)
+                            ->where('examination_type', 'opd')
+                            ->whereNotNull('blood_extraction_done_by')
+                            ->where('blood_extraction_done_by', '!=', '')
+                            ->exists();
+                        return !$hasMedicalChecklist;
                     })->count();
                 @endphp
                 <h3 class="text-2xl font-bold text-gray-900">{{ $pendingCount }}</h3>
@@ -255,12 +254,12 @@
                             <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                                     <span class="text-blue-600 font-bold text-sm">
-                                        {{ substr($patient->first_name, 0, 1) }}{{ substr($patient->last_name, 0, 1) }}
+                                        {{ substr($patient->fname ?? '', 0, 1) }}{{ substr($patient->lname ?? '', 0, 1) }}
                                     </span>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-semibold text-gray-900">{{ $patient->first_name }} {{ $patient->last_name }}</p>
-                                    <p class="text-sm text-gray-500">{{ $patient->age }} years • {{ ucfirst($patient->sex) }}</p>
+                                    <p class="text-sm font-semibold text-gray-900">{{ $patient->fname }} {{ $patient->lname }}</p>
+                                    <p class="text-sm text-gray-500">{{ $patient->age }} years • {{ ucfirst($patient->gender ?? '') }}</p>
                                 </div>
                             </div>
                         </td>
@@ -280,15 +279,16 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
-                                $hasExamination = $patient->opdExamination;
-                                $hasMedicalChecklist = \App\Models\MedicalChecklist::where('opd_examination_id', optional($patient->opdExamination)->id)->exists();
+                                $hasMedicalChecklist = \App\Models\MedicalChecklist::where('user_id', $patient->id)
+                                    ->where('examination_type', 'opd')
+                                    ->whereNotNull('blood_extraction_done_by')
+                                    ->where('blood_extraction_done_by', '!=', '')
+                                    ->exists();
                                 
-                                if ($hasExamination && $hasMedicalChecklist) {
-                                    $statusConfig = ['class' => 'bg-green-100 text-green-800 border-green-200', 'icon' => 'fa-check-circle', 'text' => 'Completed'];
-                                } elseif ($hasExamination || $hasMedicalChecklist) {
-                                    $statusConfig = ['class' => 'bg-yellow-100 text-yellow-800 border-yellow-200', 'icon' => 'fa-clock', 'text' => 'In Progress'];
+                                if ($hasMedicalChecklist) {
+                                    $statusConfig = ['class' => 'bg-green-100 text-green-800 border-green-200', 'icon' => 'fa-check-circle', 'text' => 'Blood Collection Completed'];
                                 } else {
-                                    $statusConfig = ['class' => 'bg-gray-100 text-gray-800 border-gray-200', 'icon' => 'fa-hourglass-start', 'text' => 'Pending'];
+                                    $statusConfig = ['class' => 'bg-yellow-100 text-yellow-800 border-yellow-200', 'icon' => 'fa-clock', 'text' => 'Awaiting Blood Collection'];
                                 }
                             @endphp
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border {{ $statusConfig['class'] }}">

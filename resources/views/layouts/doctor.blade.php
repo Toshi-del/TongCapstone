@@ -74,6 +74,11 @@
                         <span class="font-medium">Pre-Employment</span>
                     </a>
                     
+                    <a href="{{ route('doctor.opd') }}" class="nav-item flex items-center px-4 py-3 text-gray-700 {{ request()->routeIs('doctor.opd*') ? 'nav-item-active text-white' : '' }}">
+                        <i class="fas fa-user-md mr-3 text-lg"></i>
+                        <span class="font-medium">OPD Examinations</span>
+                    </a>
+                    
                     <a href="{{ route('medical-test-categories.index') }}" class="nav-item flex items-center px-4 py-3 text-gray-700 {{ request()->routeIs('medical-test-categories*') ? 'nav-item-active text-white' : '' }}">
                         <i class="fas fa-list-alt mr-3 text-lg"></i>
                         <span class="font-medium">Test Categories</span>

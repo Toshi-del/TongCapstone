@@ -14,6 +14,7 @@ use App\Models\PreEmploymentExamination;
 use App\Models\MedicalTestCategory;
 use App\Models\MedicalTest;
 use App\Models\MedicalTestReferenceRange;
+use App\Models\OpdExamination;
 
 class DoctorController extends Controller
 {
@@ -957,5 +958,236 @@ class DoctorController extends Controller
         }
 
         return redirect()->route('medical-tests.index')->with('success', 'Reference ranges updated successfully.');
+    }
+
+    /**
+     * Show OPD examinations
+     */
+    public function opd(Request $request)
+    {
+        // Default to 'needs_attention' if no filter is specified
+        $filter = $request->get('filter', 'needs_attention');
+        
+        // Base query for OPD examinations
+        $query = OpdExamination::with(['user']);
+        
+        // Apply filtering based on the tab selected
+        switch ($filter) {
+            case 'needs_attention':
+                // Show examinations that need doctor's attention (Pending status)
+                $query->whereIn('status', ['pending', 'collection_completed']);
+                break;
+                
+            case 'submitted':
+                // Show examinations that have been submitted to admin by doctor
+                $query->whereIn('status', ['sent_to_admin', 'completed', 'approved']);
+                break;
+                
+            case 'all':
+                // Show all examinations
+                break;
+                
+            default:
+                // Default to needs_attention
+                $query->whereIn('status', ['pending', 'collection_completed']);
+                break;
+        }
+        
+        $opdExaminations = $query->latest()->paginate(15)->appends(['filter' => $filter]);
+        
+        // Get counts for each tab
+        $needsAttentionCount = OpdExamination::whereIn('status', ['pending', 'collection_completed'])->count();
+        $submittedCount = OpdExamination::whereIn('status', ['sent_to_admin', 'completed', 'approved'])->count();
+        $totalCount = OpdExamination::count();
+            
+        return view('doctor.opd', compact('opdExaminations', 'needsAttentionCount', 'submittedCount', 'totalCount'));
+    }
+
+    /**
+     * Show the form for editing an OPD examination.
+     */
+    public function editOpd($id)
+    {
+        $opdExamination = OpdExamination::with(['user'])->findOrFail($id);
+        
+        // Get the medical tests selected for this OPD patient from opd_tests table
+        $opdTestRecords = \App\Models\OpdTest::where('customer_email', $opdExamination->user->email)
+            ->where('status', 'approved')
+            ->get();
+        
+        // Parse comma-separated medical tests from each record
+        $opdTests = collect();
+        $hasPreEmploymentOrAnnual = false;
+        
+        foreach ($opdTestRecords as $record) {
+            $tests = array_map('trim', explode(',', $record->medical_test));
+            foreach ($tests as $testName) {
+                if (!empty($testName)) {
+                    // Check if this is a Pre-employment or Annual examination
+                    if (stripos($testName, 'pre-employment') !== false || 
+                        stripos($testName, 'annual') !== false) {
+                        $hasPreEmploymentOrAnnual = true;
+                        // Skip adding pre-employment/annual as individual tests
+                        continue;
+                    }
+                    
+                    $opdTests->push((object)[
+                        'medical_test' => $testName,
+                        'price' => $record->price,
+                        'appointment_date' => $record->appointment_date,
+                        'appointment_time' => $record->appointment_time,
+                    ]);
+                }
+            }
+        }
+        
+        // If Pre-employment or Annual is selected, add standard laboratory tests
+        if ($hasPreEmploymentOrAnnual) {
+            $standardTests = ['CBC', 'Fecalysis', 'Urinalysis'];
+            foreach ($standardTests as $testName) {
+                // Only add if not already present
+                $exists = $opdTests->contains(function($test) use ($testName) {
+                    return stripos($test->medical_test, $testName) !== false;
+                });
+                
+                if (!$exists) {
+                    $opdTests->push((object)[
+                        'medical_test' => $testName,
+                        'price' => 0,
+                        'appointment_date' => null,
+                        'appointment_time' => null,
+                        'is_standard' => true
+                    ]);
+                }
+            }
+        }
+        
+        return view('doctor.opd-edit', compact('opdExamination', 'opdTests'));
+    }
+
+    /**
+     * Update the specified OPD examination in storage.
+     */
+    public function updateOpd(Request $request, $id)
+    {
+        try {
+            $opdExamination = OpdExamination::findOrFail($id);
+            
+            // Debug: Log the incoming request data
+            \Log::info('OPD Update Request Data:', [
+                'physical_findings' => $request->input('physical_findings'),
+                'all_data' => $request->all()
+            ]);
+            
+            $data = $request->validate([
+                'name' => 'nullable|string',
+                'date' => 'nullable|date',
+                'illness_history' => 'nullable|string',
+                'accidents_operations' => 'nullable|string',
+                'past_medical_history' => 'nullable|string',
+                'family_history' => 'nullable|array',
+                'personal_habits' => 'nullable|array',
+                'physical_exam' => 'nullable|array',
+                'skin_marks' => 'nullable|string',
+                'visual' => 'nullable|string',
+                'ishihara_test' => 'nullable|string',
+                'findings' => 'nullable|string',
+                'lab_report' => 'nullable|array',
+                'physical_findings' => 'nullable|array',
+                'lab_findings' => 'nullable|array',
+                'ecg' => 'nullable|string',
+            ]);
+            
+            // Debug: Log the validated data
+            \Log::info('OPD Validated Data:', [
+                'physical_findings' => $data['physical_findings'] ?? null
+            ]);
+            
+            // Set user_id to current doctor
+            $data['user_id'] = Auth::id();
+            
+            // Update status to completed when doctor saves
+            $data['status'] = 'completed';
+            
+            $result = $opdExamination->update($data);
+            
+            // Debug: Log the result and check if data was saved
+            \Log::info('OPD Update Result:', [
+                'result' => $result,
+                'saved_physical_findings' => $opdExamination->fresh()->physical_findings
+            ]);
+            
+            // Create notification for admin when doctor completes examination
+            $doctor = Auth::user();
+            $patientName = $opdExamination->name ?? 'Unknown Patient';
+            
+            Notification::createForAdmin(
+                'examination_updated',
+                'OPD Medical Examination Updated by Doctor',
+                "Doctor {$doctor->name} has updated OPD medical examination for {$patientName}.",
+                [
+                    'examination_id' => $opdExamination->id,
+                    'patient_name' => $patientName,
+                    'doctor_name' => $doctor->name,
+                    'examination_type' => 'opd',
+                    'has_findings' => !empty($data['findings']),
+                    'has_lab_report' => !empty($data['lab_findings'])
+                ],
+                'medium',
+                $doctor,
+                $opdExamination
+            );
+            
+            if ($result) {
+                return redirect()->route('doctor.opd.edit', $opdExamination->id)->with('success', 'OPD Examination updated successfully.');
+            } else {
+                return redirect()->back()->with('error', 'Failed to update the examination. Please try again.')->withInput();
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error updating OPD examination: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred while updating the examination. Please try again.')->withInput();
+        }
+    }
+
+    /**
+     * Show an OPD examination
+     */
+    public function showOpdExamination($id)
+    {
+        $examination = OpdExamination::with(['user'])->findOrFail($id);
+        
+        return view('doctor.opd-examination', compact('examination'));
+    }
+
+    /**
+     * Submit an OPD examination to Admin.
+     */
+    public function submitOpd($id)
+    {
+        $opdExamination = OpdExamination::findOrFail($id);
+
+        // Mark as sent to admin so it no longer appears in the doctor pending list
+        $opdExamination->update(['status' => 'sent_to_admin']);
+
+        // Create notification for admin
+        $doctor = Auth::user();
+        $patientName = $opdExamination->name ?? 'Unknown Patient';
+        
+        Notification::createForAdmin(
+            'examination_submitted',
+            'OPD Examination Submitted by Doctor',
+            "Doctor {$doctor->name} has submitted OPD examination for {$patientName} for admin review.",
+            [
+                'examination_id' => $opdExamination->id,
+                'patient_name' => $patientName,
+                'doctor_name' => $doctor->name,
+                'examination_type' => 'opd'
+            ],
+            'high',
+            $doctor,
+            $opdExamination
+        );
+
+        return redirect()->route('doctor.opd')->with('success', 'OPD examination submitted to admin successfully.');
     }
 }

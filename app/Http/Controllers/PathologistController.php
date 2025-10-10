@@ -433,7 +433,7 @@ class PathologistController extends Controller
         
         // Add validation for required fields
         $request->validate([
-            'examination_type' => 'required|string|in:annual_physical,pre_employment',
+            'examination_type' => 'required|string|in:annual_physical,pre_employment,opd',
             'name' => 'nullable|string|max:255',
             'date' => 'nullable|date',
             'age' => 'nullable|integer|min:0',
@@ -448,6 +448,8 @@ class PathologistController extends Controller
             'physical_exam_done_by' => 'nullable|string|max:255',
             'patient_id' => 'nullable|exists:patients,id',
             'pre_employment_record_id' => 'nullable|exists:pre_employment_records,id',
+            'user_id' => 'nullable|exists:users,id',
+            'opd_examination_id' => 'nullable|exists:opd_examinations,id',
         ]);
 
         try {
@@ -456,6 +458,7 @@ class PathologistController extends Controller
             // Get patient/record data - use form data first, then fallback to defaults
             $patient = null;
             $preEmploymentRecord = null;
+            $opdUser = null;
             $name = $request->name ?: 'Unknown';
             $age = $request->age ?: 0;
             $number = $request->number ?: 'UNKNOWN-0000';
@@ -490,6 +493,23 @@ class PathologistController extends Controller
                     }
                     if ($number === 'UNKNOWN-0000' || empty($number)) {
                         $number = 'PPEP-' . str_pad($preEmploymentRecord->id, 4, '0', STR_PAD_LEFT);
+                    }
+                }
+            }
+            
+            // Handle OPD user data
+            if ($request->has('user_id') && $request->user_id) {
+                $opdUser = User::find($request->user_id);
+                if ($opdUser) {
+                    // Only override if form data is empty/default
+                    if ($name === 'Unknown' || empty($name)) {
+                        $name = trim(($opdUser->fname ?? '') . ' ' . ($opdUser->lname ?? '')) ?: 'Unknown OPD Patient';
+                    }
+                    if ($age == 0) {
+                        $age = (int) $opdUser->age ?: 0;
+                    }
+                    if ($number === 'UNKNOWN-0000' || empty($number)) {
+                        $number = 'OPD-' . str_pad($opdUser->id, 4, '0', STR_PAD_LEFT);
                     }
                 }
             }
@@ -531,6 +551,23 @@ class PathologistController extends Controller
                 $data['annual_physical_examination_id'] = $annualPhysicalExam->id;
             } elseif ($preEmploymentRecord) {
                 $data['pre_employment_record_id'] = $preEmploymentRecord->id;
+            } elseif ($opdUser) {
+                // For OPD, we need to store the user_id for the OPD patient
+                $data['user_id'] = $opdUser->id; // Override the auth user ID with OPD patient ID
+                
+                // Find or create OPD examination and link it
+                if ($request->has('opd_examination_id') && $request->opd_examination_id) {
+                    $data['opd_examination_id'] = $request->opd_examination_id;
+                } else {
+                    // Try to find existing OPD examination
+                    $opdExamination = \App\Models\OpdExamination::where('user_id', $opdUser->id)
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                    
+                    if ($opdExamination) {
+                        $data['opd_examination_id'] = $opdExamination->id;
+                    }
+                }
             }
             
             // Check for existing checklist to update instead of creating duplicate
@@ -543,6 +580,15 @@ class PathologistController extends Controller
                 $existingChecklist = MedicalChecklist::where('pre_employment_record_id', $data['pre_employment_record_id'])
                     ->whereIn('examination_type', [$request->examination_type, str_replace('_', '-', $request->examination_type)])
                     ->first();
+            } elseif (!empty($data['opd_examination_id'])) {
+                $existingChecklist = MedicalChecklist::where('opd_examination_id', $data['opd_examination_id'])
+                    ->where('examination_type', 'opd')
+                    ->first();
+            } elseif (!empty($data['user_id']) && $request->examination_type === 'opd') {
+                // Fallback: look for OPD checklist by user_id
+                $existingChecklist = MedicalChecklist::where('user_id', $data['user_id'])
+                    ->where('examination_type', 'opd')
+                    ->first();
             }
             
             if ($existingChecklist) {
@@ -554,15 +600,22 @@ class PathologistController extends Controller
 
             DB::commit();
 
-            // Redirect back to the form with the created checklist data
-            $redirectUrl = route('pathologist.medical-checklist');
-            if ($preEmploymentRecord) {
-                $redirectUrl .= '?pre_employment_record_id=' . $preEmploymentRecord->id . '&examination_type=pre_employment';
+            // Redirect based on examination type
+            if ($request->examination_type === 'opd' && $opdUser) {
+                // For OPD, redirect back to the OPD list
+                return redirect()->route('pathologist.opd')->with('success', 'Medical checklist saved successfully.');
+            } elseif ($preEmploymentRecord) {
+                // For pre-employment, redirect back to the form with parameters
+                $redirectUrl = route('pathologist.medical-checklist') . '?pre_employment_record_id=' . $preEmploymentRecord->id . '&examination_type=pre_employment';
+                return redirect($redirectUrl)->with('success', 'Medical checklist created successfully.');
             } elseif ($patient) {
-                $redirectUrl .= '?patient_id=' . $patient->id . '&examination_type=annual_physical';
+                // For annual physical, redirect back to the form with parameters
+                $redirectUrl = route('pathologist.medical-checklist') . '?patient_id=' . $patient->id . '&examination_type=annual_physical';
+                return redirect($redirectUrl)->with('success', 'Medical checklist created successfully.');
+            } else {
+                // Default redirect
+                return redirect()->route('pathologist.medical-checklist')->with('success', 'Medical checklist created successfully.');
             }
-            
-            return redirect($redirectUrl)->with('success', 'Medical checklist created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1384,30 +1437,86 @@ class PathologistController extends Controller
         // Find the OPD patient
         $opdPatient = User::where('role', 'opd')->findOrFail($id);
         
+        // Get the medical tests selected for this OPD patient from opd_tests table
+        $opdTestRecords = \App\Models\OpdTest::where('customer_email', $opdPatient->email)
+            ->where('status', 'approved')
+            ->get();
+        
+        // Parse comma-separated medical tests from each record
+        $opdTests = collect();
+        $hasPreEmploymentOrAnnual = false;
+        
+        foreach ($opdTestRecords as $record) {
+            $tests = array_map('trim', explode(',', $record->medical_test));
+            foreach ($tests as $testName) {
+                if (!empty($testName)) {
+                    // Check if this is a Pre-employment or Annual examination
+                    if (stripos($testName, 'pre-employment') !== false || 
+                        stripos($testName, 'annual') !== false) {
+                        $hasPreEmploymentOrAnnual = true;
+                        // Skip adding pre-employment/annual as individual tests
+                        continue;
+                    }
+                    
+                    $opdTests->push((object)[
+                        'medical_test' => $testName,
+                        'price' => $record->price,
+                        'appointment_date' => $record->appointment_date,
+                        'appointment_time' => $record->appointment_time,
+                    ]);
+                }
+            }
+        }
+        
+        // If Pre-employment or Annual is selected, add standard laboratory tests
+        if ($hasPreEmploymentOrAnnual) {
+            $standardTests = ['CBC', 'Fecalysis', 'Urinalysis'];
+            foreach ($standardTests as $testName) {
+                // Only add if not already present
+                $exists = $opdTests->contains(function($test) use ($testName) {
+                    return stripos($test->medical_test, $testName) !== false;
+                });
+                
+                if (!$exists) {
+                    $opdTests->push((object)[
+                        'medical_test' => $testName,
+                        'price' => 0,
+                        'appointment_date' => null,
+                        'appointment_time' => null,
+                        'is_standard' => true
+                    ]);
+                }
+            }
+        }
+        
         // First try to find existing examination
         $examination = OpdExamination::where('user_id', $id)->first();
         
         // If no examination exists, create one for the OPD patient
         if (!$examination) {
+            // Initialize lab_report with the selected medical tests
+            $labReport = [];
+            $labResults = [];
+            
+            foreach ($opdTests as $test) {
+                // Handle special characters in test names (periods, spaces, hyphens, ampersands)
+                $testKey = strtolower(str_replace([' ', '-', '&', '.'], '_', $test->medical_test));
+                $labReport[$testKey] = '';
+                $labResults[$testKey . '_result'] = '';
+                $labResults[$testKey . '_findings'] = '';
+            }
+            
             $examination = OpdExamination::create([
                 'user_id' => $opdPatient->id,
                 'name' => trim(($opdPatient->fname ?? '') . ' ' . ($opdPatient->lname ?? '')),
                 'date' => now()->toDateString(),
                 'status' => 'pending',
-                'lab_report' => [
-                    'urinalysis' => 'Not available',
-                    'cbc' => 'Not available',
-                    'xray' => 'Not available',
-                    'fecalysis' => 'Not available',
-                    'blood_chemistry' => 'Not available',
-                    'others' => 'Not available',
-                    'hbsag_screening' => 'Not available',
-                    'hepa_a_igg_igm' => 'Not available',
-                ]
+                'lab_report' => $labReport,
+                'lab_results' => $labResults
             ]);
         }
         
-        return view('pathologist.opd-edit', compact('examination', 'opdPatient'));
+        return view('pathologist.opd-edit', compact('examination', 'opdPatient', 'opdTests'));
     }
 
     /**
@@ -1508,7 +1617,7 @@ class PathologistController extends Controller
 
             DB::commit();
 
-            return redirect()->route('pathologist.opd')->with('success', 'OPD examination updated successfully.');
+            return redirect()->route('pathologist.opd', ['lab_status' => 'lab_completed'])->with('success', 'OPD examination updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();

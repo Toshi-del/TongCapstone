@@ -93,8 +93,8 @@
             @if(isset($patient))
                 <input type="hidden" name="patient_id" value="{{ $patient->id }}">
             @endif
-            @if(isset($user) && $examinationType === 'opd')
-                <input type="hidden" name="user_id" value="{{ $user->id }}">
+            @if(isset($opdPatient) && $examinationType === 'opd')
+                <input type="hidden" name="user_id" value="{{ $opdPatient->id }}">
                 @if(isset($opdExamination))
                     <input type="hidden" name="opd_examination_id" value="{{ $opdExamination->id }}">
                 @endif
@@ -112,8 +112,8 @@
                     $generatedNumber = 'APEP-' . str_pad($patient->id, 4, '0', STR_PAD_LEFT);
                 } elseif (isset($preEmploymentRecord)) {
                     $generatedNumber = 'PPEP-' . str_pad($preEmploymentRecord->id, 4, '0', STR_PAD_LEFT);
-                } elseif (isset($user) && $examinationType === 'opd') {
-                    $generatedNumber = 'OPD-' . str_pad($user->id, 4, '0', STR_PAD_LEFT);
+                } elseif (isset($opdPatient) && $examinationType === 'opd') {
+                    $generatedNumber = 'OPD-' . str_pad($opdPatient->id, 4, '0', STR_PAD_LEFT);
                 } else {
                     $generatedNumber = old('number', $number ?? '');
                 }
@@ -138,11 +138,13 @@
                                 {{ $patient->full_name }}
                             @elseif(isset($preEmploymentRecord))
                                 {{ $preEmploymentRecord->first_name }} {{ $preEmploymentRecord->last_name }}
+                            @elseif(isset($opdPatient))
+                                {{ $opdPatient->fname }} {{ $opdPatient->lname }}
                             @else
                                 {{ old('name', $medicalChecklist->name ?? $name ?? '') }}
                             @endif
                         </div>
-                        <input type="hidden" name="name" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->full_name }}@elseif(isset($patient)){{ $patient->full_name }}@elseif(isset($preEmploymentRecord)){{ $preEmploymentRecord->first_name }} {{ $preEmploymentRecord->last_name }}@else{{ old('name', $medicalChecklist->name ?? $name ?? '') }}@endif" />
+                        <input type="hidden" name="name" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->full_name }}@elseif(isset($patient)){{ $patient->full_name }}@elseif(isset($preEmploymentRecord)){{ $preEmploymentRecord->first_name }} {{ $preEmploymentRecord->last_name }}@elseif(isset($opdPatient)){{ $opdPatient->fname }} {{ $opdPatient->lname }}@else{{ old('name', $medicalChecklist->name ?? $name ?? '') }}@endif" />
                     </div>
                     
                     <div>
@@ -163,11 +165,13 @@
                                 {{ $patient->age }} years
                             @elseif(isset($preEmploymentRecord))
                                 {{ $preEmploymentRecord->age }} years
+                            @elseif(isset($opdPatient))
+                                {{ $opdPatient->age }} years
                             @else
                                 {{ old('age', $medicalChecklist->age ?? $age ?? '') }} years
                             @endif
                         </div>
-                        <input type="hidden" name="age" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->age }}@elseif(isset($patient)){{ $patient->age }}@elseif(isset($preEmploymentRecord)){{ $preEmploymentRecord->age }}@else{{ old('age', $medicalChecklist->age ?? $age ?? '') }}@endif" />
+                        <input type="hidden" name="age" value="@if(isset($medicalChecklist) && $medicalChecklist->patient){{ $medicalChecklist->patient->age }}@elseif(isset($patient)){{ $patient->age }}@elseif(isset($preEmploymentRecord)){{ $preEmploymentRecord->age }}@elseif(isset($opdPatient)){{ $opdPatient->age }}@else{{ old('age', $medicalChecklist->age ?? $age ?? '') }}@endif" />
                     </div>
                     
                     <div>

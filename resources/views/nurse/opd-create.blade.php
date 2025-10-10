@@ -502,27 +502,15 @@
                         </div>
 
                         <div>
-                            <label for="findings" class="block text-sm font-medium text-gray-700 mb-2">General Findings <span class="text-red-500">*</span></label>
-                            <textarea name="findings" id="findings" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter general findings..." required>{{ old('findings') }}</textarea>
-                            @error('findings')
+                            <label for="final_findings" class="block text-sm font-medium text-gray-700 mb-2">General Findings <span class="text-red-500">*</span></label>
+                            <textarea name="final_findings" id="final_findings" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter general findings..." required>{{ old('final_findings') }}</textarea>
+                            @error('final_findings')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
                     </div>
                 </div>
 
-                <!-- Additional Information Section -->
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Additional Information</h3>
-                    
-                    <div>
-                        <label for="ecg" class="block text-sm font-medium text-gray-700 mb-2">ECG Results</label>
-                        <textarea name="ecg" id="ecg" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter ECG results if available...">{{ old('ecg') }}</textarea>
-                        @error('ecg')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div>
 
                 <!-- Form Actions -->
                 <div class="flex items-center justify-end space-x-4 pt-6 border-t">
@@ -537,11 +525,17 @@
         </div>
     </div>
 
-@push('scripts')
 <script>
-    function toggleDrugTestForm() {
+    // Define function globally to ensure it's available immediately
+    window.toggleDrugTestForm = function() {
         const checkbox = document.getElementById('requires_drug_test');
         const drugTestForm = document.getElementById('drug_test_form');
+        
+        if (!checkbox || !drugTestForm) {
+            console.log('Required elements not found for drug test toggle');
+            return;
+        }
+        
         const drugTestInputs = drugTestForm.querySelectorAll('input[required], select[required]');
         
         if (checkbox.checked) {
@@ -567,15 +561,14 @@
                 input.removeAttribute('required');
             });
         }
-    }
+    };
 
     // Check if drug test was previously selected (for form validation errors)
     document.addEventListener('DOMContentLoaded', function() {
         const checkbox = document.getElementById('requires_drug_test');
-        if (checkbox.checked) {
+        if (checkbox && checkbox.checked) {
             toggleDrugTestForm();
         }
     });
 </script>
-@endpush
 @endsection
