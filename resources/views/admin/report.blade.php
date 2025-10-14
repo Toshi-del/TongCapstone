@@ -88,6 +88,78 @@
                 </div>
             </div>
         </div>
+
+        <!-- Export to Excel Section -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-file-excel text-green-600 text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">Export Services Data</h2>
+                        <p class="text-sm text-gray-500">Download detailed records with custom filters</p>
+                    </div>
+                </div>
+            </div>
+            
+            <form action="{{ route('admin.report.export') }}" method="GET" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Date From -->
+                    <div>
+                        <label for="date_from" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-calendar-alt text-gray-400 mr-1"></i> Date From
+                        </label>
+                        <input type="date" 
+                               id="date_from" 
+                               name="date_from" 
+                               value="{{ request('date_from', now()->subDays(90)->format('Y-m-d')) }}"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                    </div>
+                    
+                    <!-- Date To -->
+                    <div>
+                        <label for="date_to" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-calendar-alt text-gray-400 mr-1"></i> Date To
+                        </label>
+                        <input type="date" 
+                               id="date_to" 
+                               name="date_to" 
+                               value="{{ request('date_to', now()->format('Y-m-d')) }}"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                    </div>
+                    
+                    <!-- Service Type -->
+                    <div>
+                        <label for="service_type" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-filter text-gray-400 mr-1"></i> Service Type
+                        </label>
+                        <select id="service_type" 
+                                name="service_type" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                            <option value="all" {{ request('service_type') == 'all' ? 'selected' : '' }}>All Services</option>
+                            <option value="pre_employment" {{ request('service_type') == 'pre_employment' ? 'selected' : '' }}>Pre-Employment</option>
+                            <option value="annual_physical" {{ request('service_type') == 'annual_physical' ? 'selected' : '' }}>Annual Physical</option>
+                            <option value="opd" {{ request('service_type') == 'opd' ? 'selected' : '' }}>OPD</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Export Button -->
+                    <div class="flex items-end">
+                        <button type="submit" 
+                                class="w-full px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-lg shadow-md hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-2">
+                            <i class="fas fa-download"></i>
+                            <span>Export to Excel</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                    <i class="fas fa-info-circle text-blue-500"></i>
+                    <span>Export includes all service records with patient details, test information, and pricing data.</span>
+                </div>
+            </form>
+        </div>
         <!-- Charts Section -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <!-- Medical Test Volume Chart -->

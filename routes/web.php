@@ -106,6 +106,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/admin/notifications/{id}', [App\Http\Controllers\AdminNotificationController::class, 'destroy']);
     
     Route::get('/admin/report', [AdminController::class, 'report'])->name('admin.report');
+    Route::get('/admin/report/export', [AdminController::class, 'exportReport'])->name('admin.report.export');
     
     
     Route::post('admin/appointments/{id}/approve', [App\Http\Controllers\AdminController::class, 'approveAppointment'])->name('admin.appointments.approve');

@@ -21,6 +21,7 @@ use App\Mail\MedicalResultsNotification;
 use Illuminate\Support\Facades\Mail;
 use App\Services\MedicalTestRoutingService;
 use App\Models\AppointmentTestAssignment;
+use App\Exports\ServicesReportExport;
 
 class AdminController extends Controller
 {
@@ -2007,6 +2008,19 @@ class AdminController extends Controller
         }
         
         return null;
+    }
+
+    /**
+     * Export services data to Excel with filters - Multi-sheet format
+     */
+    public function exportReport(Request $request)
+    {
+        $dateFrom = $request->input('date_from', now()->subDays(90)->format('Y-m-d'));
+        $dateTo = $request->input('date_to', now()->format('Y-m-d'));
+        $serviceType = $request->input('service_type', 'all');
+
+        $export = new ServicesReportExport($dateFrom, $dateTo, $serviceType);
+        return $export->download();
     }
 
 }
