@@ -157,12 +157,16 @@
 
 
 
-        @if(!$statusFilter || $statusFilter === 'sent_results')
         <!-- Sent Examination Results -->
         <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div class="px-8 py-6 bg-gradient-to-r from-emerald-600 to-emerald-700 border-l-4 border-emerald-800">
                 <h2 class="text-xl font-bold text-white" style="font-family: 'Poppins', sans-serif;">
                     <i class="fas fa-paper-plane mr-3"></i>Sent Examination Results
+                    @if($statusFilter === 'annual_physical')
+                        - Annual Physical
+                    @elseif($statusFilter === 'pre_employment')
+                        - Pre-Employment
+                    @endif
                 </h2>
                 <p class="text-emerald-100 mt-1">Results sent by admin are ready for viewing</p>
             </div>
@@ -171,7 +175,8 @@
             <div class="p-8">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Annual Physical Results -->
-                    @foreach($sentAnnualPhysicalResults as $exam)
+                    @if(!$statusFilter || $statusFilter === 'sent_results' || $statusFilter === 'annual_physical')
+                        @foreach($sentAnnualPhysicalResults as $exam)
                     <div class="bg-purple-50 rounded-xl p-6 border-l-4 border-purple-600 hover:shadow-md transition-shadow duration-200">
                         <div class="flex items-start justify-between mb-4">
                             <div class="flex items-center">
@@ -202,8 +207,16 @@
                                 <p class="text-xs text-gray-600">{{ $exam->updated_at->format('g:i A') }}</p>
                             </div>
                             <div class="bg-white rounded-lg p-3">
-                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Price</p>
-                                <p class="text-sm font-semibold text-purple-900">₱{{ number_format($exam->patient && $exam->patient->appointment ? $exam->patient->appointment->total_price : 0, 2) }}</p>
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Individual Price</p>
+                                @php
+                                    $individualPrice = 0;
+                                    if ($exam->patient && $exam->patient->appointment) {
+                                        $appointment = $exam->patient->appointment;
+                                        $patientCount = $appointment->patients()->count();
+                                        $individualPrice = $patientCount > 0 ? ($appointment->total_price / $patientCount) : 0;
+                                    }
+                                @endphp
+                                <p class="text-sm font-semibold text-purple-900">₱{{ number_format($individualPrice, 2) }}</p>
                             </div>
                         </div>
                         
@@ -222,10 +235,12 @@
                             </div>
                         </div>
                     </div>
-                    @endforeach
+                        @endforeach
+                    @endif
 
                     <!-- Pre-Employment Results -->
-                    @foreach($sentPreEmploymentResults as $exam)
+                    @if(!$statusFilter || $statusFilter === 'sent_results' || $statusFilter === 'pre_employment')
+                        @foreach($sentPreEmploymentResults as $exam)
                     <div class="bg-green-50 rounded-xl p-6 border-l-4 border-green-600 hover:shadow-md transition-shadow duration-200">
                         <div class="flex items-start justify-between mb-4">
                             <div class="flex items-center">
@@ -256,8 +271,15 @@
                                 <p class="text-xs text-gray-600">{{ $exam->updated_at->format('g:i A') }}</p>
                             </div>
                             <div class="bg-white rounded-lg p-3">
-                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Price</p>
-                                <p class="text-sm font-semibold text-green-900">₱{{ number_format($exam->preEmploymentRecord ? $exam->preEmploymentRecord->total_price : 0, 2) }}</p>
+                                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Individual Price</p>
+                                @php
+                                    $individualPrice = 0;
+                                    if ($exam->preEmploymentRecord) {
+                                        // For pre-employment, each record represents one patient
+                                        $individualPrice = $exam->preEmploymentRecord->total_price;
+                                    }
+                                @endphp
+                                <p class="text-sm font-semibold text-green-900">₱{{ number_format($individualPrice, 2) }}</p>
                             </div>
                         </div>
                         
@@ -294,7 +316,8 @@
                             </div>
                         </div>
                     </div>
-                    @endforeach
+                        @endforeach
+                    @endif
                 </div>
             </div>
             @else
@@ -314,7 +337,6 @@
             </div>
             @endif
         </div>
-        @endif
     </div>
 </div>
 

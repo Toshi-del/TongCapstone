@@ -65,7 +65,7 @@ class InventoryController extends Controller
 
         Inventory::create($request->all());
 
-        return redirect()->route('inventory.index')
+        return redirect()->route('admin.inventory.index')
             ->with('success', 'Inventory item "' . $request->item_name . '" has been created successfully!');
     }
 
@@ -110,7 +110,7 @@ class InventoryController extends Controller
 
         $inventory->update($request->all());
 
-        return redirect()->route('inventory.index')
+        return redirect()->route('admin.inventory.index')
             ->with('success', 'Inventory item "' . $inventory->item_name . '" has been updated successfully!');
     }
 
@@ -122,7 +122,7 @@ class InventoryController extends Controller
         $itemName = $inventory->item_name;
         $inventory->delete();
 
-        return redirect()->route('inventory.index')
+        return redirect()->route('admin.inventory.index')
             ->with('success', 'Inventory item "' . $itemName . '" has been deleted successfully!');
     }
 }

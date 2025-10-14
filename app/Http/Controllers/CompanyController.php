@@ -176,13 +176,23 @@ class CompanyController extends Controller
         $totalSentAnnualPhysical = $sentAnnualPhysicalResults->count();
         $totalSentPreEmployment = $sentPreEmploymentResults->count();
         
-        // Calculate total prices for sent results
+        // Calculate total prices for sent results (individual patient prices)
         $totalPriceAnnualPhysical = $sentAnnualPhysicalResults->sum(function($exam) {
-            return $exam->patient && $exam->patient->appointment ? $exam->patient->appointment->total_price : 0;
+            if ($exam->patient && $exam->patient->appointment) {
+                // Calculate individual price per patient
+                $appointment = $exam->patient->appointment;
+                $patientCount = $appointment->patients()->count();
+                return $patientCount > 0 ? ($appointment->total_price / $patientCount) : 0;
+            }
+            return 0;
         });
         
         $totalPricePreEmployment = $sentPreEmploymentResults->sum(function($exam) {
-            return $exam->preEmploymentRecord ? $exam->preEmploymentRecord->total_price : 0;
+            if ($exam->preEmploymentRecord) {
+                // For pre-employment, each record represents one patient, so use total_price directly
+                return $exam->preEmploymentRecord->total_price;
+            }
+            return 0;
         });
         
         return view('company.medical-results', compact(

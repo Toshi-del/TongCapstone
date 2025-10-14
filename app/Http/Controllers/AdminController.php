@@ -1277,15 +1277,25 @@ class AdminController extends Controller
             
             // Get all medical tests for this patient
             $medicalTests = $patient->getAllMedicalTests();
+            
+            // If pivot table is empty, ensure we get tests from appointment
+            if ($medicalTests->isEmpty() && $appointment) {
+                $medicalTests = $appointment->selected_tests;
+            }
+            
             $testName = $medicalTests->isNotEmpty() 
                 ? $medicalTests->pluck('name')->implode(', ') 
                 : 'Unknown Test';
             
-            // Use stored total_price from appointment, or calculate from medical tests
-            $totalAmount = $appointment->total_price;
-            if (!$totalAmount || $totalAmount == 0) {
-                // Fallback: calculate from medical tests
-                $totalAmount = $medicalTests->sum('price');
+            // Calculate individual price for this patient from their medical tests
+            $individualAmount = $medicalTests->sum('price');
+            
+            // If no individual tests found, fallback to dividing total by patient count
+            if (!$individualAmount || $individualAmount == 0) {
+                $patientCount = $appointment->patients()->count();
+                if ($patientCount > 0 && $appointment->total_price > 0) {
+                    $individualAmount = $appointment->total_price / $patientCount;
+                }
             }
             
             return response()->json([
@@ -1293,7 +1303,7 @@ class AdminController extends Controller
                 'patient_name' => $patientName,
                 'company_name' => $companyName,
                 'test_name' => $testName,
-                'total_amount' => $totalAmount,
+                'total_amount' => $individualAmount,
                 'examination_date' => $examination->date ? $examination->date->format('M d, Y') : 'N/A'
             ]);
             

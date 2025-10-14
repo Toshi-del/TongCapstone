@@ -652,7 +652,7 @@
                                         <div id="billingTestName" class="text-base font-medium text-gray-800">Loading...</div>
                                     </div>
                                     <div class="text-right">
-                                        <label class="text-sm font-medium text-gray-600">Total Amount</label>
+                                        <label class="text-sm font-medium text-gray-600">Individual Amount</label>
                                         <div id="billingTotalAmount" class="text-2xl font-bold text-green-600">₱0.00</div>
                                     </div>
                                 </div>
