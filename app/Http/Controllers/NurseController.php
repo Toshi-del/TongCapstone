@@ -556,22 +556,15 @@ class NurseController extends Controller
         $workflowService = new MedicalWorkflowService();
         $workflowService->onMedicalChecklistUpdated($checklist);
 
-        // Redirect back to the same checklist page with success message
+        // Redirect back to the main listing page with success message
         $redirectRoute = match($validated['examination_type']) {
-            'pre-employment', 'pre_employment' => 'nurse.medical-checklist.pre-employment',
-            'annual-physical', 'annual_physical' => 'nurse.medical-checklist.annual-physical',
-            'opd' => 'nurse.medical-checklist.opd',
+            'pre-employment', 'pre_employment' => 'nurse.pre-employment',
+            'annual-physical', 'annual_physical' => 'nurse.annual-physical',
+            'opd' => 'nurse.opd',
             default => 'nurse.dashboard'
         };
-        
-        $redirectParams = match($validated['examination_type']) {
-            'pre-employment', 'pre_employment' => $validated['pre_employment_record_id'] ?? null,
-            'annual-physical', 'annual_physical' => $validated['patient_id'] ?? null,
-            'opd' => $validated['user_id'] ?? null,
-            default => null
-        };
 
-        return redirect()->route($redirectRoute, $redirectParams)->with('success', 'Medical checklist ' . $action . ' successfully. You can now proceed to create the examination form.');
+        return redirect()->route($redirectRoute)->with('success', 'Medical checklist ' . $action . ' successfully. You can now proceed to create the examination form.');
     }
 
     /**
@@ -633,23 +626,16 @@ class NurseController extends Controller
         $workflowService = new MedicalWorkflowService();
         $workflowService->onMedicalChecklistUpdated($medicalChecklist);
 
-        // Redirect back to the same checklist page with success message
+        // Redirect back to the main listing page with success message
         $examinationType = $request->input('examination_type');
         $redirectRoute = match($examinationType) {
-            'pre-employment', 'pre_employment' => 'nurse.medical-checklist.pre-employment',
-            'annual-physical', 'annual_physical' => 'nurse.medical-checklist.annual-physical',
-            'opd' => 'nurse.medical-checklist.opd',
+            'pre-employment', 'pre_employment' => 'nurse.pre-employment',
+            'annual-physical', 'annual_physical' => 'nurse.annual-physical',
+            'opd' => 'nurse.opd',
             default => 'nurse.dashboard'
         };
-        
-        $redirectParams = match($examinationType) {
-            'pre-employment', 'pre_employment' => $medicalChecklist->pre_employment_record_id ?? null,
-            'annual-physical', 'annual_physical' => $medicalChecklist->patient_id ?? null,
-            'opd' => $medicalChecklist->user_id ?? null,
-            default => null
-        };
 
-        return redirect()->route($redirectRoute, $redirectParams)->with('success', 'Medical checklist updated successfully. You can now proceed to create the examination form.');
+        return redirect()->route($redirectRoute)->with('success', 'Medical checklist updated successfully. You can now proceed to create the examination form.');
     }
 
     /**

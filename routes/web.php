@@ -108,6 +108,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/report', [AdminController::class, 'report'])->name('admin.report');
     Route::get('/admin/report/export', [AdminController::class, 'exportReport'])->name('admin.report.export');
     
+    // Analytics Export Routes
+    Route::get('/admin/report/export/test-volume', [AdminController::class, 'exportTestVolume'])->name('admin.report.export.test-volume');
+    Route::get('/admin/report/export/top-categories', [AdminController::class, 'exportTopCategories'])->name('admin.report.export.top-categories');
+    Route::get('/admin/report/export/top-tests', [AdminController::class, 'exportTopTests'])->name('admin.report.export.top-tests');
+    Route::get('/admin/report/export/financial-trend', [AdminController::class, 'exportFinancialTrend'])->name('admin.report.export.financial-trend');
+    
     
     Route::post('admin/appointments/{id}/approve', [App\Http\Controllers\AdminController::class, 'approveAppointment'])->name('admin.appointments.approve');
     Route::post('admin/appointments/{id}/decline', [App\Http\Controllers\AdminController::class, 'declineAppointment'])->name('admin.appointments.decline');

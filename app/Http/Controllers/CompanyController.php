@@ -140,7 +140,7 @@ class CompanyController extends Controller
         ]);
             
         $sentAnnualPhysicalResults = \App\Models\AnnualPhysicalExamination::with('patient.appointment')
-            ->whereIn('status', ['sent_to_company', 'sent_to_both'])
+            ->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both'])
             ->whereHas('patient.appointment', function($query) use ($user) {
                 $query->where('created_by', $user->id);
             })
@@ -249,7 +249,7 @@ class CompanyController extends Controller
             'patient.appointment.medicalTest'
         ])
             ->where('id', $id)
-            ->whereIn('status', ['sent_to_company', 'sent_to_both'])
+            ->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both'])
             ->whereHas('patient.appointment', function($query) use ($user) {
                 $query->where('created_by', $user->id);
             })
@@ -286,7 +286,7 @@ class CompanyController extends Controller
     {
         $user = Auth::user();
         $examination = \App\Models\AnnualPhysicalExamination::where('id', $id)
-            ->whereIn('status', ['sent_to_company', 'sent_to_both'])
+            ->whereIn('status', ['sent_to_company', 'sent_to_patient', 'sent_to_both'])
             ->whereHas('patient.appointment', function($query) use ($user) {
                 $query->where('created_by', $user->id);
             })

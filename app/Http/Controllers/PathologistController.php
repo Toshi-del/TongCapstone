@@ -600,21 +600,19 @@ class PathologistController extends Controller
 
             DB::commit();
 
-            // Redirect based on examination type
+            // Redirect to main listing pages based on examination type
             if ($request->examination_type === 'opd' && $opdUser) {
                 // For OPD, redirect back to the OPD list
                 return redirect()->route('pathologist.opd')->with('success', 'Medical checklist saved successfully.');
             } elseif ($preEmploymentRecord) {
-                // For pre-employment, redirect back to the form with parameters
-                $redirectUrl = route('pathologist.medical-checklist') . '?pre_employment_record_id=' . $preEmploymentRecord->id . '&examination_type=pre_employment';
-                return redirect($redirectUrl)->with('success', 'Medical checklist created successfully.');
+                // For pre-employment, redirect to pre-employment listing
+                return redirect()->route('pathologist.pre-employment')->with('success', 'Medical checklist created successfully.');
             } elseif ($patient) {
-                // For annual physical, redirect back to the form with parameters
-                $redirectUrl = route('pathologist.medical-checklist') . '?patient_id=' . $patient->id . '&examination_type=annual_physical';
-                return redirect($redirectUrl)->with('success', 'Medical checklist created successfully.');
+                // For annual physical, redirect to annual physical listing
+                return redirect()->route('pathologist.annual-physical')->with('success', 'Medical checklist created successfully.');
             } else {
-                // Default redirect
-                return redirect()->route('pathologist.medical-checklist')->with('success', 'Medical checklist created successfully.');
+                // Default redirect to dashboard
+                return redirect()->route('pathologist.dashboard')->with('success', 'Medical checklist created successfully.');
             }
 
         } catch (\Exception $e) {
@@ -658,15 +656,20 @@ class PathologistController extends Controller
             
             $medicalChecklist->update($updateData);
 
-            // Redirect back to the form with the updated checklist data
-            $redirectUrl = route('pathologist.medical-checklist');
+            // Redirect to main listing pages based on examination type
             if ($medicalChecklist->pre_employment_record_id) {
-                $redirectUrl .= '?pre_employment_record_id=' . $medicalChecklist->pre_employment_record_id . '&examination_type=pre_employment';
+                // For pre-employment, redirect to pre-employment listing
+                return redirect()->route('pathologist.pre-employment')->with('success', 'Medical checklist updated successfully.');
             } elseif ($medicalChecklist->patient_id) {
-                $redirectUrl .= '?patient_id=' . $medicalChecklist->patient_id . '&examination_type=annual_physical';
+                // For annual physical, redirect to annual physical listing
+                return redirect()->route('pathologist.annual-physical')->with('success', 'Medical checklist updated successfully.');
+            } elseif ($medicalChecklist->user_id && $medicalChecklist->examination_type === 'opd') {
+                // For OPD, redirect to OPD listing
+                return redirect()->route('pathologist.opd')->with('success', 'Medical checklist updated successfully.');
+            } else {
+                // Default redirect to dashboard
+                return redirect()->route('pathologist.dashboard')->with('success', 'Medical checklist updated successfully.');
             }
-            
-            return redirect($redirectUrl)->with('success', 'Medical checklist updated successfully.');
 
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update medical checklist: ' . $e->getMessage())->withInput();
@@ -1170,9 +1173,9 @@ class PathologistController extends Controller
 
             DB::commit();
 
-            // Redirect back to the edit form to show the saved results
-            return redirect()->route('pathologist.annual-physical.edit', $examination->id)
-                ->with('success', 'Annual physical examination updated successfully.');
+            // Redirect back to the annual physical listing page
+            return redirect()->route('pathologist.annual-physical')
+                ->with('success', 'Annual physical examination lab results saved successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();

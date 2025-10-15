@@ -58,11 +58,10 @@
 
         @if($pathologistTests->isNotEmpty())
             @foreach($groupedTests as $categoryName => $tests)
+                @if($categoryName != 'Hematology' && $categoryName != 'Clinical Pathology')
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
-                        @if($categoryName == 'Hematology')
-                            <i class="fas fa-microscope mr-2 text-teal-600"></i>Routine Examinations Results
-                        @elseif($categoryName == 'Clinical Pathology')
+                        @if($categoryName == 'Clinical Pathology')
                             <i class="fas fa-eye mr-2 text-teal-600"></i>Clinical Microscopy Results
                         @elseif($categoryName == 'Blood Chemistry')
                             <i class="fas fa-flask mr-2 text-teal-600"></i>Blood Chemistry Results
@@ -135,6 +134,7 @@
                         @endforeach
                     </div>
                 </div>
+                @endif
             @endforeach
         @endif
         
@@ -241,6 +241,7 @@
                     <tbody>
                         @if($pathologistTests->isNotEmpty())
                             @foreach($pathologistTests as $test)
+                                @if($test['category_name'] != 'Hematology' && $test['category_name'] != 'Clinical Pathology')
                                 @php
                                     // Use the same standardization logic for summary table
                                     $testName = $test['test_name'];
@@ -295,6 +296,7 @@
                                                placeholder="Enter findings">
                                     </td>
                                 </tr>
+                                @endif
                             @endforeach
                         @endif
                         

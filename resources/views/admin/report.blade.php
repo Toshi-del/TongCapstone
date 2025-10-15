@@ -176,7 +176,14 @@
                                     <p class="text-sm text-gray-500">Last 12 months trend</p>
                                 </div>
                             </div>
-                            <span class="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">All sources</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">All sources</span>
+                                <a href="{{ route('admin.report.export.test-volume') }}" 
+                                   class="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-full transition-colors duration-200 flex items-center space-x-1">
+                                    <i class="fas fa-download text-xs"></i>
+                                    <span>Export</span>
+                                </a>
+                            </div>
                         </div>
                     </div>
                     <div class="p-6">
@@ -189,14 +196,21 @@
             <div class="xl:col-span-1">
                 <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 h-full">
                     <div class="p-6 border-b border-gray-100">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-chart-pie text-green-600 text-sm"></i>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-chart-pie text-green-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Top Categories</h3>
+                                    <p class="text-sm text-gray-500">Last 90 days</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Top Categories</h3>
-                                <p class="text-sm text-gray-500">Last 90 days</p>
-                            </div>
+                            <a href="{{ route('admin.report.export.top-categories') }}" 
+                               class="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-full transition-colors duration-200 flex items-center space-x-1">
+                                <i class="fas fa-download text-xs"></i>
+                                <span>Export</span>
+                            </a>
                         </div>
                     </div>
                     <div class="p-6">
@@ -212,14 +226,21 @@
             <div class="xl:col-span-2">
                 <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 h-full">
                     <div class="p-6 border-b border-gray-100">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-trophy text-orange-600 text-sm"></i>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-trophy text-orange-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Top Medical Tests</h3>
+                                    <p class="text-sm text-gray-500">Performance over last 90 days</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Top Medical Tests</h3>
-                                <p class="text-sm text-gray-500">Performance over last 90 days</p>
-                            </div>
+                            <a href="{{ route('admin.report.export.top-tests') }}" 
+                               class="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-full transition-colors duration-200 flex items-center space-x-1">
+                                <i class="fas fa-download text-xs"></i>
+                                <span>Export</span>
+                            </a>
                         </div>
                     </div>
                     <div class="overflow-hidden">
@@ -300,7 +321,14 @@
                                     <p class="text-sm text-gray-500">Revenue by month</p>
                                 </div>
                             </div>
-                            <span class="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">Pre-employment + Appointments</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="px-3 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">Pre-employment + Appointments</span>
+                                <a href="{{ route('admin.report.export.financial-trend') }}" 
+                                   class="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 text-xs font-medium rounded-full transition-colors duration-200 flex items-center space-x-1">
+                                    <i class="fas fa-download text-xs"></i>
+                                    <span>Export</span>
+                                </a>
+                            </div>
                         </div>
                     </div>
                     <div class="p-6">

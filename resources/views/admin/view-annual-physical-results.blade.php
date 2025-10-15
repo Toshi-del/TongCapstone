@@ -676,28 +676,16 @@
                         <p class="text-gray-500 text-xs mt-1">Please review and confirm billing details before sending</p>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex justify-center">
                         <button type="button" 
-                                id="sendToCompanyBtn"
-                                onclick="sendToCompany()"
+                                id="sendToBothBtn"
+                                onclick="sendToBoth()"
                                 disabled
-                                class="w-full inline-flex items-center justify-center px-6 py-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed transition-all duration-200">
-                            <i class="fas fa-building mr-3 text-lg"></i>
+                                class="w-full max-w-md inline-flex items-center justify-center px-8 py-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed transition-all duration-200">
+                            <i class="fas fa-share-alt mr-3 text-lg"></i>
                             <div class="text-left">
-                                <div class="font-semibold">Send to Company</div>
-                                <div class="text-xs opacity-90">Send results to hiring company</div>
-                            </div>
-                        </button>
-                        
-                        <button type="button" 
-                                id="sendToPatientBtn"
-                                onclick="sendToPatient()"
-                                disabled
-                                class="w-full inline-flex items-center justify-center px-6 py-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed transition-all duration-200">
-                            <i class="fas fa-user mr-3 text-lg"></i>
-                            <div class="text-left">
-                                <div class="font-semibold">Send to Patient</div>
-                                <div class="text-xs opacity-90">Send results directly to patient</div>
+                                <div class="font-semibold">Send to Both</div>
+                                <div class="text-xs opacity-90">Send results to company and patient</div>
                             </div>
                         </button>
                     </div>
@@ -713,27 +701,22 @@ document.addEventListener('DOMContentLoaded', function() {
     loadBillingData();
     
     // Add event listener for billing confirmation checkbox
+    const sendToBothBtn = document.getElementById('sendToBothBtn');
     const billingCheckbox = document.getElementById('billingConfirmed');
-    const sendToCompanyBtn = document.getElementById('sendToCompanyBtn');
-    const sendToPatientBtn = document.getElementById('sendToPatientBtn');
     
     if (billingCheckbox) {
         billingCheckbox.addEventListener('change', function() {
-            const buttons = [sendToCompanyBtn, sendToPatientBtn];
-            
-            buttons.forEach(button => {
-                if (button) {
-                    if (this.checked) {
-                        button.disabled = false;
-                        button.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                        button.classList.add('bg-green-600', 'hover:bg-green-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-green-500');
-                    } else {
-                        button.disabled = true;
-                        button.classList.add('bg-gray-400', 'cursor-not-allowed');
-                        button.classList.remove('bg-green-600', 'hover:bg-green-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-green-500');
-                    }
+            if (sendToBothBtn) {
+                if (this.checked) {
+                    sendToBothBtn.disabled = false;
+                    sendToBothBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    sendToBothBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-indigo-500');
+                } else {
+                    sendToBothBtn.disabled = true;
+                    sendToBothBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                    sendToBothBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-offset-2', 'focus:ring-indigo-500');
                 }
-            });
+            }
         });
     }
 });
@@ -859,6 +842,54 @@ async function sendToPatient() {
     } catch (error) {
         console.error('Error sending examination:', error);
         showErrorMessage('Network Error', 'Failed to send examination to patient. Please check your connection and try again.');
+    }
+}
+
+// Send to both company and patient
+async function sendToBoth() {
+    const billingCheckbox = document.getElementById('billingConfirmed');
+    
+    if (!billingCheckbox.checked) {
+        alert('Please confirm the billing information is correct before sending.');
+        return;
+    }
+    
+    // Check current status to prevent re-sending
+    const currentStatus = '{{ $examination->status ?? "" }}';
+    if (currentStatus === 'sent_to_both') {
+        showErrorMessage('Already Sent to Both', 'This examination has already been sent to both company and patient. Cannot send again.');
+        return;
+    }
+    if (currentStatus === 'sent_to_company' || currentStatus === 'sent_to_patient') {
+        showErrorMessage('Already Sent', 'This examination has already been sent. Cannot send to both destinations.');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/examinations/annual-physical/{{ $examination->id }}/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                send_to: 'both'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccessMessage('Annual physical examination sent to both successfully!', 'The annual physical examination results have been successfully transmitted to both the company and patient.');
+            setTimeout(() => {
+                window.location.href = '{{ route("admin.tests") }}';
+            }, 2000);
+        } else {
+            showErrorMessage('Failed to send examination', data.message || 'An error occurred while sending the examination to both destinations.');
+        }
+    } catch (error) {
+        console.error('Error sending examination:', error);
+        showErrorMessage('Network Error', 'Failed to send examination to both destinations. Please check your connection and try again.');
     }
 }
 

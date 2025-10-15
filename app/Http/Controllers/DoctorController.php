@@ -816,7 +816,14 @@ class DoctorController extends Controller
             $message = 'Medical checklist created successfully.';
         }
 
-        return redirect()->back()->with('success', $message);
+        // Redirect to main listing pages based on examination type
+        if ($data['examination_type'] === 'pre_employment') {
+            return redirect()->route('doctor.pre-employment')->with('success', $message);
+        } elseif ($data['examination_type'] === 'annual_physical') {
+            return redirect()->route('doctor.annual-physical')->with('success', $message);
+        } else {
+            return redirect()->route('doctor.dashboard')->with('success', $message);
+        }
     }
 
     /**
@@ -850,7 +857,14 @@ class DoctorController extends Controller
         $data['user_id'] = auth()->id();
         $medicalChecklist->update($data);
 
-        return redirect()->back()->with('success', 'Medical checklist updated successfully.');
+        // Redirect to main listing pages based on examination type
+        if ($medicalChecklist->examination_type === 'pre_employment') {
+            return redirect()->route('doctor.pre-employment')->with('success', 'Medical checklist updated successfully.');
+        } elseif ($medicalChecklist->examination_type === 'annual_physical') {
+            return redirect()->route('doctor.annual-physical')->with('success', 'Medical checklist updated successfully.');
+        } else {
+            return redirect()->route('doctor.dashboard')->with('success', 'Medical checklist updated successfully.');
+        }
     }
 
     /**

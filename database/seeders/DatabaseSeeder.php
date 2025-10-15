@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             MedicalTestSeeder::class,
            OpdSeeder::class,
+           InventorySeeder::class,
         ]);
     }
 }

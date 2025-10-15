@@ -22,6 +22,10 @@ use Illuminate\Support\Facades\Mail;
 use App\Services\MedicalTestRoutingService;
 use App\Models\AppointmentTestAssignment;
 use App\Exports\ServicesReportExport;
+use App\Exports\TestVolumeExport;
+use App\Exports\TopCategoriesExport;
+use App\Exports\TopTestsExport;
+use App\Exports\FinancialTrendExport;
 
 class AdminController extends Controller
 {
@@ -1359,6 +1363,80 @@ class AdminController extends Controller
                     'success' => true,
                     'message' => 'Pre-employment examination sent to company successfully'
                 ]);
+            } elseif ($sendTo === 'both') {
+                // Send to both company and patient
+                \Log::info('Sending pre-employment examination to both company and patient', [
+                    'examination_id' => $examination->id,
+                    'current_status' => $examination->status,
+                    'patient_name' => $examination->name,
+                    'company_name' => $examination->company_name
+                ]);
+                
+                // Update examination status to sent_to_both
+                $examination->update(['status' => 'sent_to_both']);
+                
+                // Try to find and link the patient account
+                $patient = $this->findPatientForExamination($examination);
+                if ($patient) {
+                    $examination->update(['patient_id' => $patient->id]);
+                }
+                
+                // Get patient email - try multiple sources
+                $patientEmail = $patient ? $patient->email : null;
+                $patientName = $patient ? ($patient->fname . ' ' . $patient->lname) : $examination->name;
+                
+                // First, try to get email from the examination record itself
+                if (isset($examination->email)) {
+                    $patientEmail = $examination->email;
+                }
+                
+                // If not found, try to get from related pre-employment record
+                if (!$patientEmail && $examination->preEmploymentRecord) {
+                    $patientEmail = $examination->preEmploymentRecord->email;
+                    if (!$patientName && $examination->preEmploymentRecord->full_name) {
+                        $patientName = $examination->preEmploymentRecord->full_name;
+                    }
+                }
+                
+                // Send email notification to patient
+                $emailSent = false;
+                if ($patientEmail) {
+                    try {
+                        Mail::to($patientEmail)->send(new MedicalResultsNotification(
+                            $examination,
+                            'pre_employment',
+                            $patientEmail,
+                            $patientName
+                        ));
+                        $emailSent = true;
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send medical results email: ' . $e->getMessage());
+                    }
+                }
+                
+                // Log the billing transaction
+                \Log::info('Pre-employment examination sent to both', [
+                    'examination_id' => $examination->id,
+                    'patient_name' => $examination->name,
+                    'company_name' => $examination->company_name,
+                    'total_amount' => $examination->preEmploymentRecord ? $examination->preEmploymentRecord->total_price : 0,
+                    'sent_by' => Auth::id(),
+                    'sent_at' => now(),
+                    'email_sent' => $emailSent,
+                    'patient_email' => $patientEmail
+                ]);
+                
+                $message = 'Pre-employment examination sent to both company and patient successfully';
+                if (!$emailSent && !$patientEmail) {
+                    $message .= ', but no email address found for patient notification';
+                } elseif (!$emailSent) {
+                    $message .= ', but patient email could not be sent';
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => $message
+                ]);
             } else {
                 // Send to patient - allow even if already sent to company
                 
@@ -1471,6 +1549,69 @@ class AdminController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Annual physical examination sent to company successfully'
+                ]);
+            } elseif ($sendTo === 'both') {
+                // Send to both company and patient
+                \Log::info('Sending annual physical examination to both company and patient', [
+                    'examination_id' => $examination->id,
+                    'current_status' => $examination->status,
+                    'patient_name' => $examination->name
+                ]);
+                
+                // Update examination status to sent_to_both
+                $examination->update(['status' => 'sent_to_both']);
+                
+                // Get patient information
+                $patient = $examination->patient;
+                $patientName = $patient ? $patient->first_name . ' ' . $patient->last_name : $examination->name;
+                $patientEmail = $patient ? $patient->email : null;
+                
+                // Get company name and total amount for logging
+                $appointment = $patient ? $patient->appointment : null;
+                $companyName = $appointment && $appointment->creator ? $appointment->creator->company : 'Unknown Company';
+                $totalAmount = $appointment ? ($appointment->total_price ?: 0) : 0;
+                
+                // Send email notification to patient
+                $emailSent = false;
+                if ($patientEmail) {
+                    try {
+                        Mail::to($patientEmail)->send(new MedicalResultsNotification(
+                            $examination,
+                            'annual_physical',
+                            $patientEmail,
+                            $patientName
+                        ));
+                        $emailSent = true;
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send medical results email to patient: ' . $e->getMessage(), [
+                            'examination_id' => $examination->id,
+                            'patient_email' => $patientEmail
+                        ]);
+                    }
+                }
+                
+                // Log the billing transaction
+                \Log::info('Annual physical examination sent to both', [
+                    'examination_id' => $examination->id,
+                    'patient_name' => $examination->name,
+                    'company_name' => $companyName,
+                    'total_amount' => $totalAmount,
+                    'sent_by' => Auth::id(),
+                    'sent_at' => now(),
+                    'email_sent' => $emailSent,
+                    'patient_email' => $patientEmail
+                ]);
+                
+                $message = 'Annual physical examination sent to both company and patient successfully';
+                if (!$emailSent && !$patientEmail) {
+                    $message .= ', but no email address found for patient notification';
+                } elseif (!$emailSent) {
+                    $message .= ', but patient email could not be sent';
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => $message
                 ]);
             } else {
                 // Send to patient
@@ -2020,6 +2161,42 @@ class AdminController extends Controller
         $serviceType = $request->input('service_type', 'all');
 
         $export = new ServicesReportExport($dateFrom, $dateTo, $serviceType);
+        return $export->download();
+    }
+
+    /**
+     * Export Medical Test Volume data to Excel
+     */
+    public function exportTestVolume()
+    {
+        $export = new TestVolumeExport();
+        return $export->download();
+    }
+
+    /**
+     * Export Top Categories data to Excel
+     */
+    public function exportTopCategories()
+    {
+        $export = new TopCategoriesExport();
+        return $export->download();
+    }
+
+    /**
+     * Export Top Medical Tests data to Excel
+     */
+    public function exportTopTests()
+    {
+        $export = new TopTestsExport();
+        return $export->download();
+    }
+
+    /**
+     * Export Financial Trend data to Excel
+     */
+    public function exportFinancialTrend()
+    {
+        $export = new FinancialTrendExport();
         return $export->download();
     }
 
