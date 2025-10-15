@@ -180,48 +180,23 @@
                 </div>
             </nav>
             
-            <!-- Laboratory Stats -->
-            <div class="mt-8 mx-6 mb-6">
-                <div class="bg-gradient-to-br from-teal-50 to-teal-100 rounded-2xl p-4 border border-teal-200">
-                    <div class="flex items-center space-x-2 mb-3">
-                        <i class="fas fa-chart-bar text-teal-600"></i>
-                        <h3 class="text-sm font-semibold text-teal-800">Lab Overview</h3>
-                    </div>
-                    <div class="space-y-3">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs text-teal-700">Pending Tests</span>
-                            <span class="text-sm font-bold text-teal-800 bg-teal-200 px-2 py-1 rounded-lg">12</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs text-teal-700">Completed Today</span>
-                            <span class="text-sm font-bold text-teal-800 bg-teal-200 px-2 py-1 rounded-lg">8</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs text-teal-700">In Progress</span>
-                            <span class="text-sm font-bold text-teal-800 bg-teal-200 px-2 py-1 rounded-lg">5</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Profile Section -->
             <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-teal-100">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center">
-                        <span class="text-white font-semibold text-sm">
-                            {{ substr(Auth::user()->fname, 0, 1) }}{{ substr(Auth::user()->lname, 0, 1) }}
-                        </span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-800 truncate">Dr. {{ Auth::user()->fname }}</p>
-                        <p class="text-xs text-teal-600">Pathologist</p>
-                    </div>
-                    <form method="POST" action="{{ route('logout') }}" class="inline">
-                        @csrf
-                        <button type="submit" class="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200" title="Logout">
-                            <i class="fas fa-sign-out-alt"></i>
+                <div class="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center">
+                            <span class="text-white font-semibold text-sm">
+                                {{ substr(Auth::user()->fname, 0, 1) }}{{ substr(Auth::user()->lname, 0, 1) }}
+                            </span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-gray-800 truncate">Dr. {{ Auth::user()->fname }}</p>
+                            <p class="text-xs text-teal-600">Pathologist</p>
+                        </div>
+                        <button id="profileButton" class="p-2 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100 rounded-lg transition-colors duration-200" title="Profile Settings">
+                            <i class="fas fa-user-cog"></i>
                         </button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -231,44 +206,18 @@
             <!-- Modern Header -->
             <header class="header-glass shadow-sm">
                 <div class="flex items-center justify-between px-6 py-4">
-                    <div class="flex items-center space-x-6">
+                    <div>
                         <h1 class="text-2xl font-bold text-gray-800">@yield('page-title', 'Laboratory Overview')</h1>
-                        <div class="relative">
-                            <input type="text" placeholder="Search lab results, patients..." 
-                                   class="pl-10 pr-4 py-2.5 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 w-80 bg-white/80 backdrop-blur-sm search-focus transition-all duration-200">
-                            <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
-                        </div>
+                        <p class="text-sm text-gray-600 mt-1">@yield('page-description', 'Pathologist Portal')</p>
                     </div>
                     
                     <div class="flex items-center space-x-4">
-                        <!-- Quick Actions -->
-                        <button class="p-2.5 text-gray-600 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-colors duration-200" title="Lab Reports">
-                            <i class="fas fa-chart-line text-lg"></i>
-                        </button>
-                        
-                        <button class="p-2.5 text-gray-600 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-colors duration-200" title="Lab Settings">
-                            <i class="fas fa-cog text-lg"></i>
-                        </button>
-                        
-                        <!-- Notifications -->
+                        <!-- Messages -->
                         <div class="relative">
-                            <button class="p-2.5 text-gray-600 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-colors duration-200">
-                                <i class="fas fa-bell text-lg"></i>
-                                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center notification-pulse">3</span>
-                            </button>
-                        </div>
-                        
-                        <!-- User Profile -->
-                        <div class="flex items-center space-x-3 pl-4 border-l border-gray-200">
-                            <div class="text-right">
-                                <p class="font-semibold text-gray-800">Dr. {{ Auth::user()->fname }} {{ Auth::user()->lname }}</p>
-                                <p class="text-sm text-teal-600">Medical Pathologist</p>
-                            </div>
-                            <div class="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center shadow-lg">
-                                <span class="text-white font-semibold text-sm">
-                                    {{ substr(Auth::user()->fname, 0, 1) }}{{ substr(Auth::user()->lname, 0, 1) }}
-                                </span>
-                            </div>
+                            <a href="{{ route('pathologist.messages') }}" class="p-3 text-gray-600 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all duration-200 inline-block">
+                                <i class="fas fa-envelope text-lg"></i>
+                                <span id="header-message-count" class="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full notification-badge hidden"></span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -281,32 +230,123 @@
         </div>
     </div>
 
+    <!-- Profile Modal -->
+    <div id="profileModal" class="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center">
+        <div class="relative mx-auto p-0 border-0 w-full max-w-md shadow-2xl rounded-2xl bg-white">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-teal-600 to-teal-700 px-8 py-6 rounded-t-2xl">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                            <i class="fas fa-microscope text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white">Profile</h3>
+                            <p class="text-teal-100 text-sm">Medical Pathologist</p>
+                        </div>
+                    </div>
+                    <button id="closeModal" class="text-white/70 hover:text-white transition-colors p-2">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-8">
+                <!-- Profile Info -->
+                <div class="flex items-center space-x-4 mb-8 p-4 bg-teal-50 rounded-xl border border-teal-100">
+                    <div class="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-microscope text-white text-2xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="text-lg font-bold text-gray-900">Dr. {{ Auth::user()->fname }} {{ Auth::user()->lname }}</h4>
+                        <p class="text-sm text-gray-600">{{ Auth::user()->email }}</p>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <span class="px-2 py-1 bg-teal-100 text-teal-700 text-xs font-medium rounded-full">Medical Pathologist</span>
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                            <span class="text-xs text-green-600 font-medium">Online</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu Items -->
+                <div class="space-y-2">
+                    <a href="{{ route('pathologist.profile.edit') }}" class="flex items-center px-4 py-3 text-gray-700 hover:bg-teal-50 hover:text-teal-700 rounded-xl transition-all duration-200 group">
+                        <div class="w-10 h-10 bg-gray-100 group-hover:bg-teal-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                            <i class="fas fa-user-edit text-gray-500 group-hover:text-teal-600"></i>
+                        </div>
+                        <span class="font-medium">Edit Profile</span>
+                        <i class="fas fa-chevron-right ml-auto text-gray-400 group-hover:text-teal-500"></i>
+                    </a>
+                    
+                    <div class="border-t border-gray-200 my-4"></div>
+                    
+                    <form method="POST" action="{{ route('logout') }}" class="block">
+                        @csrf
+                        <button type="submit" class="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 group">
+                            <div class="w-10 h-10 bg-red-50 group-hover:bg-red-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                                <i class="fas fa-sign-out-alt text-red-500"></i>
+                            </div>
+                            <span class="font-medium">Logout</span>
+                            <i class="fas fa-chevron-right ml-auto text-red-400"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @yield('scripts')
     <script>
         // Enhanced pathologist layout functionality
         document.addEventListener('DOMContentLoaded', function() {
-            // Search functionality with enhanced UX
-            const searchInput = document.querySelector('input[placeholder*="Search"]');
-            if (searchInput) {
-                searchInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        const searchTerm = this.value.trim();
-                        if (searchTerm) {
-                            console.log('Laboratory search for:', searchTerm);
-                            // Implement laboratory-specific search functionality
-                        }
-                    }
-                });
-
-                // Add search focus effects
-                searchInput.addEventListener('focus', function() {
-                    this.parentElement.classList.add('ring-2', 'ring-teal-500');
-                });
-
-                searchInput.addEventListener('blur', function() {
-                    this.parentElement.classList.remove('ring-2', 'ring-teal-500');
+            // Profile Modal Functionality
+            const profileButton = document.getElementById('profileButton');
+            const profileModal = document.getElementById('profileModal');
+            const closeModal = document.getElementById('closeModal');
+            
+            // Open modal
+            if (profileButton) {
+                profileButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    profileModal.classList.remove('hidden');
+                    
+                    // Add animation
+                    const modalContent = profileModal.querySelector('.relative');
+                    modalContent.style.animation = 'fadeInUp 0.3s ease-out';
                 });
             }
+
+            // Close modal function
+            function closeProfileModal() {
+                const modalContent = profileModal.querySelector('.relative');
+                modalContent.style.animation = 'fadeInUp 0.2s ease-in reverse';
+                
+                setTimeout(() => {
+                    profileModal.classList.add('hidden');
+                }, 200);
+            }
+
+            // Close modal events
+            if (closeModal) {
+                closeModal.addEventListener('click', closeProfileModal);
+            }
+
+            // Close modal when clicking outside
+            if (profileModal) {
+                profileModal.addEventListener('click', function(e) {
+                    if (e.target === profileModal) {
+                        closeProfileModal();
+                    }
+                });
+            }
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && profileModal && !profileModal.classList.contains('hidden')) {
+                    closeProfileModal();
+                }
+            });
 
             // Enhanced navigation interactions (removed problematic transforms)
             document.querySelectorAll('.nav-item').forEach(item => {

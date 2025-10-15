@@ -15,6 +15,7 @@ use App\Models\Notification;
 use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class PleboController extends Controller
 {
@@ -1029,6 +1030,55 @@ class PleboController extends Controller
                 }
             }
         }
+    }
+
+    /**
+     * Show the edit profile form
+     */
+    public function editProfile()
+    {
+        $user = Auth::user();
+        return view('plebo.profile.edit', compact('user'));
+    }
+
+    /**
+     * Update the plebo's profile
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'fname' => 'required|string|max:255',
+            'lname' => 'required|string|max:255',
+            'mname' => 'nullable|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'birthday' => 'nullable|date',
+            'current_password' => 'nullable|required_with:new_password',
+            'new_password' => 'nullable|min:8|confirmed',
+        ]);
+
+        // Check current password if user wants to change password
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return back()->withErrors(['current_password' => 'Current password is incorrect']);
+            }
+            $validated['password'] = Hash::make($request->new_password);
+        }
+
+        // Remove password fields if not changing password
+        unset($validated['current_password'], $validated['new_password'], $validated['new_password_confirmation']);
+
+        // Calculate age if birthday is provided
+        if (isset($validated['birthday'])) {
+            $validated['age'] = \Carbon\Carbon::parse($validated['birthday'])->age;
+        }
+
+        $user->update($validated);
+
+        return redirect()->route('plebo.profile.edit')->with('success', 'Profile updated successfully!');
     }
 }
 

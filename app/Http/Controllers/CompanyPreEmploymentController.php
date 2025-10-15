@@ -11,6 +11,7 @@ use App\Models\MedicalTestCategory;
 use App\Models\MedicalTest;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\NotificationService;
 
 class CompanyPreEmploymentController extends Controller
 {
@@ -312,6 +313,9 @@ class CompanyPreEmploymentController extends Controller
                             'total_tests_count' => count($selectedTests),
                             'total_price' => $totalPrice
                         ]);
+                        
+                        // Notify company that pre-employment was submitted successfully
+                        NotificationService::notifyCompanyPreEmploymentSubmitted($record, Auth::user());
                     }
                 }
             }

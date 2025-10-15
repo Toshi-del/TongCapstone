@@ -10,11 +10,13 @@ use App\Models\User;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use App\Models\PreEmploymentExamination;
 use App\Models\MedicalTestCategory;
 use App\Models\MedicalTest;
 use App\Models\MedicalTestReferenceRange;
 use App\Models\OpdExamination;
+use App\Services\NotificationService;
 
 class DoctorController extends Controller
 {
@@ -208,6 +210,26 @@ class DoctorController extends Controller
 
         // Mark as sent to company (doctor submission to admin)
         $examination->update(['status' => 'sent_to_company']);
+
+        // Create notification for submission to admin
+        $patientName = $record->full_name;
+        NotificationService::notifyDoctorSubmittedToAdmin(
+            $examination,
+            'pre_employment',
+            $patientName,
+            Auth::user()
+        );
+
+        // Notify company that examination results are sent
+        $company = User::find($record->created_by);
+        if ($company && $company->role === 'company') {
+            NotificationService::notifyCompanyExaminationSent(
+                $examination,
+                'pre_employment',
+                $patientName,
+                $company
+            );
+        }
 
         return redirect()->route('doctor.pre-employment')->with('success', 'Pre-employment examination submitted to admin.');
     }
@@ -444,25 +466,14 @@ class DoctorController extends Controller
         // Calculate and store fitness assessment automatically
         $preEmployment->calculateFitnessAssessment();
         
-        // Create notification for admin when doctor completes examination
-        $doctor = Auth::user();
+        // Create notification for results updated
         $patientName = $preEmployment->name ?? 'Unknown Patient';
         
-        Notification::createForAdmin(
-            'examination_updated',
-            'Medical Examination Updated by Doctor - Pre-Employment',
-            "Doctor {$doctor->name} has updated medical examination for {$patientName} (Pre-Employment).",
-            [
-                'examination_id' => $preEmployment->id,
-                'patient_name' => $patientName,
-                'doctor_name' => $doctor->name,
-                'examination_type' => 'pre_employment',
-                'has_findings' => !empty($data['findings']),
-                'has_lab_report' => !empty($data['lab_report'])
-            ],
-            'medium',
-            $doctor,
-            $preEmployment
+        NotificationService::notifyDoctorResultsUpdated(
+            $preEmployment,
+            'pre_employment',
+            $patientName,
+            Auth::user()
         );
         
         return redirect()->route('doctor.pre-employment.edit', $preEmployment->id)->with('success', 'Pre-Employment Examination updated successfully.');
@@ -627,6 +638,17 @@ class DoctorController extends Controller
             $annualPhysical->calculateFitnessAssessment();
             
             if ($result) {
+                // Create notification for results updated
+                $patient = \App\Models\Patient::find($annualPhysical->patient_id);
+                $patientName = $patient ? $patient->full_name : $annualPhysical->name;
+                
+                NotificationService::notifyDoctorResultsUpdated(
+                    $annualPhysical,
+                    'annual_physical',
+                    $patientName,
+                    Auth::user()
+                );
+                
                 return redirect()->route('doctor.annual-physical.edit', $annualPhysical->id)->with('success', 'Annual Physical Examination updated successfully.');
             } else {
                 return redirect()->back()->with('error', 'Failed to update the examination. Please try again.')->withInput();
@@ -689,6 +711,27 @@ class DoctorController extends Controller
 
         // Mark as sent to admin so it no longer appears in the doctor list
         $examination->update(['status' => 'sent_to_admin']);
+
+        // Create notification for submission to admin
+        NotificationService::notifyDoctorSubmittedToAdmin(
+            $examination,
+            'annual_physical',
+            $patient->full_name,
+            Auth::user()
+        );
+
+        // Notify company that examination results are sent (if patient has company)
+        if ($patient->appointment && $patient->appointment->created_by) {
+            $company = User::find($patient->appointment->created_by);
+            if ($company && $company->role === 'company') {
+                NotificationService::notifyCompanyExaminationSent(
+                    $examination,
+                    'annual_physical',
+                    $patient->full_name,
+                    $company
+                );
+            }
+        }
 
         return redirect()->route('doctor.annual-physical')->with('success', 'Annual physical submitted to admin.');
     }
@@ -812,8 +855,35 @@ class DoctorController extends Controller
             $message = 'Medical checklist updated successfully.';
         } else {
             // Create new record
-            \App\Models\MedicalChecklist::create($data);
+            $checklist = \App\Models\MedicalChecklist::create($data);
             $message = 'Medical checklist created successfully.';
+            
+            // Create notification for checklist submission
+            $examinationType = $data['examination_type'];
+            $patientName = $data['name'];
+            
+            // Get the related examination
+            if ($examinationType === 'pre_employment' && !empty($data['pre_employment_record_id'])) {
+                $examination = \App\Models\PreEmploymentExamination::where('pre_employment_record_id', $data['pre_employment_record_id'])->first();
+                if ($examination) {
+                    NotificationService::notifyDoctorChecklistSubmitted(
+                        $examination,
+                        'pre_employment',
+                        $patientName,
+                        Auth::user()
+                    );
+                }
+            } elseif ($examinationType === 'annual_physical' && !empty($data['annual_physical_examination_id'])) {
+                $examination = \App\Models\AnnualPhysicalExamination::find($data['annual_physical_examination_id']);
+                if ($examination) {
+                    NotificationService::notifyDoctorChecklistSubmitted(
+                        $examination,
+                        'annual_physical',
+                        $patientName,
+                        Auth::user()
+                    );
+                }
+            }
         }
 
         // Redirect to main listing pages based on examination type
@@ -856,6 +926,33 @@ class DoctorController extends Controller
 
         $data['user_id'] = auth()->id();
         $medicalChecklist->update($data);
+
+        // Create notification for checklist update
+        $examinationType = $medicalChecklist->examination_type;
+        $patientName = $medicalChecklist->name;
+        
+        // Get the related examination
+        if ($examinationType === 'pre_employment' && !empty($medicalChecklist->pre_employment_record_id)) {
+            $examination = \App\Models\PreEmploymentExamination::where('pre_employment_record_id', $medicalChecklist->pre_employment_record_id)->first();
+            if ($examination) {
+                NotificationService::notifyDoctorChecklistSubmitted(
+                    $examination,
+                    'pre_employment',
+                    $patientName,
+                    Auth::user()
+                );
+            }
+        } elseif ($examinationType === 'annual_physical' && !empty($medicalChecklist->annual_physical_examination_id)) {
+            $examination = \App\Models\AnnualPhysicalExamination::find($medicalChecklist->annual_physical_examination_id);
+            if ($examination) {
+                NotificationService::notifyDoctorChecklistSubmitted(
+                    $examination,
+                    'annual_physical',
+                    $patientName,
+                    Auth::user()
+                );
+            }
+        }
 
         // Redirect to main listing pages based on examination type
         if ($medicalChecklist->examination_type === 'pre_employment') {
@@ -1203,5 +1300,132 @@ class DoctorController extends Controller
         );
 
         return redirect()->route('doctor.opd')->with('success', 'OPD examination submitted to admin successfully.');
+    }
+
+    /**
+     * Get notifications for doctor
+     */
+    public function getNotifications(Request $request)
+    {
+        $user = Auth::user();
+        $limit = $request->get('limit', 10);
+        
+        $notifications = Notification::where('notifiable_type', User::class)
+            ->where('notifiable_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+        
+        return response()->json([
+            'notifications' => $notifications->map(function($notification) {
+                return [
+                    'id' => $notification->id,
+                    'type' => $notification->type,
+                    'title' => $notification->title,
+                    'message' => $notification->message,
+                    'is_read' => $notification->is_read,
+                    'priority' => $notification->priority,
+                    'time_ago' => $notification->time_ago,
+                    'icon' => $notification->type_icon,
+                    'data' => $notification->data,
+                    'created_at' => $notification->created_at->toDateTimeString(),
+                ];
+            })
+        ]);
+    }
+
+    /**
+     * Get unread notification count
+     */
+    public function getNotificationCount()
+    {
+        $user = Auth::user();
+        $count = Notification::getUnreadCountForUser($user);
+        
+        return response()->json(['count' => $count]);
+    }
+
+    /**
+     * Mark notification as read
+     */
+    public function markNotificationAsRead($id)
+    {
+        $notification = Notification::findOrFail($id);
+        
+        // Ensure the notification belongs to the authenticated user
+        if ($notification->notifiable_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
+        $notification->markAsRead();
+        
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Mark all notifications as read
+     */
+    public function markAllNotificationsAsRead()
+    {
+        $user = Auth::user();
+        
+        Notification::where('notifiable_type', User::class)
+            ->where('notifiable_id', $user->id)
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => now()
+            ]);
+        
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Show the edit profile form
+     */
+    public function editProfile()
+    {
+        $user = Auth::user();
+        return view('doctor.profile.edit', compact('user'));
+    }
+
+    /**
+     * Update the doctor's profile
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'fname' => 'required|string|max:255',
+            'lname' => 'required|string|max:255',
+            'mname' => 'nullable|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'birthday' => 'nullable|date',
+            'current_password' => 'nullable|required_with:new_password',
+            'new_password' => 'nullable|min:8|confirmed',
+        ]);
+
+        // Check current password if user wants to change password
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return back()->withErrors(['current_password' => 'Current password is incorrect']);
+            }
+            $validated['password'] = Hash::make($request->new_password);
+        }
+
+        // Remove password fields if not changing password
+        unset($validated['current_password'], $validated['new_password'], $validated['new_password_confirmation']);
+
+        // Calculate age if birthday is provided
+        if (isset($validated['birthday'])) {
+            $validated['age'] = \Carbon\Carbon::parse($validated['birthday'])->age;
+        }
+
+        $user->update($validated);
+
+        return redirect()->route('doctor.profile.edit')->with('success', 'Profile updated successfully!');
     }
 }

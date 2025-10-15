@@ -13,6 +13,7 @@ use App\Models\Notification;
 use App\Services\MedicalWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class NurseController extends Controller
 {
@@ -233,8 +234,8 @@ class NurseController extends Controller
                         })
                         // Has findings OR
                         ->orWhere(function($sq) {
-                            $sq->whereNotNull('final_findings')
-                               ->where('final_findings', '!=', '');
+                            $sq->whereNotNull('findings')
+                               ->where('findings', '!=', '');
                         })
                         // Has illness history
                         ->orWhere(function($sq) {
@@ -1384,5 +1385,54 @@ class NurseController extends Controller
         ];
 
         return in_array(strtolower($medicalTestName), $drugTestRequiredTests);
+    }
+
+    /**
+     * Show the edit profile form
+     */
+    public function editProfile()
+    {
+        $user = Auth::user();
+        return view('nurse.profile.edit', compact('user'));
+    }
+
+    /**
+     * Update the nurse's profile
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'fname' => 'required|string|max:255',
+            'lname' => 'required|string|max:255',
+            'mname' => 'nullable|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'birthday' => 'nullable|date',
+            'current_password' => 'nullable|required_with:new_password',
+            'new_password' => 'nullable|min:8|confirmed',
+        ]);
+
+        // Check current password if user wants to change password
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return back()->withErrors(['current_password' => 'Current password is incorrect']);
+            }
+            $validated['password'] = Hash::make($request->new_password);
+        }
+
+        // Remove password fields if not changing password
+        unset($validated['current_password'], $validated['new_password'], $validated['new_password_confirmation']);
+
+        // Calculate age if birthday is provided
+        if (isset($validated['birthday'])) {
+            $validated['age'] = \Carbon\Carbon::parse($validated['birthday'])->age;
+        }
+
+        $user->update($validated);
+
+        return redirect()->route('nurse.profile.edit')->with('success', 'Profile updated successfully!');
     }
 }

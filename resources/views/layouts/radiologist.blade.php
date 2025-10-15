@@ -237,28 +237,12 @@
                     </div>
                     
                     <div class="flex items-center space-x-4">
-                        <!-- Notifications -->
-                        <div class="relative">
-                            <button class="p-3 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all duration-200">
-                                <i class="fas fa-bell text-lg"></i>
-                                <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full notification-badge"></span>
-                            </button>
-                        </div>
-                        
                         <!-- Messages -->
                         <div class="relative">
                             <a href="{{ route('radiologist.messages') }}" class="p-3 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all duration-200 inline-block">
                                 <i class="fas fa-envelope text-lg"></i>
                                 <span id="header-message-count" class="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full notification-badge hidden"></span>
                             </a>
-                        </div>
-                        
-                        <!-- X-Ray Queue -->
-                        <div class="relative">
-                            <button class="p-3 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all duration-200">
-                                <i class="fas fa-x-ray text-lg"></i>
-                                <span class="absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full notification-badge"></span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -314,25 +298,11 @@
 
                 <!-- Menu Items -->
                 <div class="space-y-2">
-                    <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-xl transition-all duration-200 group">
+                    <a href="{{ route('radiologist.profile.edit') }}" class="flex items-center px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-xl transition-all duration-200 group">
                         <div class="w-10 h-10 bg-gray-100 group-hover:bg-purple-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
                             <i class="fas fa-user-edit text-gray-500 group-hover:text-purple-600"></i>
                         </div>
                         <span class="font-medium">Edit Profile</span>
-                        <i class="fas fa-chevron-right ml-auto text-gray-400 group-hover:text-purple-500"></i>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-xl transition-all duration-200 group">
-                        <div class="w-10 h-10 bg-gray-100 group-hover:bg-purple-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                            <i class="fas fa-cog text-gray-500 group-hover:text-purple-600"></i>
-                        </div>
-                        <span class="font-medium">Settings</span>
-                        <i class="fas fa-chevron-right ml-auto text-gray-400 group-hover:text-purple-500"></i>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-xl transition-all duration-200 group">
-                        <div class="w-10 h-10 bg-gray-100 group-hover:bg-purple-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                            <i class="fas fa-question-circle text-gray-500 group-hover:text-purple-600"></i>
-                        </div>
-                        <span class="font-medium">Help & Support</span>
                         <i class="fas fa-chevron-right ml-auto text-gray-400 group-hover:text-purple-500"></i>
                     </a>
                     

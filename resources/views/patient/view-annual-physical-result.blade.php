@@ -185,9 +185,16 @@
                     $appointment = $examination->patient->appointment;
                     $patient = $examination->patient;
                     $isAgeAdjusted = $patient->age_adjusted ?? false;
+                    $patientCount = $appointment->patients()->count();
+                    
+                    // Calculate individual prices
                     $originalPrice = $appointment->original_price ?? $appointment->total_price;
-                    $finalPrice = $appointment->total_price;
-                    $priceDifference = $originalPrice - $finalPrice;
+                    $totalPrice = $appointment->total_price;
+                    
+                    // Individual prices (per patient)
+                    $individualOriginalPrice = $patientCount > 0 ? ($originalPrice / $patientCount) : $originalPrice;
+                    $individualFinalPrice = $patientCount > 0 ? ($totalPrice / $patientCount) : $totalPrice;
+                    $priceDifference = $individualOriginalPrice - $individualFinalPrice;
                 @endphp
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -217,7 +224,7 @@
                             <div class="space-y-2">
                                 <div class="flex justify-between items-center">
                                     <span class="text-gray-600">Original Package:</span>
-                                    <span class="text-gray-500 line-through">₱{{ number_format($originalPrice, 2) }}</span>
+                                    <span class="text-gray-500 line-through">₱{{ number_format($individualOriginalPrice, 2) }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-gray-600">Age Adjustment:</span>
@@ -225,14 +232,14 @@
                                 </div>
                                 <hr class="border-gray-300">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-green-700 font-bold">Final Amount:</span>
-                                    <span class="text-green-700 font-bold text-xl">₱{{ number_format($finalPrice, 2) }}</span>
+                                    <span class="text-green-700 font-bold">Your Amount:</span>
+                                    <span class="text-green-700 font-bold text-xl">₱{{ number_format($individualFinalPrice, 2) }}</span>
                                 </div>
                             </div>
                         @else
                             <div class="flex justify-between items-center">
-                                <span class="text-green-700 font-bold">Total Amount:</span>
-                                <span class="text-green-700 font-bold text-xl">₱{{ number_format($finalPrice, 2) }}</span>
+                                <span class="text-green-700 font-bold">Your Amount:</span>
+                                <span class="text-green-700 font-bold text-xl">₱{{ number_format($individualFinalPrice, 2) }}</span>
                             </div>
                         @endif
                     </div>

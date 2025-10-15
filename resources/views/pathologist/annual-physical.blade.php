@@ -421,11 +421,6 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center space-x-2">
-                                            <!-- View Details -->
-                                            <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors" title="View Details">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-
                                             <!-- Lab Results -->
                                             <a href="{{ route('pathologist.annual-physical.edit', $patient->id) }}" 
                                                class="p-2 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded-lg transition-colors" 

@@ -56,7 +56,7 @@ class PatientController extends Controller
         $userFullName = trim($user->fname . ' ' . $user->lname);
         
         // Get all pre-employment examinations for this patient
-        // Show all completed examinations regardless of status
+        // Show only examinations that have been sent to the patient
         // Check both patient relationship (User model) and preEmploymentRecord relationship
         $preEmploymentResults = PreEmploymentExamination::where(function($query) use ($user) {
                 // Check patient relationship (patient_id -> users table)
@@ -68,18 +68,56 @@ class PatientController extends Controller
                     $q->where('email', $user->email);
                 });
             })
+            ->whereIn('status', ['sent_to_patient', 'sent_to_both'])
             ->with(['preEmploymentRecord', 'patient'])
             ->orderBy('updated_at', 'desc')
             ->get();
         
         // Get all annual physical examinations for this patient
-        // Show all completed examinations regardless of status
-        $annualPhysicalResults = AnnualPhysicalExamination::whereHas('patient', function($query) use ($user) {
-                $query->where('email', $user->email);
+        // Show only examinations that have been sent to the patient
+        $annualPhysicalResults = AnnualPhysicalExamination::where(function($query) use ($user, $userFullName) {
+                // Match by patient email
+                $query->whereHas('patient', function($q) use ($user) {
+                    $q->where('email', $user->email);
+                })
+                // OR match by patient name (for cases where email might not be set)
+                ->orWhere(function($q) use ($userFullName) {
+                    $q->where('name', $userFullName);
+                })
+                // OR match by user_id directly (if it references users table)
+                ->orWhere('user_id', $user->id);
             })
+            ->whereIn('status', ['sent_to_patient', 'sent_to_both'])
             ->with(['patient'])
             ->orderBy('updated_at', 'desc')
             ->get();
+        
+        // Debug logging - Check what examinations exist for this user
+        $allAnnualPhysicalExams = AnnualPhysicalExamination::with(['patient'])
+            ->whereIn('status', ['sent_to_patient', 'sent_to_both'])
+            ->get();
+        
+        $debugInfo = [
+            'user_email' => $user->email,
+            'user_name' => $userFullName,
+            'user_id' => $user->id,
+            'pre_employment_count' => $preEmploymentResults->count(),
+            'annual_physical_count' => $annualPhysicalResults->count(),
+            'total_sent_annual_exams' => $allAnnualPhysicalExams->count(),
+            'all_sent_exams' => $allAnnualPhysicalExams->map(function($exam) {
+                return [
+                    'id' => $exam->id,
+                    'name' => $exam->name,
+                    'status' => $exam->status,
+                    'user_id' => $exam->user_id,
+                    'patient_id' => $exam->patient_id,
+                    'patient_email' => $exam->patient ? $exam->patient->email : null,
+                    'patient_name' => $exam->patient ? ($exam->patient->first_name . ' ' . $exam->patient->last_name) : null,
+                ];
+            })->toArray()
+        ];
+        
+        \Log::info('Patient Medical Results Query - Detailed Debug', $debugInfo);
         
         return view('patient.medical-results', compact('preEmploymentResults', 'annualPhysicalResults'));
     }
@@ -102,6 +140,7 @@ class PatientController extends Controller
                     $q->where('email', $user->email);
                 });
             })
+            ->whereIn('status', ['sent_to_patient', 'sent_to_both'])
             ->with(['preEmploymentRecord', 'drugTestResults'])
             ->firstOrFail();
         
@@ -119,6 +158,7 @@ class PatientController extends Controller
             ->whereHas('patient', function($query) use ($user) {
                 $query->where('email', $user->email);
             })
+            ->whereIn('status', ['sent_to_patient', 'sent_to_both'])
             ->with(['patient', 'drugTestResults'])
             ->firstOrFail();
         

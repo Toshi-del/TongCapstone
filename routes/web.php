@@ -236,6 +236,16 @@ Route::middleware(['auth', 'role:company'])->group(function () {
     Route::post('/company/messages/mark-read', [CompanyController::class, 'markAsRead']);
     Route::get('/company/messages/count', [CompanyController::class, 'getUnreadMessageCount']);
     Route::get('/company/chat-users', [CompanyController::class, 'chatUsers']);
+
+    // Company Profile Routes
+    Route::get('/company/profile/edit', [CompanyController::class, 'editProfile'])->name('company.profile.edit');
+    Route::patch('/company/profile/update', [CompanyController::class, 'updateProfile'])->name('company.profile.update');
+
+    // Company Notification Routes
+    Route::get('/company/notifications', [CompanyController::class, 'getNotifications']);
+    Route::get('/company/notifications/count', [CompanyController::class, 'getNotificationCount']);
+    Route::post('/company/notifications/{id}/read', [CompanyController::class, 'markNotificationAsRead']);
+    Route::post('/company/notifications/mark-all-read', [CompanyController::class, 'markAllNotificationsAsRead']);
 });
 
 
@@ -301,6 +311,16 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::post('/doctor/messages/mark-read', [DoctorController::class, 'markAsRead']);
     Route::get('/doctor/messages/count', [DoctorController::class, 'getUnreadMessageCount']);
     Route::get('/doctor/chat-users', [DoctorController::class, 'chatUsers']);
+
+    // Doctor Notification Routes
+    Route::get('/doctor/notifications', [DoctorController::class, 'getNotifications']);
+    Route::get('/doctor/notifications/count', [DoctorController::class, 'getNotificationCount']);
+    Route::post('/doctor/notifications/{id}/read', [DoctorController::class, 'markNotificationAsRead']);
+    Route::post('/doctor/notifications/mark-all-read', [DoctorController::class, 'markAllNotificationsAsRead']);
+
+    // Doctor Profile Routes
+    Route::get('/doctor/profile/edit', [DoctorController::class, 'editProfile'])->name('doctor.profile.edit');
+    Route::patch('/doctor/profile/update', [DoctorController::class, 'updateProfile'])->name('doctor.profile.update');
 });
 
 Route::middleware(['auth', 'role:opd'])->group(function () {
@@ -452,6 +472,10 @@ Route::middleware(['auth', 'role:nurse'])->group(function () {
     Route::post('/nurse/messages/mark-read', [NurseController::class, 'markAsRead']);
     Route::get('/nurse/messages/count', [NurseController::class, 'getUnreadMessageCount']);
     Route::get('/nurse/chat-users', [NurseController::class, 'chatUsers']);
+
+    // Nurse Profile Routes
+    Route::get('/nurse/profile/edit', [NurseController::class, 'editProfile'])->name('nurse.profile.edit');
+    Route::patch('/nurse/profile/update', [NurseController::class, 'updateProfile'])->name('nurse.profile.update');
 });
 
 Route::middleware(['auth', 'role:radtech'])->group(function () {
@@ -476,6 +500,10 @@ Route::middleware(['auth', 'role:radtech'])->group(function () {
     Route::post('/radtech/messages/mark-read', [RadtechController::class, 'markAsRead']);
     Route::get('/radtech/messages/count', [RadtechController::class, 'getUnreadMessageCount']);
     Route::get('/radtech/chat-users', [RadtechController::class, 'chatUsers']);
+
+    // Radtech Profile Routes
+    Route::get('/radtech/profile/edit', [RadtechController::class, 'editProfile'])->name('radtech.profile.edit');
+    Route::patch('/radtech/profile/update', [RadtechController::class, 'updateProfile'])->name('radtech.profile.update');
 });
 
 Route::middleware(['auth', 'role:plebo'])->group(function () {
@@ -498,6 +526,10 @@ Route::middleware(['auth', 'role:plebo'])->group(function () {
     Route::post('/plebo/messages/mark-read', [PleboController::class, 'markAsRead']);
     Route::get('/plebo/messages/count', [PleboController::class, 'getUnreadMessageCount']);
     Route::get('/plebo/chat-users', [PleboController::class, 'chatUsers']);
+
+    // Plebo Profile Routes
+    Route::get('/plebo/profile/edit', [PleboController::class, 'editProfile'])->name('plebo.profile.edit');
+    Route::patch('/plebo/profile/update', [PleboController::class, 'updateProfile'])->name('plebo.profile.update');
 });
 
 Route::middleware(['auth', 'role:radiologist'])->group(function () {
@@ -524,6 +556,10 @@ Route::middleware(['auth', 'role:radiologist'])->group(function () {
     Route::post('/radiologist/messages/mark-read', [RadiologistController::class, 'markAsRead']);
     Route::get('/radiologist/messages/count', [RadiologistController::class, 'getUnreadMessageCount']);
     Route::get('/radiologist/chat-users', [RadiologistController::class, 'chatUsers']);
+
+    // Radiologist Profile Routes
+    Route::get('/radiologist/profile/edit', [RadiologistController::class, 'editProfile'])->name('radiologist.profile.edit');
+    Route::patch('/radiologist/profile/update', [RadiologistController::class, 'updateProfile'])->name('radiologist.profile.update');
 });
 
 Route::middleware(['auth', 'role:ecgtech'])->group(function () {
@@ -599,6 +635,10 @@ Route::middleware(['auth', 'role:pathologist'])->group(function () {
     Route::get('/pathologist/fetch-messages', [PathologistController::class, 'fetchMessages'])->name('pathologist.fetch-messages');
     Route::post('/pathologist/send-message', [PathologistController::class, 'sendMessage'])->name('pathologist.send-message');
     Route::post('/pathologist/mark-as-read', [PathologistController::class, 'markAsRead'])->name('pathologist.mark-as-read');
+
+    // Profile Routes
+    Route::get('/pathologist/profile/edit', [PathologistController::class, 'editProfile'])->name('pathologist.profile.edit');
+    Route::patch('/pathologist/profile/update', [PathologistController::class, 'updateProfile'])->name('pathologist.profile.update');
 });
 
 Route::middleware(['auth', 'role:patient'])->group(function () {

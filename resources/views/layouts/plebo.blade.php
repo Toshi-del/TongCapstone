@@ -168,12 +168,9 @@
                             </p>
                             <p class="text-gray-600 text-xs">Medical Phlebotomist</p>
                         </div>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100 p-2 rounded-xl transition-all duration-300 border border-gray-200">
-                                <i class="fas fa-sign-out-alt text-lg"></i>
-                            </button>
-                        </form>
+                        <button id="profileButton" class="text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100 p-2 rounded-xl transition-all duration-300 border border-gray-200">
+                            <i class="fas fa-user-cog text-lg"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -201,24 +198,6 @@
                     
                     <!-- Header actions -->
                     <div class="flex items-center space-x-4">
-                        <!-- Search bar -->
-                        <div class="hidden md:block">
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <i class="fas fa-search text-gray-400"></i>
-                                </div>
-                                <input type="text" 
-                                       class="bg-gray-50 border border-gray-200 pl-12 pr-4 py-3 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 w-80" 
-                                       placeholder="Search patients, tests...">
-                            </div>
-                        </div>
-                        
-                        <!-- Notifications -->
-                        <button class="relative bg-gray-50 hover:bg-gray-100 border border-gray-200 p-3 rounded-2xl text-gray-600 hover:text-gray-900 transition-all duration-300">
-                            <i class="fas fa-bell text-lg"></i>
-                            <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold">3</span>
-                        </button>
-                        
                         <!-- Messages -->
                         <div class="relative">
                             <a href="{{ route('plebo.messages') }}" class="bg-gray-50 hover:bg-gray-100 border border-gray-200 p-3 rounded-2xl text-gray-600 hover:text-gray-900 transition-all duration-300 inline-block">
@@ -226,11 +205,6 @@
                                 <span id="header-message-count" class="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full notification-badge hidden"></span>
                             </a>
                         </div>
-                        
-                        <!-- Settings -->
-                        <button class="bg-gray-50 hover:bg-gray-100 border border-gray-200 p-3 rounded-2xl text-gray-600 hover:text-gray-900 transition-all duration-300">
-                            <i class="fas fa-cog text-lg"></i>
-                        </button>
                     </div>
                 </div>
             </header>
@@ -242,6 +216,71 @@
         </div>
     </div>
 
+    <!-- Profile Modal -->
+    <div id="profileModal" class="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center">
+        <div class="relative mx-auto p-0 border-0 w-full max-w-md shadow-2xl rounded-2xl bg-white">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-orange-600 to-orange-700 px-8 py-6 rounded-t-2xl">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                            <i class="fas fa-vial text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white">Profile</h3>
+                            <p class="text-orange-100 text-sm">Medical Phlebotomist</p>
+                        </div>
+                    </div>
+                    <button id="closeModal" class="text-white/70 hover:text-white transition-colors p-2">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-8">
+                <!-- Profile Info -->
+                <div class="flex items-center space-x-4 mb-8 p-4 bg-orange-50 rounded-xl border border-orange-100">
+                    <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-vial text-white text-2xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="text-lg font-bold text-gray-900">{{ Auth::user()->fname }} {{ Auth::user()->lname }}</h4>
+                        <p class="text-sm text-gray-600">{{ Auth::user()->email }}</p>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <span class="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">Medical Phlebotomist</span>
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                            <span class="text-xs text-green-600 font-medium">Online</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu Items -->
+                <div class="space-y-2">
+                    <a href="{{ route('plebo.profile.edit') }}" class="flex items-center px-4 py-3 text-gray-700 hover:bg-orange-50 hover:text-orange-700 rounded-xl transition-all duration-200 group">
+                        <div class="w-10 h-10 bg-gray-100 group-hover:bg-orange-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                            <i class="fas fa-user-edit text-gray-500 group-hover:text-orange-600"></i>
+                        </div>
+                        <span class="font-medium">Edit Profile</span>
+                        <i class="fas fa-chevron-right ml-auto text-gray-400 group-hover:text-orange-500"></i>
+                    </a>
+                    
+                    <div class="border-t border-gray-200 my-4"></div>
+                    
+                    <form method="POST" action="{{ route('logout') }}" class="block">
+                        @csrf
+                        <button type="submit" class="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 group">
+                            <div class="w-10 h-10 bg-red-50 group-hover:bg-red-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                                <i class="fas fa-sign-out-alt text-red-500"></i>
+                            </div>
+                            <span class="font-medium">Logout</span>
+                            <i class="fas fa-chevron-right ml-auto text-red-400"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -292,6 +331,54 @@
             
             // Initialize messages functionality
             initializeMessages();
+            
+            // Profile Modal Functionality
+            const profileButton = document.getElementById('profileButton');
+            const profileModal = document.getElementById('profileModal');
+            const closeModal = document.getElementById('closeModal');
+            
+            // Open modal
+            if (profileButton) {
+                profileButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    profileModal.classList.remove('hidden');
+                    
+                    // Add animation
+                    const modalContent = profileModal.querySelector('.relative');
+                    modalContent.style.animation = 'fadeInUp 0.3s ease-out';
+                });
+            }
+
+            // Close modal function
+            function closeProfileModal() {
+                const modalContent = profileModal.querySelector('.relative');
+                modalContent.style.animation = 'fadeInUp 0.2s ease-in reverse';
+                
+                setTimeout(() => {
+                    profileModal.classList.add('hidden');
+                }, 200);
+            }
+
+            // Close modal events
+            if (closeModal) {
+                closeModal.addEventListener('click', closeProfileModal);
+            }
+
+            // Close modal when clicking outside
+            if (profileModal) {
+                profileModal.addEventListener('click', function(e) {
+                    if (e.target === profileModal) {
+                        closeProfileModal();
+                    }
+                });
+            }
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && profileModal && !profileModal.classList.contains('hidden')) {
+                    closeProfileModal();
+                }
+            });
         });
         
         function initializeMessages() {

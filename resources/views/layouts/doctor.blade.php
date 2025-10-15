@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Doctor Dashboard') - RCC Health Services</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -120,9 +121,41 @@
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Simple Header -->
             <header class="bg-white border-b border-gray-100">
-                <div class="px-8 py-6">
-                    <h1 class="text-2xl font-semibold text-gray-900">@yield('page-title', 'Dashboard')</h1>
-                    <p class="text-gray-600 text-sm mt-1">@yield('page-description', 'Welcome to your medical dashboard')</p>
+                <div class="px-8 py-6 flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-semibold text-gray-900">@yield('page-title', 'Dashboard')</h1>
+                        <p class="text-gray-600 text-sm mt-1">@yield('page-description', 'Welcome to your medical dashboard')</p>
+                    </div>
+                    
+                    <!-- Notifications Dropdown -->
+                    <div class="relative">
+                        <button id="notificationButton" class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-200">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span id="notification-badge" class="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold hidden">0</span>
+                        </button>
+                        
+                        <!-- Notifications Dropdown Menu -->
+                        <div id="notificationDropdown" class="hidden absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-100">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-lg font-semibold text-gray-900">Notifications</h3>
+                                    <button id="markAllRead" class="text-sm text-blue-600 hover:text-blue-700 font-medium">Mark all as read</button>
+                                </div>
+                            </div>
+                            
+                            <div id="notificationList" class="max-h-96 overflow-y-auto">
+                                <!-- Notifications will be loaded here -->
+                                <div class="p-8 text-center text-gray-500">
+                                    <i class="fas fa-bell-slash text-4xl mb-3 text-gray-300"></i>
+                                    <p class="text-sm">No notifications yet</p>
+                                </div>
+                            </div>
+                            
+                            <div class="p-3 border-t border-gray-100 text-center">
+                                <a href="#" class="text-sm text-blue-600 hover:text-blue-700 font-medium">View all notifications</a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </header>
 
@@ -168,17 +201,9 @@
 
                 <!-- Menu Items -->
                 <div class="space-y-2">
-                    <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                    <a href="{{ route('doctor.profile.edit') }}" class="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200">
                         <i class="fas fa-user-edit text-gray-500 mr-3"></i>
                         <span class="font-medium">Edit Profile</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-                        <i class="fas fa-cog text-gray-500 mr-3"></i>
-                        <span class="font-medium">Settings</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-                        <i class="fas fa-question-circle text-gray-500 mr-3"></i>
-                        <span class="font-medium">Help & Support</span>
                     </a>
                     
                     <div class="border-t border-gray-100 pt-2 mt-4">
@@ -227,9 +252,44 @@
             }
         });
 
+        // Notifications Dropdown Functionality
+        const notificationButton = document.getElementById('notificationButton');
+        const notificationDropdown = document.getElementById('notificationDropdown');
+        
+        notificationButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notificationDropdown.classList.toggle('hidden');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!notificationButton.contains(e.target) && !notificationDropdown.contains(e.target)) {
+                notificationDropdown.classList.add('hidden');
+            }
+        });
+        
+        // Mark all as read functionality
+        document.getElementById('markAllRead').addEventListener('click', function() {
+            fetch('/doctor/notifications/mark-all-read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadNotifications();
+                }
+            })
+            .catch(error => console.error('Error marking all as read:', error));
+        });
+
         // Initialize messages functionality
         document.addEventListener('DOMContentLoaded', function() {
             initializeMessages();
+            loadNotifications();
         });
         
         function initializeMessages() {
@@ -263,6 +323,84 @@
                 if (messageCount) messageCount.classList.add('hidden');
             }
         }
+        
+        // Load notifications
+        function loadNotifications() {
+            fetch('/doctor/notifications?limit=10')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationBadge = document.getElementById('notification-badge');
+                    const notificationList = document.getElementById('notificationList');
+                    const notifications = data.notifications;
+                    
+                    // Update badge count
+                    fetch('/doctor/notifications/count')
+                        .then(response => response.json())
+                        .then(countData => {
+                            if (countData.count > 0) {
+                                notificationBadge.textContent = countData.count > 99 ? '99+' : countData.count;
+                                notificationBadge.classList.remove('hidden');
+                            } else {
+                                notificationBadge.classList.add('hidden');
+                            }
+                        });
+                    
+                    if (notifications.length > 0) {
+                        notificationList.innerHTML = notifications.map(notification => {
+                            const iconColor = notification.is_read ? 'gray' : 'blue';
+                            const bgColor = notification.is_read ? 'bg-gray-50' : 'bg-white';
+                            
+                            return `
+                                <div class="p-4 hover:bg-gray-100 border-b border-gray-100 cursor-pointer transition-colors duration-200 ${bgColor}" 
+                                     onclick="markNotificationRead(${notification.id})">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="w-10 h-10 rounded-full bg-${iconColor}-100 flex items-center justify-center flex-shrink-0">
+                                            <i class="fas ${notification.icon} text-${iconColor}-600"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900">${notification.title}</p>
+                                            <p class="text-sm text-gray-600 mt-1">${notification.message}</p>
+                                            <p class="text-xs text-gray-400 mt-1">${notification.time_ago}</p>
+                                        </div>
+                                        ${!notification.is_read ? '<div class="w-2 h-2 bg-blue-600 rounded-full"></div>' : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        notificationList.innerHTML = `
+                            <div class="p-8 text-center text-gray-500">
+                                <i class="fas fa-bell-slash text-4xl mb-3 text-gray-300"></i>
+                                <p class="text-sm">No notifications yet</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                });
+        }
+        
+        // Mark notification as read
+        function markNotificationRead(notificationId) {
+            fetch(`/doctor/notifications/${notificationId}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadNotifications();
+                }
+            })
+            .catch(error => console.error('Error marking notification as read:', error));
+        }
+        
+        // Refresh notifications every 30 seconds
+        setInterval(loadNotifications, 30000);
     </script>
     
     @stack('scripts')

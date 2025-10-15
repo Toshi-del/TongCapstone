@@ -11,6 +11,7 @@ use App\Models\MedicalTest;
 use App\Models\MedicalTestCategory;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -250,6 +251,9 @@ class CompanyAppointmentController extends Controller
                 $companyUser,
                 $appointment
             );
+
+            // Notify company that appointment was submitted successfully
+            NotificationService::notifyCompanyAppointmentSubmitted($appointment, $companyUser);
 
             return redirect()->route('company.appointments.index')
                 ->with('success', 'Appointment created successfully.');

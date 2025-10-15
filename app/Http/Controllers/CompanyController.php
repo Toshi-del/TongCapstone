@@ -6,8 +6,10 @@ use Illuminate\Http\Request;
 use App\Models\Appointment;
 use App\Models\PreEmploymentRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\Notification;
 
 class CompanyController extends Controller
 {
@@ -438,5 +440,133 @@ class CompanyController extends Controller
         })->values();
         
         return response()->json($users);
+    }
+
+    /**
+     * Show the edit profile form
+     */
+    public function editProfile()
+    {
+        $user = Auth::user();
+        return view('company.profile.edit', compact('user'));
+    }
+
+    /**
+     * Update the company's profile
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'fname' => 'required|string|max:255',
+            'lname' => 'required|string|max:255',
+            'mname' => 'nullable|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:20',
+            'company' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'birthday' => 'nullable|date',
+            'current_password' => 'nullable|required_with:new_password',
+            'new_password' => 'nullable|min:8|confirmed',
+        ]);
+
+        // Check current password if user wants to change password
+        if ($request->filled('current_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return back()->withErrors(['current_password' => 'Current password is incorrect']);
+            }
+            $validated['password'] = Hash::make($request->new_password);
+        }
+
+        // Remove password fields if not changing password
+        unset($validated['current_password'], $validated['new_password'], $validated['new_password_confirmation']);
+
+        // Calculate age if birthday is provided
+        if (isset($validated['birthday'])) {
+            $validated['age'] = \Carbon\Carbon::parse($validated['birthday'])->age;
+        }
+
+        $user->update($validated);
+
+        return redirect()->route('company.profile.edit')->with('success', 'Profile updated successfully!');
+    }
+
+    /**
+     * Get notifications for company
+     */
+    public function getNotifications(Request $request)
+    {
+        $user = Auth::user();
+        $limit = $request->get('limit', 10);
+        
+        $notifications = Notification::where('notifiable_type', User::class)
+            ->where('notifiable_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+        
+        return response()->json([
+            'notifications' => $notifications->map(function($notification) {
+                return [
+                    'id' => $notification->id,
+                    'type' => $notification->type,
+                    'title' => $notification->title,
+                    'message' => $notification->message,
+                    'is_read' => $notification->is_read,
+                    'priority' => $notification->priority,
+                    'time_ago' => $notification->time_ago,
+                    'icon' => $notification->type_icon,
+                    'data' => $notification->data,
+                    'created_at' => $notification->created_at->toDateTimeString(),
+                ];
+            })
+        ]);
+    }
+
+    /**
+     * Get unread notification count
+     */
+    public function getNotificationCount()
+    {
+        $user = Auth::user();
+        $count = Notification::getUnreadCountForUser($user);
+        
+        return response()->json(['count' => $count]);
+    }
+
+    /**
+     * Mark notification as read
+     */
+    public function markNotificationAsRead($id)
+    {
+        $notification = Notification::findOrFail($id);
+        
+        // Ensure the notification belongs to the authenticated user
+        if ($notification->notifiable_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
+        $notification->markAsRead();
+        
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Mark all notifications as read
+     */
+    public function markAllNotificationsAsRead()
+    {
+        $user = Auth::user();
+        
+        Notification::where('notifiable_type', User::class)
+            ->where('notifiable_id', $user->id)
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => now()
+            ]);
+        
+        return response()->json(['success' => true]);
     }
 }

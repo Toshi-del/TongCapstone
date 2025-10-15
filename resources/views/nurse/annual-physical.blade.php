@@ -447,11 +447,6 @@
                                                title="Medical Checklist">
                                                 <i class="fas fa-clipboard-list"></i>
                                             </a>
-
-                                            <!-- View Details -->
-                                            <button class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors" title="View Details">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
                                         </div>
                                     </td>
                                 </tr>

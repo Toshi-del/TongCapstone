@@ -120,7 +120,7 @@
                 </div>
                 <div class="p-4">
                     @php
-                        $totalAmount = 0;
+                        $individualAmount = 0;
                         $selectedTests = [];
                         $patient = $examination->patient;
                         $isAgeAdjusted = $patient && $patient->age_adjusted;
@@ -128,6 +128,7 @@
                         // Get tests from the appointment
                         if ($examination->patient && $examination->patient->appointment) {
                             $appointment = $examination->patient->appointment;
+                            $patientCount = $appointment->patients()->count();
                             
                             // Check for selected_tests first (multiple tests)
                             if ($appointment->selected_tests && count($appointment->selected_tests) > 0) {
@@ -151,7 +152,7 @@
                                         'original_price' => $wasAdjusted ? ($test->price ?? 0) : null,
                                         'was_adjusted' => $wasAdjusted
                                     ];
-                                    $totalAmount += $testPrice;
+                                    $individualAmount += $testPrice;
                                 }
                             }
                             // Fallback to single medicalTest
@@ -175,12 +176,12 @@
                                     'original_price' => $wasAdjusted ? ($appointment->medicalTest->price ?? 0) : null,
                                     'was_adjusted' => $wasAdjusted
                                 ];
-                                $totalAmount += $testPrice;
+                                $individualAmount += $testPrice;
                             }
                             
-                            // Use stored total_price if available (it should already reflect age adjustments)
-                            if ($appointment->total_price > 0) {
-                                $totalAmount = $appointment->total_price;
+                            // Calculate individual price from total_price if available
+                            if ($appointment->total_price > 0 && $patientCount > 0) {
+                                $individualAmount = $appointment->total_price / $patientCount;
                             }
                         }
                     @endphp
@@ -223,10 +224,10 @@
                         <div class="pt-2 mt-2 border-t border-gray-200">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm font-medium text-gray-900">Total Amount</p>
+                                    <p class="text-sm font-medium text-gray-900">Individual Amount</p>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-lg font-bold text-green-600">₱{{ number_format($totalAmount, 2) }}</p>
+                                    <p class="text-lg font-bold text-green-600">₱{{ number_format($individualAmount, 2) }}</p>
                                 </div>
                             </div>
                         </div>

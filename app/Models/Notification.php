@@ -165,7 +165,13 @@ class Notification extends Model
             'appointment_created' => 'fa-calendar-plus',
             'pre_employment_created' => 'fa-user-plus',
             'annual_physical_created' => 'fa-heartbeat',
+            'new_examination' => 'fa-file-medical',
             'checklist_completed' => 'fa-check-square',
+            'checklist_submitted' => 'fa-clipboard-check',
+            'checklist_submitted_confirmation' => 'fa-check-circle',
+            'results_updated' => 'fa-edit',
+            'results_updated_confirmation' => 'fa-check-circle',
+            'submitted_to_admin' => 'fa-paper-plane',
             'lab_exam_completed' => 'fa-flask',
             'xray_completed' => 'fa-x-ray',
             'ecg_completed' => 'fa-heartbeat',
@@ -173,6 +179,12 @@ class Notification extends Model
             'patient_registered' => 'fa-user-check',
             'examination_updated' => 'fa-edit',
             'system_alert' => 'fa-exclamation-circle',
+            // Company notifications
+            'appointment_submitted' => 'fa-calendar-check',
+            'pre_employment_submitted' => 'fa-briefcase',
+            'opd_submitted' => 'fa-hospital',
+            'results_ready' => 'fa-file-medical-alt',
+            'examination_sent' => 'fa-paper-plane',
             default => 'fa-bell',
         };
     }

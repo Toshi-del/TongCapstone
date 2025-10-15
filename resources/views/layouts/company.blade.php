@@ -260,10 +260,6 @@
                             <span class="font-medium">Messages</span>
                             <span id="message-count" class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full hidden">0</span>
                         </a>
-                        <a href="{{ route('company.settings') }}" class="nav-item flex items-center px-4 py-3 text-gray-700 hover:text-gray-900 rounded-xl transition-all duration-200 {{ request()->routeIs('company.settings*') ? 'active text-white' : '' }}">
-                            <i class="fas fa-cog mr-4 text-lg"></i>
-                            <span class="font-medium">Settings</span>
-                        </a>
                     </div>
                 </div>
             </nav>
@@ -307,20 +303,34 @@
                     </div>
                     
                     <div class="flex items-center space-x-4">
-                        <!-- Notifications -->
+                        <!-- Notifications Dropdown -->
                         <div class="relative">
-                            <button class="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200">
+                            <button id="notificationButton" class="relative p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200">
                                 <i class="fas fa-bell text-lg"></i>
-                                <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full notification-badge"></span>
+                                <span id="notification-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold hidden">0</span>
                             </button>
-                        </div>
-                        
-                        <!-- Messages -->
-                        <div class="relative">
-                            <button class="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200">
-                                <i class="fas fa-envelope text-lg"></i>
-                                <span class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full notification-badge"></span>
-                            </button>
+                            
+                            <!-- Notifications Dropdown Menu -->
+                            <div id="notificationDropdown" class="hidden absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50">
+                                <div class="p-4 border-b border-gray-100">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="text-lg font-semibold text-gray-900">Notifications</h3>
+                                        <button id="markAllRead" class="text-sm text-blue-600 hover:text-blue-700 font-medium">Mark all as read</button>
+                                    </div>
+                                </div>
+                                
+                                <div id="notificationList" class="max-h-96 overflow-y-auto">
+                                    <!-- Notifications will be loaded here -->
+                                    <div class="p-8 text-center text-gray-500">
+                                        <i class="fas fa-bell-slash text-4xl mb-3 text-gray-300"></i>
+                                        <p class="text-sm">No notifications yet</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="p-3 border-t border-gray-100 text-center">
+                                    <a href="#" class="text-sm text-blue-600 hover:text-blue-700 font-medium">View all notifications</a>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- Current Time -->
@@ -382,25 +392,11 @@
 
                 <!-- Menu Items -->
                 <div class="space-y-2">
-                    <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-all duration-200 group">
+                    <a href="{{ route('company.profile.edit') }}" class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-all duration-200 group">
                         <div class="w-10 h-10 bg-gray-100 group-hover:bg-blue-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
                             <i class="fas fa-user-edit text-gray-500 group-hover:text-blue-600"></i>
                         </div>
                         <span class="font-medium">Edit Profile</span>
-                        <i class="fas fa-chevron-right ml-auto text-gray-400 group-hover:text-blue-500"></i>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-all duration-200 group">
-                        <div class="w-10 h-10 bg-gray-100 group-hover:bg-blue-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                            <i class="fas fa-cog text-gray-500 group-hover:text-blue-600"></i>
-                        </div>
-                        <span class="font-medium">Settings</span>
-                        <i class="fas fa-chevron-right ml-auto text-gray-400 group-hover:text-blue-500"></i>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-all duration-200 group">
-                        <div class="w-10 h-10 bg-gray-100 group-hover:bg-blue-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
-                            <i class="fas fa-bell text-gray-500 group-hover:text-blue-600"></i>
-                        </div>
-                        <span class="font-medium">Notifications</span>
                         <i class="fas fa-chevron-right ml-auto text-gray-400 group-hover:text-blue-500"></i>
                     </a>
                 </div>
@@ -487,6 +483,9 @@
             // Initialize messages functionality
             initializeMessages();
             
+            // Initialize notifications functionality
+            initializeNotifications();
+            
             // Search functionality
             const searchInput = document.querySelector('.search-bar');
             if (searchInput) {
@@ -494,15 +493,6 @@
                     const query = e.target.value.toLowerCase();
                     // Add search functionality here if needed
                     console.log('Searching for:', query);
-                });
-            }
-            
-            // Notification click handler
-            const notificationBtn = document.querySelector('button[class*="fas fa-bell"]');
-            if (notificationBtn) {
-                notificationBtn.addEventListener('click', function() {
-                    // Add notification panel functionality here
-                    console.log('Notifications clicked');
                 });
             }
         });
@@ -537,6 +527,127 @@
             } else {
                 if (messageCount) messageCount.classList.add('hidden');
             }
+        }
+        
+        // Notifications functionality
+        function initializeNotifications() {
+            const notificationButton = document.getElementById('notificationButton');
+            const notificationDropdown = document.getElementById('notificationDropdown');
+            const markAllRead = document.getElementById('markAllRead');
+            
+            if (notificationButton && notificationDropdown) {
+                // Toggle dropdown
+                notificationButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    notificationDropdown.classList.toggle('hidden');
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!notificationButton.contains(e.target) && !notificationDropdown.contains(e.target)) {
+                        notificationDropdown.classList.add('hidden');
+                    }
+                });
+                
+                // Mark all as read
+                if (markAllRead) {
+                    markAllRead.addEventListener('click', function() {
+                        fetch('/company/notifications/mark-all-read', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                loadNotifications();
+                            }
+                        })
+                        .catch(error => console.error('Error marking all as read:', error));
+                    });
+                }
+            }
+            
+            // Load initial notifications
+            loadNotifications();
+            
+            // Refresh notifications every 30 seconds
+            setInterval(loadNotifications, 30000);
+        }
+        
+        function loadNotifications() {
+            fetch('/company/notifications?limit=10')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationBadge = document.getElementById('notification-badge');
+                    const notificationList = document.getElementById('notificationList');
+                    const notifications = data.notifications;
+                    
+                    // Update badge count
+                    fetch('/company/notifications/count')
+                        .then(response => response.json())
+                        .then(countData => {
+                            if (countData.count > 0) {
+                                notificationBadge.textContent = countData.count > 99 ? '99+' : countData.count;
+                                notificationBadge.classList.remove('hidden');
+                            } else {
+                                notificationBadge.classList.add('hidden');
+                            }
+                        });
+                    
+                    if (notifications.length > 0) {
+                        notificationList.innerHTML = notifications.map(notification => {
+                            const iconColor = notification.is_read ? 'gray' : 'blue';
+                            const bgColor = notification.is_read ? 'bg-gray-50' : 'bg-white';
+                            
+                            return `
+                                <div class="p-4 hover:bg-gray-100 border-b border-gray-100 cursor-pointer transition-colors duration-200 ${bgColor}" 
+                                     onclick="markNotificationRead(${notification.id})">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="w-10 h-10 rounded-full bg-${iconColor}-100 flex items-center justify-center flex-shrink-0">
+                                            <i class="fas ${notification.icon} text-${iconColor}-600"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900">${notification.title}</p>
+                                            <p class="text-sm text-gray-600 mt-1">${notification.message}</p>
+                                            <p class="text-xs text-gray-400 mt-1">${notification.time_ago}</p>
+                                        </div>
+                                        ${!notification.is_read ? '<div class="w-2 h-2 bg-blue-600 rounded-full"></div>' : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        notificationList.innerHTML = `
+                            <div class="p-8 text-center text-gray-500">
+                                <i class="fas fa-bell-slash text-4xl mb-3 text-gray-300"></i>
+                                <p class="text-sm">No notifications yet</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                });
+        }
+        
+        function markNotificationRead(notificationId) {
+            fetch(`/company/notifications/${notificationId}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadNotifications();
+                }
+            })
+            .catch(error => console.error('Error marking notification as read:', error));
         }
     </script>
 </body>
